@@ -1,6 +1,11 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-07-31T07:37:20Z",
+  "capturedAt": "2026-07-31T08:13:00Z",
+  "source": {
+    "validatedCommit": "d2781f9c69b68b3a2acd485fc23cd73b0684d203",
+    "pluginPayloadSha256": "917f910a3b654544cc6db335d17a94af19f6d8a170ea3d8625c155ba6a9c3a92",
+    "pluginFileCount": 12
+  },
   "boundary": {
     "codexVersion": "0.145.0",
     "operatingSystem": "macOS arm64",
@@ -16,39 +21,57 @@
     "enabled": true,
     "configLoad": "ok"
   },
+  "capabilityProbe": {
+    "codexAvailable": true,
+    "codexVersion": "0.145.0",
+    "multiAgentEnabled": true,
+    "configAdapter": "agents-v1",
+    "boundedModelCount": 8,
+    "rawModelInstructionsRetained": false
+  },
+  "confirmedPlan": {
+    "confirmationId": "dbd7b058218b0b360df73fba6ffa6f59",
+    "configMode": "apply-project",
+    "projectCurrentValue": null,
+    "requestedSpawnedWorkerCeiling": 2,
+    "configWritePlanned": true,
+    "doctorAfterApply": "pass"
+  },
   "nativeAgentRun": {
-    "parentThreadId": "019fb718-14ca-7e50-8d02-0c8b8eb12a3b",
+    "parentThreadId": "019fb739-e720-77b1-9981-ca7c79c013bd",
     "children": [
       {
-        "threadId": "019fb718-2b74-71c1-8b22-cef468faa647",
+        "threadId": "019fb739-f6f7-7270-95d2-c9bbb229cb37",
         "agentRole": "delivery_planner",
         "generatedDeveloperInstructionsObserved": true,
-        "result": "PLAN-OK"
+        "result": "PLAN-OK README describes a disposable fixture for validating planning and integration-testing roles."
       },
       {
-        "threadId": "019fb718-3a9c-7370-851e-1e02bd1f8299",
+        "threadId": "019fb73a-005a-7013-b283-429459d1c19f",
         "agentRole": "integration_test_engineer",
         "generatedDeveloperInstructionsObserved": true,
-        "result": "TEST-OK"
+        "result": "TEST-OK README identifies this as a disposable fixture for validating planning and integration testing roles."
       }
     ],
-    "rootIntegratedResult": "ROOT-OK PLAN-OK TEST-OK"
+    "rootIntegratedResult": "ROOT-OK PLAN-OK TEST-OK",
+    "generatedForkGuidanceObserved": true
   },
   "capacityRun": {
-    "parentThreadId": "019fb71a-4fcd-7243-817c-c294e3485d4d",
+    "parentThreadId": "019fb73a-dd3b-7430-8571-2ee0fe5b838f",
     "configuredSpawnedWorkerCeiling": 2,
     "successfulChildren": 2,
     "thirdSpawn": "collab spawn failed: agent thread limit reached",
     "unboundedRetryObserved": false
   },
   "trivialRun": {
-    "parentThreadId": "019fb71a-f6d2-70f2-9afc-229f4846b9bc",
+    "parentThreadId": "019fb73b-650d-7d70-a17c-7fa0b8cdf9dc",
     "result": "TRIVIAL-OK",
     "subagentActivityEvents": 0
   },
   "rollback": {
     "twoTransactionsRevertedInReverseOrder": true,
-    "generatedProjectFilesRemaining": 0
+    "generatedProjectFilesRemaining": 0,
+    "userReadmePreserved": true
   },
   "evidencePolicy": {
     "rawSessionFilesIncluded": false,
@@ -58,6 +81,7 @@
   "knownGaps": [
     "Real-runtime proof was run on one macOS arm64 host and Codex 0.145.0.",
     "GitHub publication and OpenAI directory submission were not performed.",
-    "The raw isolated session directory was intentionally excluded because it referenced local authentication state."
+    "The raw isolated session directory was intentionally excluded because it referenced local authentication state.",
+    "Repeated icon warnings came from unrelated bundled skills; Codsemble skill metadata does not declare those icons."
   ]
 }

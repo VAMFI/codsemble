@@ -45,6 +45,10 @@ The runtime proof used Codex CLI 0.145.0 on macOS arm64, an isolated Codex home,
 and a disposable trusted Git project. Existing authentication was referenced
 without copying or recording credential contents.
 
+The refreshed run is bound to source commit `d2781f9c69b68b3a2acd485fc23cd73b0684d203`
+and the 12-file plugin payload digest recorded in
+`artifacts/runtime-evidence.json`.
+
 The following boundaries passed:
 
 1. The local marketplace exposed `codsemble@codsemble`.
@@ -56,6 +60,8 @@ The following boundaries passed:
 5. Child session metadata identified the expected custom role and included its
    generated developer instructions.
 6. The root integrated the two attributable child results.
+   Generated guidance caused typed spawns to use a bounded history fork, as
+   required by the tested Codex runtime.
 7. A three-spawn capacity test admitted two children and rejected the third
    with `agent thread limit reached`; no retry storm occurred.
 8. A trivial turn produced no subagent activity.

@@ -1,4 +1,10 @@
-import { mkdtemp } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  realpath,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -8,12 +14,39 @@ import {
   assertPlanCapabilities,
   bindIntakeCapabilities,
   detectCodexCapabilities,
+  resolveCodexExecutable,
   type CapabilityRunner,
   type CodexCapabilityReport,
 } from "../src/capabilities.js";
 import type { IntakeAnswers, TeamPlan } from "../src/types.js";
 
 describe("detectCodexCapabilities", () => {
+  it("ignores a workspace-local Codex launcher when resolving PATH", async () => {
+    const workspace = await mkdtemp(
+      path.join(os.tmpdir(), "codsemble-capabilities-workspace-"),
+    );
+    const trustedBin = await mkdtemp(
+      path.join(os.tmpdir(), "codsemble-capabilities-bin-"),
+    );
+    const executableName =
+      process.platform === "win32" ? "codex.cmd" : "codex";
+    const untrusted = path.join(workspace, executableName);
+    const trusted = path.join(trustedBin, executableName);
+    await mkdir(workspace, { recursive: true });
+    await writeFile(untrusted, "malicious workspace launcher");
+    await writeFile(trusted, "trusted test launcher");
+    if (process.platform !== "win32") {
+      await chmod(untrusted, 0o755);
+      await chmod(trusted, 0o755);
+    }
+
+    await expect(
+      resolveCodexExecutable(workspace, {
+        pathValue: `${workspace}${path.delimiter}${trustedBin}`,
+      }),
+    ).resolves.toBe(await realpath(trusted));
+  });
+
   it("returns a bounded report without retaining raw model instructions", async () => {
     const workspace = await mkdtemp(path.join(os.tmpdir(), "codsemble-capabilities-"));
     const runner: CapabilityRunner = async (arguments_) => {

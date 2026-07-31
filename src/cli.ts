@@ -15,6 +15,7 @@ import {
   applyTeamPlan,
   assertValidTeamPlan,
   rollbackTransaction,
+  verifyNoChangesPlan,
 } from "./transaction.js";
 import type {
   IntakeAnswers,
@@ -194,6 +195,15 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       }
       const capabilities = await detectCodexCapabilities(workspace);
       assertPlanCapabilities(plan, capabilities, "apply");
+      if (plan.files.every(({ action }) => action === "verify")) {
+        await verifyNoChangesPlan(workspace, plan);
+        return {
+          transaction: null,
+          doctor: await doctorWorkspace(workspace),
+          reloadRequired: false,
+          noChanges: true,
+        };
+      }
       const transaction = await applyTeamPlan(workspace, plan);
       return {
         transaction,
@@ -201,6 +211,7 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
         reloadRequired: plan.files.some(
           (file) => file.relativePath === ".codex/config.toml",
         ),
+        noChanges: false,
       };
     }
     case "doctor": {

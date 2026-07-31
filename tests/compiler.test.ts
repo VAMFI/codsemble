@@ -309,10 +309,10 @@ describe("compileTeamPlan", () => {
       )?.content,
     ).toContain("= 3 # keep");
     expect(
-      higher.files.some(
+      higher.files.find(
         ({ relativePath }) => relativePath === ".codex/config.toml",
-      ),
-    ).toBe(false);
+      )?.action,
+    ).toBe("verify");
     expect(higher.concurrency.projectCurrentValue).toBe(8);
     expect(higher.concurrency.warning).toContain("will not be lowered");
   });

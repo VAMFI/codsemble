@@ -88,9 +88,10 @@ export async function compileTeamPlan(
   );
   desiredFiles.set(
     agentsPath,
-    mergeManagedAgentsBlock(
+    renderManagedAgentsFile(
       existingAgents,
-      renderManagedAgentsBody(resolvedRoles, proposal),
+      resolvedRoles,
+      proposal.kind,
     ),
   );
 
@@ -125,6 +126,8 @@ export async function compileTeamPlan(
     concurrencyPatch.currentValue < answers.maxConcurrentWorkers;
   if (shouldPlanConfig && shouldRaiseConcurrency) {
     desiredFiles.set(configPath, concurrencyPatch.content);
+  } else if (shouldPlanConfig && existingConfig !== undefined) {
+    desiredFiles.set(configPath, existingConfig);
   }
 
   const concurrency = {
@@ -213,23 +216,26 @@ export async function compileTeamPlan(
   )) {
     const before = await getExistingFile(root, relativePath, existingFiles);
     const afterSha256 = sha256(content);
-    if (before.content !== content) {
-      preimages.push({
-        relativePath,
-        exists: before.content !== undefined,
-        sha256:
-          before.content === undefined ? null : sha256(Buffer.from(before.content)),
-        mode: before.mode,
-      });
-      files.push({
-        relativePath,
-        action: before.content === undefined ? "create" : "update",
-        beforeSha256:
-          before.content === undefined ? null : sha256(Buffer.from(before.content)),
-        afterSha256,
-        content,
-      });
-    }
+    const beforeSha256 =
+      before.content === undefined ? null : sha256(Buffer.from(before.content));
+    preimages.push({
+      relativePath,
+      exists: before.content !== undefined,
+      sha256: beforeSha256,
+      mode: before.mode,
+    });
+    files.push({
+      relativePath,
+      action:
+        before.content === undefined
+          ? "create"
+          : before.content === content
+            ? "verify"
+            : "update",
+      beforeSha256,
+      afterSha256,
+      content,
+    });
   }
   for (const relativePath of [...priorOwnedAgents.keys()].sort()) {
     if (desiredFiles.has(relativePath)) continue;
@@ -555,12 +561,12 @@ function renderRoleToml(role: ResolvedRole): string {
 
 function renderManagedAgentsBody(
   roles: ResolvedRole[],
-  proposal: TeamProposal,
+  kind: TeamProposal["kind"],
 ): string {
   return [
     "## Codsemble team",
     "",
-    `Selected profile: ${proposal.kind}. Installed roles: ${roles.length}.`,
+    `Selected profile: ${kind}. Installed roles: ${roles.length}.`,
     "",
     ...roles.map(
       (role) =>
@@ -571,6 +577,17 @@ function renderManagedAgentsBody(
     "When spawning a generated agent type, use `fork_turns=\"none\"` or a bounded positive turn count; full-history forks inherit the parent agent type.",
     "Treat the worker ceiling as capacity, not a target. Keep trivial or tightly coupled work on the primary thread.",
   ].join("\n");
+}
+
+export function renderManagedAgentsFile(
+  existing: string | undefined,
+  roles: ResolvedRole[],
+  kind: TeamProposal["kind"],
+): string {
+  return mergeManagedAgentsBlock(
+    existing,
+    renderManagedAgentsBody(roles, kind),
+  );
 }
 
 function nativeAgentName(roleId: string): string {

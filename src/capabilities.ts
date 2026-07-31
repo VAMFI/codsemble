@@ -1,4 +1,6 @@
 import { execFile } from "node:child_process";
+import { access, realpath, stat } from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
 
 import { assertWorkspaceRoot } from "./util.js";
@@ -47,21 +49,121 @@ export type CapabilityRunner = (
 ) => Promise<CapabilityCommandResult>;
 
 const defaultRunner: CapabilityRunner = async (arguments_, workspace) => {
-  const executable =
-    process.platform === "win32"
-      ? process.env.ComSpec ?? "cmd.exe"
-      : "codex";
-  const commandArguments =
-    process.platform === "win32"
-      ? ["/d", "/s", "/c", "codex.cmd", ...arguments_]
-      : arguments_;
-  const result = await execFileAsync(executable, commandArguments, {
+  return runCodexCommand(arguments_, workspace);
+};
+
+export async function runCodexCommand(
+  arguments_: string[],
+  workspace: string,
+): Promise<CapabilityCommandResult> {
+  if (
+    arguments_.some(
+      (argument) => !/^[A-Za-z0-9._=-]+$/.test(argument),
+    )
+  ) {
+    throw new Error("Refusing an unsafe Codex probe argument");
+  }
+  const executable = await resolveCodexExecutable(workspace);
+  const isWindowsScript =
+    process.platform === "win32" && /\.(?:cmd|bat)$/i.test(executable);
+  const command = isWindowsScript
+    ? await resolveWindowsCommand(executable, arguments_, workspace)
+    : { executable, arguments: arguments_ };
+  const result = await execFileAsync(command.executable, command.arguments, {
     cwd: workspace,
     timeout: 30_000,
     maxBuffer: 32 * 1024 * 1024,
   });
   return { stdout: result.stdout };
-};
+}
+
+export async function resolveCodexExecutable(
+  workspace: string,
+  options: {
+    platform?: NodeJS.Platform;
+    pathValue?: string;
+  } = {},
+): Promise<string> {
+  const platform = options.platform ?? process.platform;
+  const root = await realpath(workspace);
+  const names =
+    platform === "win32"
+      ? ["codex.exe", "codex.cmd", "codex.bat", "codex"]
+      : ["codex"];
+  for (const rawDirectory of (options.pathValue ?? process.env.PATH ?? "").split(
+    path.delimiter,
+  )) {
+    const directory = rawDirectory.replace(/^"|"$/g, "");
+    if (directory === "" || !path.isAbsolute(directory)) continue;
+    let resolvedDirectory: string;
+    try {
+      resolvedDirectory = await realpath(directory);
+    } catch {
+      continue;
+    }
+    if (isWithin(root, resolvedDirectory)) continue;
+    for (const name of names) {
+      const candidate = path.join(resolvedDirectory, name);
+      try {
+        const resolvedCandidate = await realpath(candidate);
+        if (isWithin(root, resolvedCandidate)) continue;
+        const metadata = await stat(resolvedCandidate);
+        if (!metadata.isFile()) continue;
+        if (platform !== "win32") {
+          await access(resolvedCandidate, 0o1);
+        }
+        return resolvedCandidate;
+      } catch {
+        continue;
+      }
+    }
+  }
+  throw new Error(
+    "Codex executable was not found in a trusted absolute PATH directory outside the workspace",
+  );
+}
+
+async function resolveWindowsCommand(
+  executable: string,
+  arguments_: string[],
+  workspace: string,
+): Promise<{ executable: string; arguments: string[] }> {
+  if (/[%!^&|<>()"]/.test(executable)) {
+    throw new Error(
+      "Refusing a Windows Codex launcher path containing command metacharacters",
+    );
+  }
+  const commandInterpreter = process.env.ComSpec;
+  if (!commandInterpreter || !path.win32.isAbsolute(commandInterpreter)) {
+    throw new Error("A trusted absolute Windows command interpreter is required");
+  }
+  const resolvedInterpreter = await realpath(commandInterpreter);
+  if (
+    isWithin(await realpath(workspace), resolvedInterpreter) ||
+    !(await stat(resolvedInterpreter)).isFile()
+  ) {
+    throw new Error("Windows command interpreter is not trusted");
+  }
+  return {
+    executable: resolvedInterpreter,
+    arguments: [
+      "/d",
+      "/s",
+      "/c",
+      `"${executable}" ${arguments_.join(" ")}`,
+    ],
+  };
+}
+
+function isWithin(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return (
+    relative === "" ||
+    (!relative.startsWith(`..${path.sep}`) &&
+      relative !== ".." &&
+      !path.isAbsolute(relative))
+  );
+}
 
 /**
  * Probe only the local Codex executable. Raw model records are intentionally

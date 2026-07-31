@@ -1,4 +1,10 @@
-import { mkdtemp, mkdir, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,7 +13,10 @@ import {
   applyTeamPlan,
   rollbackTransaction,
 } from "../src/transaction.js";
-import { computeConfirmationId } from "../src/compiler.js";
+import {
+  computeConfirmationId,
+  renderManagedAgentsFile,
+} from "../src/compiler.js";
 import type { TeamPlan } from "../src/types.js";
 import { sha256 } from "../src/util.js";
 
@@ -89,9 +98,21 @@ describe("doctorWorkspace", () => {
     const auditFingerprint = "a".repeat(64);
     const agent =
       'name = "reviewer"\ndescription = "Review changes"\ndeveloper_instructions = "Report evidence."\nsandbox_mode = "read-only"\n';
+    const role = {
+      id: "reviewer",
+      name: "reviewer",
+      description: "Review changes",
+      developerInstructions: "Report evidence.",
+      modelProfile: "inherit" as const,
+      sandbox: "read-only" as const,
+      source: "catalog" as const,
+    };
     const files = {
-      "AGENTS.md":
-        "<!-- codsemble:start -->\n## Codsemble team\n<!-- codsemble:end -->\n",
+      "AGENTS.md": renderManagedAgentsFile(
+        undefined,
+        [role],
+        "balanced",
+      ),
       ".codex/config.toml":
         "[agents]\nmax_concurrent_threads_per_session = 2\n",
       ".codex/agents/reviewer.toml": agent,
@@ -131,15 +152,7 @@ describe("doctorWorkspace", () => {
       schemaVersion: 1,
       planId: "doctor-plan",
       auditFingerprint,
-      roles: [{
-        id: "reviewer",
-        name: "reviewer",
-        description: "Review changes",
-        developerInstructions: "Report evidence.",
-        modelProfile: "inherit",
-        sandbox: "read-only",
-        source: "catalog",
-      }],
+      roles: [role],
       concurrency: {
         requestedWorkers: 2,
         projectCurrentValue: null,
@@ -201,6 +214,28 @@ describe("doctorWorkspace", () => {
     expect(
       rolledBack.checks.find((check) => check.id === "transactions")?.summary,
     ).toContain("all are recorded as rolled back");
+
+    const marker = JSON.parse(
+      await readFile(
+        path.join(
+          workspace,
+          `.codex/codsemble/transactions/${transaction.transactionId}.rollback.json`,
+        ),
+        "utf8",
+      ),
+    ) as { quarantineRelativePaths: string[] };
+    await writeFile(
+      path.join(workspace, marker.quarantineRelativePaths[0] as string),
+      "tampered",
+    );
+    const tampered = await doctorWorkspace(workspace);
+    const transactionCheck = tampered.checks.find(
+      (check) => check.id === "transactions",
+    );
+    expect(transactionCheck?.status).toBe("fail");
+    expect(transactionCheck?.details?.join(" ")).toContain(
+      "rollback recovery quarantine failed integrity verification",
+    );
   });
 
   it("reports a hashless legacy manifest as migration-needed", async () => {

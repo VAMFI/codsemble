@@ -327,7 +327,7 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path7, checkUnignored, mode) {
+      test(path8, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
@@ -336,7 +336,7 @@ var require_ignore = __commonJS({
           if (unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored) {
             return;
           }
-          const matched = rule[mode].test(path7);
+          const matched = rule[mode].test(path8);
           if (!matched) {
             return;
           }
@@ -357,17 +357,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path7, originalPath, doThrow) => {
-      if (!isString(path7)) {
+    var checkPath = (path8, originalPath, doThrow) => {
+      if (!isString(path8)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path7) {
+      if (!path8) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path7)) {
+      if (checkPath.isNotRelative(path8)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -376,7 +376,7 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path7) => REGEX_TEST_INVALID_PATH.test(path7);
+    var isNotRelative = (path8) => REGEX_TEST_INVALID_PATH.test(path8);
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
     var Ignore = class {
@@ -406,19 +406,19 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored, slices) {
-        const path7 = originalPath && checkPath.convert(originalPath);
+        const path8 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path7,
+          path8,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path7, cache, checkUnignored, slices);
+        return this._t(path8, cache, checkUnignored, slices);
       }
-      checkIgnore(path7) {
-        if (!REGEX_TEST_TRAILING_SLASH.test(path7)) {
-          return this.test(path7);
+      checkIgnore(path8) {
+        if (!REGEX_TEST_TRAILING_SLASH.test(path8)) {
+          return this.test(path8);
         }
-        const slices = path7.split(SLASH).filter(Boolean);
+        const slices = path8.split(SLASH).filter(Boolean);
         slices.pop();
         if (slices.length) {
           const parent = this._t(
@@ -431,18 +431,18 @@ var require_ignore = __commonJS({
             return parent;
           }
         }
-        return this._rules.test(path7, false, MODE_CHECK_IGNORE);
+        return this._rules.test(path8, false, MODE_CHECK_IGNORE);
       }
-      _t(path7, cache, checkUnignored, slices) {
-        if (path7 in cache) {
-          return cache[path7];
+      _t(path8, cache, checkUnignored, slices) {
+        if (path8 in cache) {
+          return cache[path8];
         }
         if (!slices) {
-          slices = path7.split(SLASH).filter(Boolean);
+          slices = path8.split(SLASH).filter(Boolean);
         }
         slices.pop();
         if (!slices.length) {
-          return cache[path7] = this._rules.test(path7, checkUnignored, MODE_IGNORE);
+          return cache[path8] = this._rules.test(path8, checkUnignored, MODE_IGNORE);
         }
         const parent = this._t(
           slices.join(SLASH) + SLASH,
@@ -450,29 +450,29 @@ var require_ignore = __commonJS({
           checkUnignored,
           slices
         );
-        return cache[path7] = parent.ignored ? parent : this._rules.test(path7, checkUnignored, MODE_IGNORE);
+        return cache[path8] = parent.ignored ? parent : this._rules.test(path8, checkUnignored, MODE_IGNORE);
       }
-      ignores(path7) {
-        return this._test(path7, this._ignoreCache, false).ignored;
+      ignores(path8) {
+        return this._test(path8, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path7) => !this.ignores(path7);
+        return (path8) => !this.ignores(path8);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path7) {
-        return this._test(path7, this._testCache, true);
+      test(path8) {
+        return this._test(path8, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore(options);
-    var isPathValid = (path7) => checkPath(path7 && checkPath.convert(path7), path7, RETURN_FALSE);
+    var isPathValid = (path8) => checkPath(path8 && checkPath.convert(path8), path8, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path7) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path7) || isNotRelative(path7);
+      checkPath.isNotRelative = (path8) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path8) || isNotRelative(path8);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -489,7 +489,7 @@ var require_ignore = __commonJS({
 
 // src/cli.ts
 import { readFile as readFile5 } from "node:fs/promises";
-import path6 from "node:path";
+import path7 from "node:path";
 
 // src/audit.ts
 var import_ignore = __toESM(require_ignore(), 1);
@@ -950,17 +950,20 @@ async function enumerateGitCandidates(root, git, skips) {
         pathspec
       ])
     ]);
-    const tracked = parseGitPaths(trackedOutput, git.workspacePrefix).sort(compareText).map((relativePath) => ({ relativePath, source: "tracked" }));
+    const tracked = parseGitPaths(trackedOutput, git.workspacePrefix).filter((relativePath) => !isCodsembleTransactionPath(relativePath)).sort(compareText).map((relativePath) => ({ relativePath, source: "tracked" }));
     const trackedSet = new Set(tracked.map(({ relativePath }) => relativePath));
     const untracked = parseGitPaths(untrackedOutput, git.workspacePrefix).filter((relativePath) => !trackedSet.has(relativePath)).sort(compareText);
-    const managedUntracked = untracked.filter(isCodexStateCandidate).map((relativePath) => ({ relativePath, source: "untracked" }));
-    const excludedUntracked = untracked.length - managedUntracked.length;
+    const workspaceUntracked = untracked.filter(
+      (relativePath) => !isCodsembleTransactionPath(relativePath)
+    );
+    const managedUntracked = workspaceUntracked.filter(isCodexStateCandidate).map((relativePath) => ({ relativePath, source: "untracked" }));
+    const excludedUntracked = workspaceUntracked.length - managedUntracked.length;
     if (excludedUntracked > 0) {
       increment(skips, "untracked", excludedUntracked);
     }
     return {
       candidates: [...tracked, ...managedUntracked],
-      dirty: statusOutput.length > 0
+      dirty: hasRelevantGitStatus(statusOutput, git.workspacePrefix)
     };
   } catch {
     return {
@@ -974,6 +977,33 @@ async function enumerateGitCandidates(root, git, skips) {
       warning: "Git metadata was detected but could not be queried; used a bounded filesystem scan."
     };
   }
+}
+function hasRelevantGitStatus(output, workspacePrefix) {
+  const entries = output.split("\0").filter(Boolean);
+  const prefix = workspacePrefix ? `${workspacePrefix.replace(/\/+$/, "")}/` : "";
+  for (let index = 0; index < entries.length; index += 1) {
+    const record2 = entries[index];
+    const status = record2.slice(0, 2);
+    const repoPaths = [record2.slice(3)];
+    if (/[RC]/.test(status)) {
+      const secondPath = entries[index + 1];
+      if (secondPath !== void 0) {
+        repoPaths.push(secondPath);
+        index += 1;
+      }
+    }
+    const workspacePaths = repoPaths.flatMap((repoPath) => {
+      const normalized = toPosix(repoPath);
+      if (!prefix) return [normalized];
+      return normalized.startsWith(prefix) ? [normalized.slice(prefix.length)] : [];
+    });
+    if (workspacePaths.some(
+      (relativePath) => !isCodsembleTransactionPath(relativePath)
+    )) {
+      return true;
+    }
+  }
+  return false;
 }
 function isCodexStateCandidate(relativePath) {
   return relativePath === "AGENTS.md" || relativePath === ".codex/config.toml" || relativePath === ".codex/codsemble/manifest.json" || /^\.codex\/agents\/[^/]+\.toml$/.test(relativePath);
@@ -1031,6 +1061,9 @@ async function enumerateNonGitCandidates(root, limits, matcher, skips) {
     entries.sort((left, right) => compareText(left.name, right.name));
     for (const entry of entries) {
       const relativePath = toPosix(path2.join(relativeDirectory, entry.name));
+      if (isCodsembleTransactionPath(relativePath)) {
+        continue;
+      }
       if (entry.isSymbolicLink()) {
         increment(skips, "symlink");
         continue;
@@ -1057,6 +1090,9 @@ async function enumerateNonGitCandidates(root, limits, matcher, skips) {
   };
   await visit("", 0);
   return candidates;
+}
+function isCodsembleTransactionPath(relativePath) {
+  return relativePath === ".codex/codsemble/transactions" || relativePath.startsWith(".codex/codsemble/transactions/");
 }
 function normalizeRelativePath(value) {
   if (value.includes("\0")) {
@@ -1319,18 +1355,93 @@ function compareText(left, right) {
 
 // src/capabilities.ts
 import { execFile as execFile2 } from "node:child_process";
+import { access, realpath as realpath3, stat } from "node:fs/promises";
+import path3 from "node:path";
 import { promisify as promisify2 } from "node:util";
 var execFileAsync2 = promisify2(execFile2);
 var defaultRunner = async (arguments_, workspace) => {
-  const executable = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "codex";
-  const commandArguments = process.platform === "win32" ? ["/d", "/s", "/c", "codex.cmd", ...arguments_] : arguments_;
-  const result = await execFileAsync2(executable, commandArguments, {
+  return runCodexCommand(arguments_, workspace);
+};
+async function runCodexCommand(arguments_, workspace) {
+  if (arguments_.some(
+    (argument) => !/^[A-Za-z0-9._=-]+$/.test(argument)
+  )) {
+    throw new Error("Refusing an unsafe Codex probe argument");
+  }
+  const executable = await resolveCodexExecutable(workspace);
+  const isWindowsScript = process.platform === "win32" && /\.(?:cmd|bat)$/i.test(executable);
+  const command = isWindowsScript ? await resolveWindowsCommand(executable, arguments_, workspace) : { executable, arguments: arguments_ };
+  const result = await execFileAsync2(command.executable, command.arguments, {
     cwd: workspace,
     timeout: 3e4,
     maxBuffer: 32 * 1024 * 1024
   });
   return { stdout: result.stdout };
-};
+}
+async function resolveCodexExecutable(workspace, options = {}) {
+  const platform = options.platform ?? process.platform;
+  const root = await realpath3(workspace);
+  const names = platform === "win32" ? ["codex.exe", "codex.cmd", "codex.bat", "codex"] : ["codex"];
+  for (const rawDirectory of (options.pathValue ?? process.env.PATH ?? "").split(
+    path3.delimiter
+  )) {
+    const directory = rawDirectory.replace(/^"|"$/g, "");
+    if (directory === "" || !path3.isAbsolute(directory)) continue;
+    let resolvedDirectory;
+    try {
+      resolvedDirectory = await realpath3(directory);
+    } catch {
+      continue;
+    }
+    if (isWithin(root, resolvedDirectory)) continue;
+    for (const name of names) {
+      const candidate = path3.join(resolvedDirectory, name);
+      try {
+        const resolvedCandidate = await realpath3(candidate);
+        if (isWithin(root, resolvedCandidate)) continue;
+        const metadata = await stat(resolvedCandidate);
+        if (!metadata.isFile()) continue;
+        if (platform !== "win32") {
+          await access(resolvedCandidate, 1);
+        }
+        return resolvedCandidate;
+      } catch {
+        continue;
+      }
+    }
+  }
+  throw new Error(
+    "Codex executable was not found in a trusted absolute PATH directory outside the workspace"
+  );
+}
+async function resolveWindowsCommand(executable, arguments_, workspace) {
+  if (/[%!^&|<>()"]/.test(executable)) {
+    throw new Error(
+      "Refusing a Windows Codex launcher path containing command metacharacters"
+    );
+  }
+  const commandInterpreter = process.env.ComSpec;
+  if (!commandInterpreter || !path3.win32.isAbsolute(commandInterpreter)) {
+    throw new Error("A trusted absolute Windows command interpreter is required");
+  }
+  const resolvedInterpreter = await realpath3(commandInterpreter);
+  if (isWithin(await realpath3(workspace), resolvedInterpreter) || !(await stat(resolvedInterpreter)).isFile()) {
+    throw new Error("Windows command interpreter is not trusted");
+  }
+  return {
+    executable: resolvedInterpreter,
+    arguments: [
+      "/d",
+      "/s",
+      "/c",
+      `"${executable}" ${arguments_.join(" ")}`
+    ]
+  };
+}
+function isWithin(root, candidate) {
+  const relative = path3.relative(root, candidate);
+  return relative === "" || !relative.startsWith(`..${path3.sep}`) && relative !== ".." && !path3.isAbsolute(relative);
+}
 async function detectCodexCapabilities(workspace, runner = defaultRunner) {
   const root = await assertWorkspaceRoot(workspace);
   const warnings = [];
@@ -1515,7 +1626,7 @@ function errorMessage(error51) {
 
 // src/catalog.ts
 import { readFile } from "node:fs/promises";
-import path3 from "node:path";
+import path4 from "node:path";
 import { fileURLToPath } from "node:url";
 
 // node_modules/zod/v4/classic/external.js
@@ -2284,10 +2395,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path7) {
-  if (!path7)
+function getElementAtPath(obj, path8) {
+  if (!path8)
     return obj;
-  return path7.reduce((acc, key) => acc?.[key], obj);
+  return path8.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -2696,11 +2807,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path7, issues) {
+function prefixIssues(path8, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path7);
+    iss.path.unshift(path8);
     return iss;
   });
 }
@@ -2847,16 +2958,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path7 = []) => {
+  const processError = (error52, path8 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else {
-        const fullpath = [...path7, ...issue2.path];
+        const fullpath = [...path8, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -2883,17 +2994,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path7 = []) => {
+  const processError = (error52, path8 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else {
-        const fullpath = [...path7, ...issue2.path];
+        const fullpath = [...path8, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -2925,8 +3036,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path7 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path7) {
+  const path8 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path8) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -15618,13 +15729,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path7 = ref.slice(1).split("/").filter(Boolean);
-  if (path7.length === 0) {
+  const path8 = ref.slice(1).split("/").filter(Boolean);
+  if (path8.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path7[0] === defsKey) {
-    const key = path7[1];
+  if (path8[0] === defsKey) {
+    const key = path8[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -16138,14 +16249,14 @@ var intakeAnswersSchema = external_exports.object({
 });
 
 // src/catalog.ts
-var CATALOG_RELATIVE_PATH = path3.join(
+var CATALOG_RELATIVE_PATH = path4.join(
   "plugins",
   "codsemble",
   "catalog",
   "roles.json"
 );
 async function loadCatalog(catalogPath) {
-  const resolvedPath = catalogPath ? path3.resolve(catalogPath) : await findDefaultCatalog();
+  const resolvedPath = catalogPath ? path4.resolve(catalogPath) : await findDefaultCatalog();
   let parsed;
   try {
     parsed = JSON.parse(await readFile(resolvedPath, "utf8"));
@@ -16180,13 +16291,13 @@ async function loadCatalog(catalogPath) {
   return catalog;
 }
 async function findDefaultCatalog() {
-  const moduleDirectory = path3.dirname(fileURLToPath(import.meta.url));
+  const moduleDirectory = path4.dirname(fileURLToPath(import.meta.url));
   const candidates = [
-    path3.resolve(process.cwd(), CATALOG_RELATIVE_PATH),
+    path4.resolve(process.cwd(), CATALOG_RELATIVE_PATH),
     // Bundled plugin CLI: plugins/codsemble/scripts/codsemble.mjs.
-    path3.resolve(moduleDirectory, "..", "catalog", "roles.json"),
-    path3.resolve(moduleDirectory, "..", CATALOG_RELATIVE_PATH),
-    path3.resolve(moduleDirectory, "..", "..", CATALOG_RELATIVE_PATH)
+    path4.resolve(moduleDirectory, "..", "catalog", "roles.json"),
+    path4.resolve(moduleDirectory, "..", CATALOG_RELATIVE_PATH),
+    path4.resolve(moduleDirectory, "..", "..", CATALOG_RELATIVE_PATH)
   ];
   for (const candidate of candidates) {
     try {
@@ -17207,9 +17318,10 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
   );
   desiredFiles.set(
     agentsPath,
-    mergeManagedAgentsBlock(
+    renderManagedAgentsFile(
       existingAgents,
-      renderManagedAgentsBody(resolvedRoles, proposal)
+      resolvedRoles,
+      proposal.kind
     )
   );
   const configPath = ".codex/config.toml";
@@ -17232,6 +17344,8 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
   const shouldRaiseConcurrency = concurrencyPatch.currentValue === null || concurrencyPatch.currentValue < answers.maxConcurrentWorkers;
   if (shouldPlanConfig && shouldRaiseConcurrency) {
     desiredFiles.set(configPath, concurrencyPatch.content);
+  } else if (shouldPlanConfig && existingConfig !== void 0) {
+    desiredFiles.set(configPath, existingConfig);
   }
   const concurrency = {
     requestedWorkers: answers.maxConcurrentWorkers,
@@ -17310,21 +17424,20 @@ max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
   )) {
     const before = await getExistingFile(root, relativePath, existingFiles);
     const afterSha256 = sha256(content);
-    if (before.content !== content) {
-      preimages.push({
-        relativePath,
-        exists: before.content !== void 0,
-        sha256: before.content === void 0 ? null : sha256(Buffer.from(before.content)),
-        mode: before.mode
-      });
-      files.push({
-        relativePath,
-        action: before.content === void 0 ? "create" : "update",
-        beforeSha256: before.content === void 0 ? null : sha256(Buffer.from(before.content)),
-        afterSha256,
-        content
-      });
-    }
+    const beforeSha256 = before.content === void 0 ? null : sha256(Buffer.from(before.content));
+    preimages.push({
+      relativePath,
+      exists: before.content !== void 0,
+      sha256: beforeSha256,
+      mode: before.mode
+    });
+    files.push({
+      relativePath,
+      action: before.content === void 0 ? "create" : before.content === content ? "verify" : "update",
+      beforeSha256,
+      afterSha256,
+      content
+    });
   }
   for (const relativePath of [...priorOwnedAgents.keys()].sort()) {
     if (desiredFiles.has(relativePath)) continue;
@@ -17558,11 +17671,11 @@ function renderRoleToml(role) {
   return `${lines.join("\n")}
 `;
 }
-function renderManagedAgentsBody(roles, proposal) {
+function renderManagedAgentsBody(roles, kind) {
   return [
     "## Codsemble team",
     "",
-    `Selected profile: ${proposal.kind}. Installed roles: ${roles.length}.`,
+    `Selected profile: ${kind}. Installed roles: ${roles.length}.`,
     "",
     ...roles.map(
       (role) => `- \`${role.id}\` (spawn as \`${nativeAgentName(role.id)}\`): ${role.description} (sandbox: ${role.sandbox}; model: ${role.model ?? "inherit"})`
@@ -17572,6 +17685,12 @@ function renderManagedAgentsBody(roles, proposal) {
     'When spawning a generated agent type, use `fork_turns="none"` or a bounded positive turn count; full-history forks inherit the parent agent type.',
     "Treat the worker ceiling as capacity, not a target. Keep trivial or tightly coupled work on the primary thread."
   ].join("\n");
+}
+function renderManagedAgentsFile(existing, roles, kind) {
+  return mergeManagedAgentsBlock(
+    existing,
+    renderManagedAgentsBody(roles, kind)
+  );
 }
 function nativeAgentName(roleId) {
   return roleId.replaceAll("-", "_");
@@ -17630,10 +17749,8 @@ async function getExistingFile(root, relativePath, existingFiles) {
 }
 
 // src/doctor.ts
-import { execFile as execFile3 } from "node:child_process";
-import { access, lstat as lstat5, readFile as readFile4, readdir as readdir3 } from "node:fs/promises";
-import path5 from "node:path";
-import { promisify as promisify3 } from "node:util";
+import { access as access2, lstat as lstat5, readFile as readFile4, readdir as readdir3 } from "node:fs/promises";
+import path6 from "node:path";
 
 // src/transaction.ts
 import { randomUUID } from "node:crypto";
@@ -17649,7 +17766,7 @@ import {
   rmdir,
   unlink
 } from "node:fs/promises";
-import path4 from "node:path";
+import path5 from "node:path";
 var transactionRoot = ".codex/codsemble/transactions";
 var projectConfig = ".codex/config.toml";
 var agentPathPattern = /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/;
@@ -17744,11 +17861,19 @@ var generatedManifestSchema = external_exports.object({
 }).strict();
 var PreservedConflictError = class extends Error {
 };
+var CommitArtifactPublishedError = class extends Error {
+};
 async function applyTeamPlan(workspace, plan, hooks = {}) {
   assertValidTeamPlan(plan);
+  if (plan.files.length === 0) {
+    throw new Error(
+      "No managed file changes are required; no transaction was created"
+    );
+  }
   const root = await resolveSafeWorkspace(workspace);
   const transactionId = randomUUID();
   const prepared = [];
+  const verified = [];
   for (const planned of plan.files) {
     const absolutePath = await safeTarget(root, planned.relativePath);
     const state = await readSafeRegularFile(absolutePath);
@@ -17780,15 +17905,30 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
       }
       if (planned.content !== null) {
         validateToml(planned.content);
-        validateProjectConfigOutput(
-          plan,
-          state.content === null ? "" : decodeUtf8(state.content, planned.relativePath),
-          planned.content
-        );
+        if (planned.action === "verify") {
+          validateProjectConfigVerification(plan, planned.content);
+        } else {
+          validateProjectConfigOutput(
+            plan,
+            state.content === null ? "" : decodeUtf8(state.content, planned.relativePath),
+            planned.content
+          );
+        }
       }
+    }
+    if (planned.relativePath === "AGENTS.md" && planned.content !== null) {
+      validateManagedAgentsOutput(
+        plan,
+        state.content === null ? void 0 : decodeUtf8(state.content, planned.relativePath),
+        planned.content
+      );
     }
     if (planned.content !== null) {
       validatePlannedOutput(planned.relativePath, planned.content, plan);
+    }
+    if (planned.action === "verify") {
+      verified.push({ planned, absolutePath });
+      continue;
     }
     const quarantineRelativePath = `${transactionRoot}/${transactionId}.quarantines/${planned.relativePath}`;
     prepared.push({
@@ -17803,6 +17943,11 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
   }
   await validateAgentDeletes(root, plan);
   await validateUnchangedManifestOwnership(root, plan);
+  if (prepared.length === 0) {
+    throw new Error(
+      "No managed file changes are required; no transaction was created"
+    );
+  }
   const transaction = {
     schemaVersion: 1,
     transactionId,
@@ -17817,12 +17962,15 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
       quarantineRelativePath: file2.before === null ? null : file2.quarantineRelativePath
     }))
   };
+  assertValidTransactionRecord(transaction);
   const staged = /* @__PURE__ */ new Map();
   const installed = [];
   let releaseLock;
   let pendingPath;
+  let committed = false;
   try {
     releaseLock = await acquireMutationLock(root, "apply", transactionId);
+    await revalidateVerifiedFiles(verified);
     for (const file2 of prepared) {
       if (file2.before !== null && file2.backupRelativePath !== null) {
         const backup = await safeTarget(root, file2.backupRelativePath);
@@ -17852,7 +18000,7 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
           relativePath: file2.planned.relativePath,
           sourceSha256: file2.planned.beforeSha256,
           desiredSha256: file2.planned.afterSha256,
-          quarantinePath: path4.relative(root, file2.quarantinePath)
+          quarantinePath: path5.relative(root, file2.quarantinePath)
         }))
       }
     );
@@ -17877,16 +18025,29 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
         staged.delete(file2.absolutePath);
       }
     }
+    await revalidateVerifiedFiles(verified);
     const receiptRelativePath = `${transactionRoot}/${transactionId}.json`;
     const receiptPath = await safeTarget(root, receiptRelativePath);
     await ensureSafeParentDirectories(root, receiptPath);
-    await atomicWrite(receiptPath, stableStringify(transaction), 384);
+    await atomicCommitWrite(receiptPath, stableStringify(transaction), 384);
+    committed = true;
+    await hooks.afterDurableCommit?.("apply");
     await finishPendingMutation(pendingPath, installed);
     await releaseLock();
     releaseLock = void 0;
     return transaction;
   } catch (error51) {
     await cleanupStaged(staged);
+    if (error51 instanceof CommitArtifactPublishedError) {
+      committed = true;
+    }
+    if (committed) {
+      await releaseLock?.().catch(() => void 0);
+      throw new Error(
+        "Transaction committed, but post-commit cleanup is incomplete; inspect Doctor before another write",
+        { cause: error51 }
+      );
+    }
     const restoreErrors = await restoreMutationsLosslessly(installed);
     const pendingCleared = restoreErrors.length === 0 && !(error51 instanceof PreservedConflictError) ? await clearPendingMutation(pendingPath) : pendingPath === void 0;
     if (!(error51 instanceof PreservedConflictError) && pendingCleared) {
@@ -17900,6 +18061,91 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
     }
     throw error51;
   }
+}
+async function revalidateVerifiedFiles(verified) {
+  for (const { planned, absolutePath } of verified) {
+    const state = await readSafeRegularFile(absolutePath);
+    const currentHash = state.content === null ? null : sha256(state.content);
+    if (currentHash !== planned.afterSha256) {
+      throw new Error(
+        `Verified plan state changed during apply: ${planned.relativePath}`
+      );
+    }
+  }
+}
+async function verifyNoChangesPlan(workspace, plan) {
+  assertValidTeamPlan(plan);
+  if (plan.files.some(({ action }) => action !== "verify")) {
+    throw new Error("No-changes verification received a mutating plan");
+  }
+  assertCompleteVerificationSet(plan);
+  const root = await resolveSafeWorkspace(workspace);
+  for (const planned of plan.files) {
+    const absolutePath = await safeTarget(root, planned.relativePath);
+    const state = await readSafeRegularFile(absolutePath);
+    const currentHash = state.content === null ? null : sha256(state.content);
+    if (currentHash !== planned.beforeSha256) {
+      throw new Error(
+        `No-changes state conflict for ${planned.relativePath}: expected ${formatHash(planned.beforeSha256)}, found ${formatHash(currentHash)}`
+      );
+    }
+    if (planned.content === null || planned.afterSha256 === null || sha256(planned.content) !== planned.afterSha256) {
+      throw new Error(
+        `No-changes verification image mismatch: ${planned.relativePath}`
+      );
+    }
+    if (planned.relativePath === projectConfig) {
+      validateToml(planned.content);
+      validateProjectConfigVerification(plan, planned.content);
+    }
+    if (planned.relativePath === "AGENTS.md") {
+      validateManagedAgentsOutput(
+        plan,
+        state.content === null ? void 0 : decodeUtf8(state.content, planned.relativePath),
+        planned.content
+      );
+    }
+    validatePlannedOutput(planned.relativePath, planned.content, plan);
+  }
+}
+function assertCompleteVerificationSet(plan) {
+  if (plan.roles.length === 0) {
+    throw new Error("No-changes verification requires at least one role");
+  }
+  const expectedPaths = [
+    "AGENTS.md",
+    ".codex/codsemble/manifest.json",
+    ...plan.roles.map(({ id }) => `.codex/agents/${id}.toml`),
+    ...["preview", "apply-project"].includes(plan.concurrency.configMode) ? [projectConfig] : []
+  ].sort();
+  const actualPaths = plan.files.map(({ relativePath }) => relativePath).sort();
+  if (expectedPaths.length !== actualPaths.length || expectedPaths.some((entry, index) => entry !== actualPaths[index])) {
+    throw new Error(
+      "No-changes verification does not contain the complete generated output set"
+    );
+  }
+}
+function validateManagedAgentsOutput(plan, before, after) {
+  const manifest = parsePlannedManifest(plan);
+  const expected = renderManagedAgentsFile(
+    before,
+    plan.roles,
+    manifest.proposal.kind
+  );
+  if (after !== expected) {
+    throw new Error(
+      "Generated AGENTS.md managed block is not bound to the plan"
+    );
+  }
+}
+function parsePlannedManifest(plan) {
+  const manifestFile = plan.files.find(
+    ({ relativePath, action }) => relativePath === ".codex/codsemble/manifest.json" && action !== "delete"
+  );
+  if (manifestFile?.content === null || manifestFile?.content === void 0) {
+    throw new Error("Plan is missing its generated manifest");
+  }
+  return generatedManifestSchema.parse(JSON.parse(manifestFile.content));
 }
 async function rollbackTransaction(workspace, transaction, hooks = {}) {
   const root = await resolveSafeWorkspace(workspace);
@@ -17944,6 +18190,7 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
   const completed = [];
   let releaseLock;
   let pendingPath;
+  let committed = false;
   try {
     releaseLock = await acquireMutationLock(
       root,
@@ -17998,28 +18245,42 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
         staged.delete(target.absolutePath);
       }
     }
-    const rollbackMarker = await safeTarget(
+    const rollbackMarkerPath = await safeTarget(
       root,
       `${transactionRoot}/${record2.transactionId}.rollback.json`
     );
-    await ensureSafeParentDirectories(root, rollbackMarker);
-    await atomicWrite(
-      rollbackMarker,
-      stableStringify({
-        schemaVersion: 1,
-        transactionId: record2.transactionId,
-        rolledBackAt: (/* @__PURE__ */ new Date()).toISOString(),
-        quarantineRelativePaths: completed.map(
-          ({ quarantinePath }) => quarantinePath === null ? null : path4.relative(root, quarantinePath)
-        ).filter((entry) => entry !== null)
-      }),
+    const rollbackMarker = {
+      schemaVersion: 1,
+      transactionId: record2.transactionId,
+      rolledBackAt: (/* @__PURE__ */ new Date()).toISOString(),
+      quarantineRelativePaths: completed.map(
+        ({ quarantinePath }) => quarantinePath === null ? null : path5.relative(root, quarantinePath)
+      ).filter((entry) => entry !== null)
+    };
+    assertValidRollbackMarker(rollbackMarker);
+    await ensureSafeParentDirectories(root, rollbackMarkerPath);
+    await atomicCommitWrite(
+      rollbackMarkerPath,
+      stableStringify(rollbackMarker),
       384
     );
+    committed = true;
+    await hooks.afterDurableCommit?.("rollback");
     await finishPendingMutation(pendingPath, completed);
     await releaseLock();
     releaseLock = void 0;
   } catch (error51) {
     await cleanupStaged(staged);
+    if (error51 instanceof CommitArtifactPublishedError) {
+      committed = true;
+    }
+    if (committed) {
+      await releaseLock?.().catch(() => void 0);
+      throw new Error(
+        "Rollback committed, but post-commit cleanup is incomplete; inspect Doctor before another write",
+        { cause: error51 }
+      );
+    }
     const restoreErrors = await restoreMutationsLosslessly(completed);
     const pendingCleared = restoreErrors.length === 0 && !(error51 instanceof PreservedConflictError) ? await clearPendingMutation(pendingPath) : pendingPath === void 0;
     if (!(error51 instanceof PreservedConflictError) && pendingCleared) {
@@ -18048,7 +18309,7 @@ async function restoreMutationsLosslessly(completed) {
       }
       if (current.content !== null) {
         await rename(target.absolutePath, forwardQuarantine);
-        await syncDirectory(path4.dirname(target.absolutePath));
+        await syncDirectory(path5.dirname(target.absolutePath));
         const moved = await readSafeRegularFile(forwardQuarantine);
         if (moved.content === null || sha256(moved.content) !== target.desiredSha256) {
           await restoreQuarantineExclusive(
@@ -18069,7 +18330,7 @@ async function restoreMutationsLosslessly(completed) {
       if (current.content !== null) {
         await unlink(forwardQuarantine);
       }
-      await syncDirectory(path4.dirname(target.absolutePath));
+      await syncDirectory(path5.dirname(target.absolutePath));
     } catch (error51) {
       errors.push(error51);
     }
@@ -18102,7 +18363,7 @@ async function mutateLosslessly(input) {
       );
     }
     retainedQuarantine = quarantinePath;
-    await syncDirectory(path4.dirname(absolutePath));
+    await syncDirectory(path5.dirname(absolutePath));
     const quarantined = await readSafeRegularFile(quarantinePath);
     const quarantinedHash = quarantined.content === null ? null : sha256(quarantined.content);
     if (quarantinedHash !== sourceSha256) {
@@ -18132,7 +18393,7 @@ async function mutateLosslessly(input) {
       }
       await link(stagedPath, absolutePath);
       await unlink(stagedPath);
-      await syncDirectory(path4.dirname(absolutePath));
+      await syncDirectory(path5.dirname(absolutePath));
       const published = await readSafeRegularFile(absolutePath);
       if (published.content === null || sha256(published.content) !== desiredSha256) {
         throw new Error(`Published image verification failed for ${relativePath}`);
@@ -18175,9 +18436,9 @@ async function mutateLosslessly(input) {
 }
 async function restoreQuarantineExclusive(quarantinePath, targetPath) {
   await link(quarantinePath, targetPath);
-  await syncDirectory(path4.dirname(targetPath));
+  await syncDirectory(path5.dirname(targetPath));
   await unlink(quarantinePath);
-  await syncDirectory(path4.dirname(targetPath));
+  await syncDirectory(path5.dirname(targetPath));
 }
 async function acquireMutationLock(root, operation, transactionId) {
   const lockPath = await safeTarget(
@@ -18185,7 +18446,7 @@ async function acquireMutationLock(root, operation, transactionId) {
     `${transactionRoot}/mutation.lock`
   );
   await ensureSafeParentDirectories(root, lockPath);
-  const transactionDirectory = path4.dirname(lockPath);
+  const transactionDirectory = path5.dirname(lockPath);
   const beforePending = await listPendingMutations(transactionDirectory);
   if (beforePending.length > 0) {
     throw new Error(
@@ -18194,7 +18455,7 @@ async function acquireMutationLock(root, operation, transactionId) {
   }
   try {
     await mkdir(lockPath, { mode: 448 });
-    await syncDirectory(path4.dirname(lockPath));
+    await syncDirectory(path5.dirname(lockPath));
   } catch (error51) {
     throw new Error(
       `A Codsemble mutation lock already exists; ${operation} ${transactionId} cannot proceed until the prior operation is recovered`,
@@ -18211,7 +18472,7 @@ async function acquireMutationLock(root, operation, transactionId) {
   }
   return async () => {
     await rmdir(lockPath);
-    await syncDirectory(path4.dirname(lockPath));
+    await syncDirectory(path5.dirname(lockPath));
   };
 }
 async function listPendingMutations(directory) {
@@ -18225,7 +18486,7 @@ async function clearPendingMutation(pendingPath) {
   if (pendingPath === void 0) return true;
   try {
     await unlink(pendingPath);
-    await syncDirectory(path4.dirname(pendingPath));
+    await syncDirectory(path5.dirname(pendingPath));
     return true;
   } catch {
     return false;
@@ -18244,11 +18505,11 @@ async function writePendingMutation(root, relativePath, journal) {
 async function finishPendingMutation(pendingPath, _mutations) {
   if (pendingPath !== void 0) {
     await unlink(pendingPath);
-    await syncDirectory(path4.dirname(pendingPath));
+    await syncDirectory(path5.dirname(pendingPath));
   }
 }
 async function resolveSafeWorkspace(workspace) {
-  const supplied = path4.resolve(workspace);
+  const supplied = path5.resolve(workspace);
   const suppliedStats = await lstat4(supplied);
   if (!suppliedStats.isDirectory() || suppliedStats.isSymbolicLink()) {
     throw new Error("Workspace must be a real directory, not a symlink");
@@ -18256,7 +18517,7 @@ async function resolveSafeWorkspace(workspace) {
   return supplied;
 }
 async function safeTarget(root, relativePath) {
-  if (relativePath === "" || relativePath.includes("\\") || path4.isAbsolute(relativePath) || path4.posix.normalize(relativePath) !== relativePath || relativePath === ".." || relativePath.startsWith("../")) {
+  if (relativePath === "" || relativePath.includes("\\") || path5.isAbsolute(relativePath) || path5.posix.normalize(relativePath) !== relativePath || relativePath === ".." || relativePath.startsWith("../")) {
     throw new Error(`Unsafe transaction path: ${relativePath}`);
   }
   const target = await assertContainedPath(root, relativePath);
@@ -18264,13 +18525,13 @@ async function safeTarget(root, relativePath) {
   return target;
 }
 async function assertExistingAncestorsSafe(root, target) {
-  const relative = path4.relative(root, path4.dirname(target));
+  const relative = path5.relative(root, path5.dirname(target));
   if (relative === "") {
     return;
   }
   let cursor = root;
-  for (const part of relative.split(path4.sep)) {
-    cursor = path4.join(cursor, part);
+  for (const part of relative.split(path5.sep)) {
+    cursor = path5.join(cursor, part);
     try {
       const stats = await lstat4(cursor);
       if (stats.isSymbolicLink() || !stats.isDirectory()) {
@@ -18285,10 +18546,10 @@ async function assertExistingAncestorsSafe(root, target) {
   }
 }
 async function ensureSafeParentDirectories(root, target) {
-  const relative = path4.relative(root, path4.dirname(target));
+  const relative = path5.relative(root, path5.dirname(target));
   let cursor = root;
-  for (const part of relative === "" ? [] : relative.split(path4.sep)) {
-    cursor = path4.join(cursor, part);
+  for (const part of relative === "" ? [] : relative.split(path5.sep)) {
+    cursor = path5.join(cursor, part);
     try {
       const stats = await lstat4(cursor);
       if (stats.isSymbolicLink() || !stats.isDirectory()) {
@@ -18299,7 +18560,7 @@ async function ensureSafeParentDirectories(root, target) {
         throw error51;
       }
       await mkdir(cursor, { mode: 448 });
-      await syncDirectory(path4.dirname(cursor));
+      await syncDirectory(path5.dirname(cursor));
     }
   }
 }
@@ -18330,16 +18591,44 @@ async function atomicWrite(target, content, mode) {
   );
   try {
     await rename(temporary, target);
-    await syncDirectory(path4.dirname(target));
+    await syncDirectory(path5.dirname(target));
   } catch (error51) {
     await unlink(temporary).catch(() => void 0);
     throw error51;
   }
 }
+async function atomicCommitWrite(target, content, mode) {
+  const temporary = await stageFile(
+    target,
+    typeof content === "string" ? Buffer.from(content, "utf8") : content,
+    mode
+  );
+  let published = false;
+  try {
+    await rename(temporary, target);
+    published = true;
+    await syncDirectory(path5.dirname(target));
+  } catch (error51) {
+    if (!published) {
+      await unlink(temporary).catch(() => void 0);
+      throw error51;
+    }
+    try {
+      await unlink(target);
+      await syncDirectory(path5.dirname(target));
+    } catch (cleanupError) {
+      throw new CommitArtifactPublishedError(
+        "Commit artifact may be published after durability verification failed",
+        { cause: new AggregateError([error51, cleanupError]) }
+      );
+    }
+    throw error51;
+  }
+}
 async function stageFile(target, content, mode) {
-  const temporary = path4.join(
-    path4.dirname(target),
-    `.${path4.basename(target)}.codsemble-${randomUUID()}.tmp`
+  const temporary = path5.join(
+    path5.dirname(target),
+    `.${path5.basename(target)}.codsemble-${randomUUID()}.tmp`
   );
   const handle = await open2(temporary, "wx", mode);
   try {
@@ -18409,8 +18698,11 @@ async function loadTransaction(root, transactionId) {
   }
 }
 function assertValidTeamPlan(plan) {
-  if (plan.schemaVersion !== 1 || !plan.planId || !/^[a-f0-9]{32}$/.test(plan.confirmationId) || !Array.isArray(plan.files) || !Array.isArray(plan.preimages)) {
+  if (plan.schemaVersion !== 1 || !plan.planId || !/^[a-f0-9]{32}$/.test(plan.confirmationId) || !Array.isArray(plan.files) || !Array.isArray(plan.preimages) || plan.files.length === 0) {
     throw new Error("Invalid team plan");
+  }
+  if (plan.files.length > 256) {
+    throw new Error("Plan exceeds the 256-file transaction limit");
   }
   if (computeConfirmationId(plan) !== plan.confirmationId) {
     throw new Error("Plan confirmation digest mismatch");
@@ -18426,7 +18718,7 @@ function assertValidTeamPlan(plan) {
     if (paths.has(file2.relativePath)) {
       throw new Error(`Duplicate planned path: ${file2.relativePath}`);
     }
-    if (!["create", "update", "delete"].includes(file2.action)) {
+    if (!["create", "update", "delete", "verify"].includes(file2.action)) {
       throw new Error(`Invalid planned action: ${file2.relativePath}`);
     }
     if (file2.action === "delete" && [
@@ -18440,6 +18732,9 @@ function assertValidTeamPlan(plan) {
     }
     if (file2.action === "delete" ? file2.content !== null || file2.afterSha256 !== null : typeof file2.content !== "string" || file2.afterSha256 === null || !/^[a-f0-9]{64}$/.test(file2.afterSha256)) {
       throw new Error(`Invalid planned after-image: ${file2.relativePath}`);
+    }
+    if (file2.action === "verify" && (file2.beforeSha256 === null || file2.beforeSha256 !== file2.afterSha256)) {
+      throw new Error(`Invalid verification image: ${file2.relativePath}`);
     }
     if (typeof file2.content === "string") {
       const bytes = Buffer.byteLength(file2.content, "utf8");
@@ -18475,7 +18770,7 @@ function validatePlannedOutput(relativePath, content, plan) {
         `Generated agent has an invalid schema: ${validated.error.message}`
       );
     }
-    const roleId = path4.posix.basename(relativePath, ".toml");
+    const roleId = path5.posix.basename(relativePath, ".toml");
     const role = plan.roles.find(({ id }) => id === roleId);
     if (role === void 0 || validated.data.name !== role.id.replaceAll("-", "_") || validated.data.description !== role.description || validated.data.developer_instructions !== role.developerInstructions || validated.data.model !== role.model || validated.data.model_reasoning_effort !== role.reasoningEffort || validated.data.sandbox_mode !== role.sandbox) {
       throw new Error(`Generated agent is not bound to plan role: ${roleId}`);
@@ -18533,6 +18828,22 @@ function validateProjectConfigOutput(plan, before, after) {
   if (!expected.changed || expected.content !== after) {
     throw new Error(
       "Generated project config is not the exact supported concurrency patch"
+    );
+  }
+}
+function validateProjectConfigVerification(plan, content) {
+  if (!["preview", "apply-project"].includes(plan.concurrency.configMode) || plan.concurrency.adapter !== "agents-v1") {
+    throw new Error(
+      "Project config verification requires a capability-confirmed agents-v1 plan"
+    );
+  }
+  if (patchConcurrencyToml(
+    content,
+    plan.concurrency.requestedWorkers,
+    "agents-v1"
+  ).changed) {
+    throw new Error(
+      "Verified project config does not satisfy the requested concurrency ceiling"
     );
   }
 }
@@ -18668,10 +18979,9 @@ function formatHash(value) {
 }
 
 // src/doctor.ts
-var execFileAsync3 = promisify3(execFile3);
 async function exists(candidate) {
   try {
-    await access(candidate);
+    await access2(candidate);
     return true;
   } catch {
     return false;
@@ -18703,7 +19013,7 @@ async function readSafeDirectory(candidate, root) {
 async function doctorWorkspace(workspace) {
   const root = await assertWorkspaceRoot(workspace);
   const checks = [];
-  const configPath = path5.join(root, ".codex", "config.toml");
+  const configPath = path6.join(root, ".codex", "config.toml");
   if (await exists(configPath)) {
     try {
       const parsed = parse3(
@@ -18730,7 +19040,7 @@ async function doctorWorkspace(workspace) {
       summary: "No project .codex/config.toml is present"
     });
   }
-  const agentsDirectory = path5.join(root, ".codex", "agents");
+  const agentsDirectory = path6.join(root, ".codex", "agents");
   let agentEntries = [];
   if (await exists(agentsDirectory)) {
     const invalid = [];
@@ -18746,7 +19056,7 @@ async function doctorWorkspace(workspace) {
     for (const entry of entries) {
       try {
         const parsed = parse3(
-          (await readRegularFile(path5.join(agentsDirectory, entry), root)).toString("utf8")
+          (await readRegularFile(path6.join(agentsDirectory, entry), root)).toString("utf8")
         );
         for (const required2 of [
           "name",
@@ -18777,8 +19087,8 @@ async function doctorWorkspace(workspace) {
     });
   }
   const manifestCandidates = [
-    path5.join(root, ".codex", "codsemble", "manifest.json"),
-    path5.join(root, ".codex", "team", "manifest.json")
+    path6.join(root, ".codex", "codsemble", "manifest.json"),
+    path6.join(root, ".codex", "team", "manifest.json")
   ];
   const manifestPath = (await Promise.all(
     manifestCandidates.map(async (candidate) => ({
@@ -18805,7 +19115,7 @@ async function doctorWorkspace(workspace) {
       checks.push({
         id: "codsemble-manifest",
         status: "pass",
-        summary: `Codsemble manifest loaded from ${path5.relative(root, manifestPath)}`
+        summary: `Codsemble manifest loaded from ${path6.relative(root, manifestPath)}`
       });
       {
         const ownedAgents = manifest.ownership.agentFiles;
@@ -18818,7 +19128,7 @@ async function doctorWorkspace(workspace) {
         const changed = [];
         for (const entry of ownedAgents) {
           try {
-            const content = await readRegularFile(path5.join(root, entry), root);
+            const content = await readRegularFile(path6.join(root, entry), root);
             if (sha256(content) !== manifest.ownership.agentSha256[entry]) {
               changed.push(entry);
             }
@@ -18841,7 +19151,7 @@ async function doctorWorkspace(workspace) {
         const block = manifest.ownership.agentsBlock;
         if (block && block.path === "AGENTS.md" && typeof block.start === "string" && typeof block.end === "string") {
           try {
-            const agentsText = (await readRegularFile(path5.join(root, "AGENTS.md"), root)).toString("utf8");
+            const agentsText = (await readRegularFile(path6.join(root, "AGENTS.md"), root)).toString("utf8");
             const starts = agentsText.split(block.start).length - 1;
             const ends = agentsText.split(block.end).length - 1;
             checks.push({
@@ -18876,11 +19186,7 @@ async function doctorWorkspace(workspace) {
   }
   checks.push(await inspectTransactions(root));
   try {
-    const { stdout } = await execFileAsync3("codex", ["features", "list"], {
-      cwd: root,
-      timeout: 15e3,
-      maxBuffer: 1024 * 1024
-    });
+    const { stdout } = await runCodexCommand(["features", "list"], root);
     const multiAgentLine = stdout.split(/\r?\n/).find((line) => line.trimStart().startsWith("multi_agent"));
     checks.push({
       id: "codex-runtime",
@@ -18902,7 +19208,7 @@ async function doctorWorkspace(workspace) {
   };
 }
 async function inspectTransactions(root) {
-  const directory = path5.join(root, ".codex", "codsemble", "transactions");
+  const directory = path6.join(root, ".codex", "codsemble", "transactions");
   if (!await exists(directory)) {
     return {
       id: "transactions",
@@ -18928,7 +19234,7 @@ async function inspectTransactions(root) {
     for (const name of receiptNames) {
       try {
         const parsed = JSON.parse(
-          (await readRegularFile(path5.join(directory, name), root)).toString("utf8")
+          (await readRegularFile(path6.join(directory, name), root)).toString("utf8")
         );
         assertValidTransactionRecord(parsed);
         if (name !== `${parsed.transactionId}.json`) {
@@ -18948,7 +19254,7 @@ async function inspectTransactions(root) {
     for (const name of rollbackMarkerNames) {
       try {
         const marker = JSON.parse(
-          (await readRegularFile(path5.join(directory, name), root)).toString("utf8")
+          (await readRegularFile(path6.join(directory, name), root)).toString("utf8")
         );
         assertValidRollbackMarker(marker);
         if (name !== `${marker.transactionId}.rollback.json`) {
@@ -18959,6 +19265,7 @@ async function inspectTransactions(root) {
           throw new Error("rollback marker has no valid transaction receipt");
         }
         assertMarkerMatchesReceipt(marker, receipt);
+        await verifyRollbackQuarantines(root, marker, receipt);
         rolledBackIds.add(marker.transactionId);
       } catch (error51) {
         invalid.push(
@@ -19044,6 +19351,28 @@ function assertMarkerMatchesReceipt(marker, receipt) {
     throw new Error(
       "rollback marker quarantine paths do not match its transaction receipt"
     );
+  }
+}
+async function verifyRollbackQuarantines(root, marker, receipt) {
+  const expectedHashes = new Map(
+    receipt.files.filter(
+      (file2) => file2.afterSha256 !== null
+    ).map((file2) => [
+      `.codex/codsemble/transactions/${receipt.transactionId}.rollback.quarantines/${file2.relativePath}`,
+      file2.afterSha256
+    ])
+  );
+  for (const quarantineRelativePath of marker.quarantineRelativePaths) {
+    const quarantinePath = await assertContainedPath(
+      root,
+      quarantineRelativePath
+    );
+    const content = await readRegularFile(quarantinePath, root);
+    if (sha256(content) !== expectedHashes.get(quarantineRelativePath)) {
+      throw new Error(
+        `rollback recovery quarantine failed integrity verification: ${quarantineRelativePath}`
+      );
+    }
   }
 }
 
@@ -19135,7 +19464,7 @@ function scoreCandidates(audit, answers, roles) {
   const goals = new Set(answers.goals);
   const signalTokens = /* @__PURE__ */ new Map();
   for (const signal of audit.signals) {
-    const evidence = signal.evidence.map(({ path: path7, detail }) => `${path7}: ${detail}`).sort();
+    const evidence = signal.evidence.map(({ path: path8, detail }) => `${path8}: ${detail}`).sort();
     signalTokens.set(signal.key, evidence);
     for (const value of signal.values) {
       signalTokens.set(`${signal.key}:${value}`, evidence);
@@ -19396,7 +19725,7 @@ function allowOnly(arguments_, names) {
   }
 }
 async function readJson(file2) {
-  const resolved = path6.resolve(file2);
+  const resolved = path7.resolve(file2);
   try {
     return JSON.parse(await readFile5(resolved, "utf8"));
   } catch (error51) {
@@ -19411,7 +19740,7 @@ async function readAnswers(file2) {
   );
 }
 async function run(arguments_) {
-  const workspace = path6.resolve(
+  const workspace = path7.resolve(
     flag(arguments_, "--workspace", { fallback: "." }) ?? "."
   );
   switch (arguments_.command) {
@@ -19490,13 +19819,23 @@ async function run(arguments_) {
       }
       const capabilities = await detectCodexCapabilities(workspace);
       assertPlanCapabilities(plan, capabilities, "apply");
+      if (plan.files.every(({ action }) => action === "verify")) {
+        await verifyNoChangesPlan(workspace, plan);
+        return {
+          transaction: null,
+          doctor: await doctorWorkspace(workspace),
+          reloadRequired: false,
+          noChanges: true
+        };
+      }
       const transaction = await applyTeamPlan(workspace, plan);
       return {
         transaction,
         doctor: await doctorWorkspace(workspace),
         reloadRequired: plan.files.some(
           (file2) => file2.relativePath === ".codex/config.toml"
-        )
+        ),
+        noChanges: false
       };
     }
     case "doctor": {

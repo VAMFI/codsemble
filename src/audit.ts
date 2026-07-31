@@ -453,22 +453,27 @@ async function enumerateGitCandidates(
       ]),
     ]);
     const tracked = parseGitPaths(trackedOutput, git.workspacePrefix)
+      .filter((relativePath) => !isCodsembleTransactionPath(relativePath))
       .sort(compareText)
       .map((relativePath) => ({ relativePath, source: "tracked" as const }));
     const trackedSet = new Set(tracked.map(({ relativePath }) => relativePath));
     const untracked = parseGitPaths(untrackedOutput, git.workspacePrefix)
       .filter((relativePath) => !trackedSet.has(relativePath))
       .sort(compareText);
-    const managedUntracked = untracked
+    const workspaceUntracked = untracked.filter(
+      (relativePath) => !isCodsembleTransactionPath(relativePath),
+    );
+    const managedUntracked = workspaceUntracked
       .filter(isCodexStateCandidate)
       .map((relativePath) => ({ relativePath, source: "untracked" as const }));
-    const excludedUntracked = untracked.length - managedUntracked.length;
+    const excludedUntracked =
+      workspaceUntracked.length - managedUntracked.length;
     if (excludedUntracked > 0) {
       increment(skips, "untracked", excludedUntracked);
     }
     return {
       candidates: [...tracked, ...managedUntracked],
-      dirty: statusOutput.length > 0,
+      dirty: hasRelevantGitStatus(statusOutput, git.workspacePrefix),
     };
   } catch {
     return {
@@ -482,6 +487,43 @@ async function enumerateGitCandidates(
       warning: "Git metadata was detected but could not be queried; used a bounded filesystem scan.",
     };
   }
+}
+
+function hasRelevantGitStatus(
+  output: string,
+  workspacePrefix: string,
+): boolean {
+  const entries = output.split("\0").filter(Boolean);
+  const prefix = workspacePrefix
+    ? `${workspacePrefix.replace(/\/+$/, "")}/`
+    : "";
+  for (let index = 0; index < entries.length; index += 1) {
+    const record = entries[index] as string;
+    const status = record.slice(0, 2);
+    const repoPaths = [record.slice(3)];
+    if (/[RC]/.test(status)) {
+      const secondPath = entries[index + 1];
+      if (secondPath !== undefined) {
+        repoPaths.push(secondPath);
+        index += 1;
+      }
+    }
+    const workspacePaths = repoPaths.flatMap((repoPath) => {
+      const normalized = toPosix(repoPath);
+      if (!prefix) return [normalized];
+      return normalized.startsWith(prefix)
+        ? [normalized.slice(prefix.length)]
+        : [];
+    });
+    if (
+      workspacePaths.some(
+        (relativePath) => !isCodsembleTransactionPath(relativePath),
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isCodexStateCandidate(relativePath: string): boolean {
@@ -561,6 +603,9 @@ async function enumerateNonGitCandidates(
     entries.sort((left, right) => compareText(left.name, right.name));
     for (const entry of entries) {
       const relativePath = toPosix(path.join(relativeDirectory, entry.name));
+      if (isCodsembleTransactionPath(relativePath)) {
+        continue;
+      }
       if (entry.isSymbolicLink()) {
         increment(skips, "symlink");
         continue;
@@ -587,6 +632,13 @@ async function enumerateNonGitCandidates(
   };
   await visit("", 0);
   return candidates;
+}
+
+function isCodsembleTransactionPath(relativePath: string): boolean {
+  return (
+    relativePath === ".codex/codsemble/transactions" ||
+    relativePath.startsWith(".codex/codsemble/transactions/")
+  );
 }
 
 function normalizeRelativePath(value: string): string | null {

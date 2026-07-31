@@ -73,7 +73,8 @@ node "<plugin-root>/scripts/codsemble.mjs" apply \
 general request; show the final exact diff and ask for confirmation of the plan
 id. In `manual` and `unchanged` modes, apply writes only the confirmed team
 artifacts and leaves `.codex/config.toml` untouched. `preview` performs no
-writes.
+writes. An already-identical plan returns `noChanges: true` with no transaction
+receipt and no reload request.
 
 ## Browse roles
 

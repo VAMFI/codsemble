@@ -15,7 +15,10 @@ import path from "node:path";
 import { z } from "zod";
 
 import { patchConcurrencyToml, validateToml } from "./config.js";
-import { computeConfirmationId } from "./compiler.js";
+import {
+  computeConfirmationId,
+  renderManagedAgentsFile,
+} from "./compiler.js";
 import type {
   PlannedFile,
   TeamPlan,
@@ -161,6 +164,11 @@ interface PreflightFile {
   quarantineRelativePath: string;
 }
 
+interface VerifiedFile {
+  planned: PlannedFile;
+  absolutePath: string;
+}
+
 interface CompletedMutation {
   relativePath: string;
   absolutePath: string;
@@ -171,9 +179,13 @@ interface CompletedMutation {
 }
 
 class PreservedConflictError extends Error {}
+class CommitArtifactPublishedError extends Error {}
 
 export interface TransactionHooks {
   beforeExclusivePublish?: (relativePath: string) => Promise<void>;
+  afterDurableCommit?: (
+    operation: "apply" | "rollback",
+  ) => Promise<void>;
 }
 
 export interface RollbackMarker {
@@ -189,9 +201,15 @@ export async function applyTeamPlan(
   hooks: TransactionHooks = {},
 ): Promise<TransactionRecord> {
   assertValidTeamPlan(plan);
+  if (plan.files.length === 0) {
+    throw new Error(
+      "No managed file changes are required; no transaction was created",
+    );
+  }
   const root = await resolveSafeWorkspace(workspace);
   const transactionId = randomUUID();
   const prepared: PreflightFile[] = [];
+  const verified: VerifiedFile[] = [];
 
   for (const planned of plan.files) {
     const absolutePath = await safeTarget(root, planned.relativePath);
@@ -228,17 +246,34 @@ export async function applyTeamPlan(
       }
       if (planned.content !== null) {
         validateToml(planned.content);
-        validateProjectConfigOutput(
-          plan,
-          state.content === null
-            ? ""
-            : decodeUtf8(state.content, planned.relativePath),
-          planned.content,
-        );
+        if (planned.action === "verify") {
+          validateProjectConfigVerification(plan, planned.content);
+        } else {
+          validateProjectConfigOutput(
+            plan,
+            state.content === null
+              ? ""
+              : decodeUtf8(state.content, planned.relativePath),
+            planned.content,
+          );
+        }
       }
+    }
+    if (planned.relativePath === "AGENTS.md" && planned.content !== null) {
+      validateManagedAgentsOutput(
+        plan,
+        state.content === null
+          ? undefined
+          : decodeUtf8(state.content, planned.relativePath),
+        planned.content,
+      );
     }
     if (planned.content !== null) {
       validatePlannedOutput(planned.relativePath, planned.content, plan);
+    }
+    if (planned.action === "verify") {
+      verified.push({ planned, absolutePath });
+      continue;
     }
     const quarantineRelativePath =
       `${transactionRoot}/${transactionId}.quarantines/${planned.relativePath}`;
@@ -257,6 +292,11 @@ export async function applyTeamPlan(
   }
   await validateAgentDeletes(root, plan);
   await validateUnchangedManifestOwnership(root, plan);
+  if (prepared.length === 0) {
+    throw new Error(
+      "No managed file changes are required; no transaction was created",
+    );
+  }
 
   const transaction: TransactionRecord = {
     schemaVersion: 1,
@@ -276,13 +316,16 @@ export async function applyTeamPlan(
           : file.quarantineRelativePath,
     })),
   };
+  assertValidTransactionRecord(transaction);
 
   const staged = new Map<string, string>();
   const installed: CompletedMutation[] = [];
   let releaseLock: (() => Promise<void>) | undefined;
   let pendingPath: string | undefined;
+  let committed = false;
   try {
     releaseLock = await acquireMutationLock(root, "apply", transactionId);
+    await revalidateVerifiedFiles(verified);
     for (const file of prepared) {
       if (file.before !== null && file.backupRelativePath !== null) {
         const backup = await safeTarget(root, file.backupRelativePath);
@@ -341,17 +384,30 @@ export async function applyTeamPlan(
         staged.delete(file.absolutePath);
       }
     }
+    await revalidateVerifiedFiles(verified);
 
     const receiptRelativePath = `${transactionRoot}/${transactionId}.json`;
     const receiptPath = await safeTarget(root, receiptRelativePath);
     await ensureSafeParentDirectories(root, receiptPath);
-    await atomicWrite(receiptPath, stableStringify(transaction), 0o600);
+    await atomicCommitWrite(receiptPath, stableStringify(transaction), 0o600);
+    committed = true;
+    await hooks.afterDurableCommit?.("apply");
     await finishPendingMutation(pendingPath, installed);
     await releaseLock();
     releaseLock = undefined;
     return transaction;
   } catch (error) {
     await cleanupStaged(staged);
+    if (error instanceof CommitArtifactPublishedError) {
+      committed = true;
+    }
+    if (committed) {
+      await releaseLock?.().catch(() => undefined);
+      throw new Error(
+        "Transaction committed, but post-commit cleanup is incomplete; inspect Doctor before another write",
+        { cause: error },
+      );
+    }
     const restoreErrors = await restoreMutationsLosslessly(installed);
     const pendingCleared =
       restoreErrors.length === 0 &&
@@ -369,6 +425,124 @@ export async function applyTeamPlan(
     }
     throw error;
   }
+}
+
+async function revalidateVerifiedFiles(
+  verified: VerifiedFile[],
+): Promise<void> {
+  for (const { planned, absolutePath } of verified) {
+    const state = await readSafeRegularFile(absolutePath);
+    const currentHash =
+      state.content === null ? null : sha256(state.content);
+    if (currentHash !== planned.afterSha256) {
+      throw new Error(
+        `Verified plan state changed during apply: ${planned.relativePath}`,
+      );
+    }
+  }
+}
+
+export async function verifyNoChangesPlan(
+  workspace: string,
+  plan: TeamPlan,
+): Promise<void> {
+  assertValidTeamPlan(plan);
+  if (plan.files.some(({ action }) => action !== "verify")) {
+    throw new Error("No-changes verification received a mutating plan");
+  }
+  assertCompleteVerificationSet(plan);
+  const root = await resolveSafeWorkspace(workspace);
+  for (const planned of plan.files) {
+    const absolutePath = await safeTarget(root, planned.relativePath);
+    const state = await readSafeRegularFile(absolutePath);
+    const currentHash =
+      state.content === null ? null : sha256(state.content);
+    if (currentHash !== planned.beforeSha256) {
+      throw new Error(
+        `No-changes state conflict for ${planned.relativePath}: expected ${formatHash(planned.beforeSha256)}, found ${formatHash(currentHash)}`,
+      );
+    }
+    if (
+      planned.content === null ||
+      planned.afterSha256 === null ||
+      sha256(planned.content) !== planned.afterSha256
+    ) {
+      throw new Error(
+        `No-changes verification image mismatch: ${planned.relativePath}`,
+      );
+    }
+    if (planned.relativePath === projectConfig) {
+      validateToml(planned.content);
+      validateProjectConfigVerification(plan, planned.content);
+    }
+    if (planned.relativePath === "AGENTS.md") {
+      validateManagedAgentsOutput(
+        plan,
+        state.content === null
+          ? undefined
+          : decodeUtf8(state.content, planned.relativePath),
+        planned.content,
+      );
+    }
+    validatePlannedOutput(planned.relativePath, planned.content, plan);
+  }
+}
+
+function assertCompleteVerificationSet(plan: TeamPlan): void {
+  if (plan.roles.length === 0) {
+    throw new Error("No-changes verification requires at least one role");
+  }
+  const expectedPaths = [
+    "AGENTS.md",
+    ".codex/codsemble/manifest.json",
+    ...plan.roles.map(({ id }) => `.codex/agents/${id}.toml`),
+    ...(["preview", "apply-project"].includes(plan.concurrency.configMode)
+      ? [projectConfig]
+      : []),
+  ].sort();
+  const actualPaths = plan.files
+    .map(({ relativePath }) => relativePath)
+    .sort();
+  if (
+    expectedPaths.length !== actualPaths.length ||
+    expectedPaths.some((entry, index) => entry !== actualPaths[index])
+  ) {
+    throw new Error(
+      "No-changes verification does not contain the complete generated output set",
+    );
+  }
+}
+
+function validateManagedAgentsOutput(
+  plan: TeamPlan,
+  before: string | undefined,
+  after: string,
+): void {
+  const manifest = parsePlannedManifest(plan);
+  const expected = renderManagedAgentsFile(
+    before,
+    plan.roles,
+    manifest.proposal.kind,
+  );
+  if (after !== expected) {
+    throw new Error(
+      "Generated AGENTS.md managed block is not bound to the plan",
+    );
+  }
+}
+
+function parsePlannedManifest(
+  plan: TeamPlan,
+): ReturnType<typeof generatedManifestSchema.parse> {
+  const manifestFile = plan.files.find(
+    ({ relativePath, action }) =>
+      relativePath === ".codex/codsemble/manifest.json" &&
+      action !== "delete",
+  );
+  if (manifestFile?.content === null || manifestFile?.content === undefined) {
+    throw new Error("Plan is missing its generated manifest");
+  }
+  return generatedManifestSchema.parse(JSON.parse(manifestFile.content));
 }
 
 export async function rollbackTransaction(
@@ -436,6 +610,7 @@ export async function rollbackTransaction(
   const completed: CompletedMutation[] = [];
   let releaseLock: (() => Promise<void>) | undefined;
   let pendingPath: string | undefined;
+  let committed = false;
   try {
     releaseLock = await acquireMutationLock(
       root,
@@ -491,30 +666,44 @@ export async function rollbackTransaction(
         staged.delete(target.absolutePath);
       }
     }
-    const rollbackMarker = await safeTarget(
+    const rollbackMarkerPath = await safeTarget(
       root,
       `${transactionRoot}/${record.transactionId}.rollback.json`,
     );
-    await ensureSafeParentDirectories(root, rollbackMarker);
-    await atomicWrite(
-      rollbackMarker,
-      stableStringify({
-        schemaVersion: 1,
-        transactionId: record.transactionId,
-        rolledBackAt: new Date().toISOString(),
-        quarantineRelativePaths: completed
-          .map(({ quarantinePath }) =>
-            quarantinePath === null ? null : path.relative(root, quarantinePath),
-          )
-          .filter((entry): entry is string => entry !== null),
-      }),
+    const rollbackMarker: RollbackMarker = {
+      schemaVersion: 1,
+      transactionId: record.transactionId,
+      rolledBackAt: new Date().toISOString(),
+      quarantineRelativePaths: completed
+        .map(({ quarantinePath }) =>
+          quarantinePath === null ? null : path.relative(root, quarantinePath),
+        )
+        .filter((entry): entry is string => entry !== null),
+    };
+    assertValidRollbackMarker(rollbackMarker);
+    await ensureSafeParentDirectories(root, rollbackMarkerPath);
+    await atomicCommitWrite(
+      rollbackMarkerPath,
+      stableStringify(rollbackMarker),
       0o600,
     );
+    committed = true;
+    await hooks.afterDurableCommit?.("rollback");
     await finishPendingMutation(pendingPath, completed);
     await releaseLock();
     releaseLock = undefined;
   } catch (error) {
     await cleanupStaged(staged);
+    if (error instanceof CommitArtifactPublishedError) {
+      committed = true;
+    }
+    if (committed) {
+      await releaseLock?.().catch(() => undefined);
+      throw new Error(
+        "Rollback committed, but post-commit cleanup is incomplete; inspect Doctor before another write",
+        { cause: error },
+      );
+    }
     const restoreErrors = await restoreMutationsLosslessly(completed);
     const pendingCleared =
       restoreErrors.length === 0 &&
@@ -912,6 +1101,39 @@ async function atomicWrite(
   }
 }
 
+async function atomicCommitWrite(
+  target: string,
+  content: string | Buffer,
+  mode: number,
+): Promise<void> {
+  const temporary = await stageFile(
+    target,
+    typeof content === "string" ? Buffer.from(content, "utf8") : content,
+    mode,
+  );
+  let published = false;
+  try {
+    await rename(temporary, target);
+    published = true;
+    await syncDirectory(path.dirname(target));
+  } catch (error) {
+    if (!published) {
+      await unlink(temporary).catch(() => undefined);
+      throw error;
+    }
+    try {
+      await unlink(target);
+      await syncDirectory(path.dirname(target));
+    } catch (cleanupError) {
+      throw new CommitArtifactPublishedError(
+        "Commit artifact may be published after durability verification failed",
+        { cause: new AggregateError([error, cleanupError]) },
+      );
+    }
+    throw error;
+  }
+}
+
 async function stageFile(
   target: string,
   content: Buffer,
@@ -1002,9 +1224,13 @@ export function assertValidTeamPlan(plan: TeamPlan): void {
     !plan.planId ||
     !/^[a-f0-9]{32}$/.test(plan.confirmationId) ||
     !Array.isArray(plan.files) ||
-    !Array.isArray(plan.preimages)
+    !Array.isArray(plan.preimages) ||
+    plan.files.length === 0
   ) {
     throw new Error("Invalid team plan");
+  }
+  if (plan.files.length > 256) {
+    throw new Error("Plan exceeds the 256-file transaction limit");
   }
   if (computeConfirmationId(plan) !== plan.confirmationId) {
     throw new Error("Plan confirmation digest mismatch");
@@ -1020,7 +1246,7 @@ export function assertValidTeamPlan(plan: TeamPlan): void {
     if (paths.has(file.relativePath)) {
       throw new Error(`Duplicate planned path: ${file.relativePath}`);
     }
-    if (!["create", "update", "delete"].includes(file.action)) {
+    if (!["create", "update", "delete", "verify"].includes(file.action)) {
       throw new Error(`Invalid planned action: ${file.relativePath}`);
     }
     if (
@@ -1043,6 +1269,13 @@ export function assertValidTeamPlan(plan: TeamPlan): void {
           !/^[a-f0-9]{64}$/.test(file.afterSha256)
     ) {
       throw new Error(`Invalid planned after-image: ${file.relativePath}`);
+    }
+    if (
+      file.action === "verify" &&
+      (file.beforeSha256 === null ||
+        file.beforeSha256 !== file.afterSha256)
+    ) {
+      throw new Error(`Invalid verification image: ${file.relativePath}`);
     }
     if (typeof file.content === "string") {
       const bytes = Buffer.byteLength(file.content, "utf8");
@@ -1185,6 +1418,31 @@ function validateProjectConfigOutput(
   if (!expected.changed || expected.content !== after) {
     throw new Error(
       "Generated project config is not the exact supported concurrency patch",
+    );
+  }
+}
+
+function validateProjectConfigVerification(
+  plan: TeamPlan,
+  content: string,
+): void {
+  if (
+    !["preview", "apply-project"].includes(plan.concurrency.configMode) ||
+    plan.concurrency.adapter !== "agents-v1"
+  ) {
+    throw new Error(
+      "Project config verification requires a capability-confirmed agents-v1 plan",
+    );
+  }
+  if (
+    patchConcurrencyToml(
+      content,
+      plan.concurrency.requestedWorkers,
+      "agents-v1",
+    ).changed
+  ) {
+    throw new Error(
+      "Verified project config does not satisfy the requested concurrency ceiling",
     );
   }
 }

@@ -36,6 +36,22 @@ afterEach(async () => {
 });
 
 describe("project transactions", () => {
+  it("rejects no-op and oversized plans before creating transaction state", async () => {
+    const workspace = await makeWorkspace();
+    await expect(applyTeamPlan(workspace, makePlan([]))).rejects.toThrow(
+      "Invalid team plan",
+    );
+    const oversized = Array.from({ length: 257 }, () =>
+      planned(".codex/agents/reviewer.toml", "create", null, "generated"),
+    );
+    await expect(
+      applyTeamPlan(workspace, makePlan(oversized)),
+    ).rejects.toThrow("256-file transaction limit");
+    await expect(
+      readdir(path.join(workspace, ".codex/codsemble/transactions")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("applies and rolls back updated and created files without clobbering", async () => {
     const workspace = await makeWorkspace();
     const configPath = path.join(workspace, ".codex/config.toml");
@@ -345,6 +361,126 @@ describe("project transactions", () => {
     ).toBe("late editor bytes");
   });
 
+  it("does not compensate an apply after its receipt is durable", async () => {
+    const workspace = await makeWorkspace();
+    const relativePath = ".codex/agents/reviewer.toml";
+    const content = agentToml("reviewer");
+
+    await expect(
+      applyTeamPlan(
+        workspace,
+        makePlan([planned(relativePath, "create", null, content)]),
+        {
+          afterDurableCommit: async (operation) => {
+            expect(operation).toBe("apply");
+            throw new Error("simulated cleanup failure");
+          },
+        },
+      ),
+    ).rejects.toThrow("Transaction committed");
+
+    expect(await readFile(path.join(workspace, relativePath), "utf8")).toBe(
+      content,
+    );
+    const transactionEntries = await readdir(
+      path.join(workspace, ".codex/codsemble/transactions"),
+    );
+    expect(
+      transactionEntries.some(
+        (entry) =>
+          entry.endsWith(".json") &&
+          !entry.endsWith(".pending.json"),
+      ),
+    ).toBe(true);
+    expect(
+      transactionEntries.some((entry) =>
+        entry.endsWith(".apply.pending.json"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rechecks verified outputs before committing mixed mutations", async () => {
+    const workspace = await makeWorkspace();
+    const verifiedRelativePath = ".codex/agents/reviewer.toml";
+    const createdRelativePath = ".codex/agents/writer.toml";
+    const verifiedPath = path.join(workspace, verifiedRelativePath);
+    await mkdir(path.dirname(verifiedPath), { recursive: true });
+    await writeFile(verifiedPath, agentToml("reviewer"));
+
+    await expect(
+      applyTeamPlan(
+        workspace,
+        makePlan([
+          planned(
+            verifiedRelativePath,
+            "verify",
+            agentToml("reviewer"),
+            agentToml("reviewer"),
+          ),
+          planned(
+            createdRelativePath,
+            "create",
+            null,
+            agentToml("writer"),
+          ),
+        ]),
+        {
+          beforeExclusivePublish: async (relativePath) => {
+            if (relativePath === createdRelativePath) {
+              await writeFile(verifiedPath, "user drift");
+            }
+          },
+        },
+      ),
+    ).rejects.toThrow("Verified plan state changed during apply");
+
+    expect(await readFile(verifiedPath, "utf8")).toBe("user drift");
+    await expect(
+      readFile(path.join(workspace, createdRelativePath)),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("does not reverse a rollback after its marker is durable", async () => {
+    const workspace = await makeWorkspace();
+    const relativePath = ".codex/agents/reviewer.toml";
+    const transaction = await applyTeamPlan(
+      workspace,
+      makePlan([
+        planned(relativePath, "create", null, agentToml("reviewer")),
+      ]),
+    );
+
+    await expect(
+      rollbackTransaction(workspace, transaction, {
+        afterDurableCommit: async (operation) => {
+          expect(operation).toBe("rollback");
+          throw new Error("simulated cleanup failure");
+        },
+      }),
+    ).rejects.toThrow("Rollback committed");
+
+    await expect(
+      readFile(path.join(workspace, relativePath)),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    const transactionDirectory = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
+    );
+    await expect(
+      readFile(
+        path.join(
+          transactionDirectory,
+          `${transaction.transactionId}.rollback.json`,
+        ),
+      ),
+    ).resolves.toBeInstanceOf(Buffer);
+    expect(
+      (await readdir(transactionDirectory)).some((entry) =>
+        entry.endsWith(".rollback.pending.json"),
+      ),
+    ).toBe(true);
+  });
+
   it("refuses new writes when a pending record remains without its lock", async () => {
     const workspace = await makeWorkspace();
     const transactions = path.join(
@@ -555,7 +691,7 @@ async function makeWorkspace(): Promise<string> {
 
 function planned(
   relativePath: string,
-  action: "create" | "update" | "delete",
+  action: "create" | "update" | "delete" | "verify",
   before: string | null,
   content: string | null,
 ) {

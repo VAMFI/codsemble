@@ -145,7 +145,7 @@ export interface FilePreimage {
 
 export interface PlannedFile {
   relativePath: string;
-  action: "create" | "update" | "delete";
+  action: "create" | "update" | "delete" | "verify";
   beforeSha256: string | null;
   afterSha256: string | null;
   content: string | null;

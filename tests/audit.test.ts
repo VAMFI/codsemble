@@ -158,6 +158,17 @@ describe("auditWorkspace", () => {
       { cwd: workspace },
     );
     await writeFile(path.join(workspace, "src.ts"), "export {};");
+    await mkdir(
+      path.join(workspace, ".codex/codsemble/transactions"),
+      { recursive: true },
+    );
+    await writeFile(
+      path.join(
+        workspace,
+        ".codex/codsemble/transactions/generated-receipt.json",
+      ),
+      "{}",
+    );
 
     const report = await auditWorkspace(workspace);
 
@@ -167,6 +178,55 @@ describe("auditWorkspace", () => {
     expect(report.inspectedFiles).not.toContain("ignored.ts");
     expect(report.skipped).toContainEqual({ reason: "untracked", count: 1 });
     expect(signalValues(report, "testing")).toContain("jest");
+  });
+
+  it("excludes transaction history from Git candidates and dirtiness", async () => {
+    const workspace = await temporaryWorkspace();
+    await execFileAsync("git", ["init", "-q"], { cwd: workspace });
+    const transactionDirectory = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
+    );
+    await mkdir(transactionDirectory, { recursive: true });
+    await writeFile(path.join(workspace, "package.json"), '{"name":"fixture"}');
+    await writeFile(
+      path.join(transactionDirectory, "tracked.json"),
+      '{"state":"initial"}',
+    );
+    await execFileAsync("git", ["add", "."], { cwd: workspace });
+    await execFileAsync(
+      "git",
+      [
+        "-c",
+        "user.name=Codsemble Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-qm",
+        "fixture",
+      ],
+      { cwd: workspace },
+    );
+
+    const clean = await auditWorkspace(workspace);
+    expect(clean.dirtyWorktree).toBe(false);
+    expect(clean.inspectedFiles).toEqual(["package.json"]);
+
+    await writeFile(
+      path.join(transactionDirectory, "tracked.json"),
+      '{"state":"changed"}',
+    );
+    await writeFile(
+      path.join(transactionDirectory, "untracked.json"),
+      '{"state":"new"}',
+    );
+    const transactionOnly = await auditWorkspace(workspace);
+    expect(transactionOnly.dirtyWorktree).toBe(false);
+    expect(transactionOnly.inspectedFiles).toEqual(["package.json"]);
+    expect(transactionOnly.skipped).toEqual([]);
+
+    await writeFile(path.join(workspace, "package.json"), '{"name":"changed"}');
+    expect((await auditWorkspace(workspace)).dirtyWorktree).toBe(true);
   });
 
   it("enforces file and depth bounds", async () => {

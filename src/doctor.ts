@@ -1,7 +1,5 @@
-import { execFile } from "node:child_process";
 import { access, lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { parse as parseToml } from "smol-toml";
 import type {
   DoctorCheck,
@@ -20,8 +18,7 @@ import {
   generatedManifestSchema,
   type RollbackMarker,
 } from "./transaction.js";
-
-const execFileAsync = promisify(execFile);
+import { runCodexCommand } from "./capabilities.js";
 
 async function exists(candidate: string): Promise<boolean> {
   try {
@@ -287,11 +284,7 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
   checks.push(await inspectTransactions(root));
 
   try {
-    const { stdout } = await execFileAsync("codex", ["features", "list"], {
-      cwd: root,
-      timeout: 15_000,
-      maxBuffer: 1024 * 1024,
-    });
+    const { stdout } = await runCodexCommand(["features", "list"], root);
     const multiAgentLine = stdout
       .split(/\r?\n/)
       .find((line) => line.trimStart().startsWith("multi_agent"));
@@ -393,6 +386,7 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
           throw new Error("rollback marker has no valid transaction receipt");
         }
         assertMarkerMatchesReceipt(marker, receipt);
+        await verifyRollbackQuarantines(root, marker, receipt);
         rolledBackIds.add(marker.transactionId);
       } catch (error) {
         invalid.push(
@@ -513,5 +507,37 @@ function assertMarkerMatchesReceipt(
     throw new Error(
       "rollback marker quarantine paths do not match its transaction receipt",
     );
+  }
+}
+
+async function verifyRollbackQuarantines(
+  root: string,
+  marker: RollbackMarker,
+  receipt: TransactionRecord,
+): Promise<void> {
+  const expectedHashes = new Map(
+    receipt.files
+      .filter(
+        (
+          file,
+        ): file is typeof file & { afterSha256: string } =>
+          file.afterSha256 !== null,
+      )
+      .map((file) => [
+        `.codex/codsemble/transactions/${receipt.transactionId}.rollback.quarantines/${file.relativePath}`,
+        file.afterSha256,
+      ]),
+  );
+  for (const quarantineRelativePath of marker.quarantineRelativePaths) {
+    const quarantinePath = await assertContainedPath(
+      root,
+      quarantineRelativePath,
+    );
+    const content = await readRegularFile(quarantinePath, root);
+    if (sha256(content) !== expectedHashes.get(quarantineRelativePath)) {
+      throw new Error(
+        `rollback recovery quarantine failed integrity verification: ${quarantineRelativePath}`,
+      );
+    }
   }
 }

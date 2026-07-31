@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-07-31T09:36:04Z",
+  "capturedAt": "2026-07-31T10:50:09Z",
   "source": {
-    "validatedCommit": "75feec9ad6763473f0719a53743219e578633301",
-    "pluginPayloadSha256": "6af24b7a1ef81c7d41e7993ac08f66fbb396482ff40e667ac20be99978b77ba2",
+    "validatedCommit": "a3b15151bd74fd1aabea6de94b21555cdc61d384",
+    "pluginPayloadSha256": "cc182fdea5f0566f6799b01a2fd85824e8dbfe71db2c4cda752f57147e357c91",
     "pluginPayloadDigestAlgorithm": "sha256(path-nul-length-nul-content-nul)",
     "pluginFileCount": 12
   },
@@ -31,9 +31,9 @@
     "rawModelInstructionsRetained": false
   },
   "confirmedPlan": {
-    "planId": "f5349b97b7cdd0d31756cdad",
-    "confirmationId": "0057cf33c32d4006fc9c47d8d1af8c02",
-    "transactionId": "a82df316-a7de-420b-87a1-f980602dfdfb",
+    "planId": "c06a2a271c5408f06035167c",
+    "confirmationId": "2e793f26c9f7fdc01579fbe85e3485ba",
+    "transactionId": "167352b9-15f4-4d60-810f-e5a43e22ae17",
     "configMode": "apply-project",
     "projectCurrentValue": null,
     "requestedSpawnedWorkerCeiling": 2,
@@ -41,39 +41,39 @@
     "doctorAfterApply": "pass"
   },
   "nativeAgentRun": {
-    "parentThreadId": "019fb783-fc8a-72a3-9651-d422b03ec87c",
+    "parentThreadId": "019fb7c8-174c-7ec1-babf-627ea318318a",
     "children": [
       {
-        "threadId": "019fb784-10da-7043-b791-468ec8e58f77",
+        "threadId": "019fb7c8-2bfd-7d70-b6a6-506dd48706bc",
         "agentRole": "delivery_planner",
         "generatedDeveloperInstructionsObserved": true,
-        "result": "PLAN-OK Delivery planning and integration testing must be independently reviewed before the root reports readiness."
+        "result": "PLAN-OK Independent delivery planning and integration testing are required before readiness is reported."
       },
       {
-        "threadId": "019fb784-1c13-7ca3-81bf-7cabea15be2d",
+        "threadId": "019fb7c8-38a2-7b82-9a72-2f597cce448e",
         "agentRole": "integration_test_engineer",
         "generatedDeveloperInstructionsObserved": true,
-        "result": "TEST-OK Delivery planning and integration testing must be independently reviewed before the root reports readiness."
+        "result": "TEST-OK Independent delivery planning and integration testing are required before readiness is reported."
       }
     ],
     "rootIntegratedResult": "ROOT-OK PLAN-OK TEST-OK",
     "generatedForkGuidanceObserved": true
   },
   "capacityRun": {
-    "parentThreadId": "019fb784-b1a4-7410-9b01-6ce2ed04b91b",
+    "parentThreadId": "019fb7c8-a716-7963-8122-f1ee06db2501",
     "configuredSpawnedWorkerCeiling": 2,
     "successfulChildren": 2,
     "thirdSpawn": "collab spawn failed: agent thread limit reached",
     "unboundedRetryObserved": false
   },
   "trivialRun": {
-    "parentThreadId": "019fb786-529e-78f0-b490-4bb1fdfc8642",
+    "parentThreadId": "019fb7c9-5234-7b72-9d4d-a993cbddedf6",
     "result": "TRIVIAL-OK",
     "subagentActivityEvents": 0
   },
   "idempotentUpdate": {
-    "convergenceTransactionId": "45c12594-07bb-487f-a9c6-391283ea242c",
-    "convergedPlanId": "f73aef6a4039c1dc01c35ed2",
+    "convergenceTransactionId": "77f32233-4c6c-475a-8003-1c759222fe62",
+    "convergedPlanId": "fbf0b722a3c9ffd22b8b7a76",
     "allManagedActions": "verify",
     "noChanges": true,
     "transaction": null,
@@ -84,8 +84,8 @@
   },
   "rollback": {
     "transactionsRevertedInReverseOrder": [
-      "45c12594-07bb-487f-a9c6-391283ea242c",
-      "a82df316-a7de-420b-87a1-f980602dfdfb"
+      "77f32233-4c6c-475a-8003-1c759222fe62",
+      "167352b9-15f4-4d60-810f-e5a43e22ae17"
     ],
     "generatedProjectFilesRemaining": 0,
     "receiptOwnedRecoveryQuarantinesRetainedUnderTransactionHistory": 6,
@@ -101,7 +101,7 @@
   },
   "knownGaps": [
     "Real-runtime proof was run on one macOS arm64 host and Codex 0.145.0.",
-    "GitHub publication and OpenAI directory submission were not performed.",
+    "GitHub repository publication and public CI were completed after this runtime capture; OpenAI directory submission was not performed.",
     "The raw isolated session directory was intentionally excluded because it referenced local authentication state.",
     "Repeated icon warnings came from unrelated bundled skills; Codsemble skill metadata does not declare those icons."
   ]

@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Repository-aware multi-agent team generation for Codex.",
   "private": true,
+  "license": "Apache-2.0",
+  "author": "VAMFI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VAMFI/codsemble.git"
+  },
+  "homepage": "https://github.com/VAMFI/codsemble#readme",
+  "bugs": {
+    "url": "https://github.com/VAMFI/codsemble/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=20"

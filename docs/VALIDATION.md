@@ -49,7 +49,7 @@ and a disposable trusted Git project. Existing authentication was referenced
 without copying or recording credential contents.
 
 The refreshed run is bound to source commit
-`75feec9ad6763473f0719a53743219e578633301` and the reproducible 12-file plugin
+`a3b15151bd74fd1aabea6de94b21555cdc61d384` and the reproducible 12-file plugin
 payload digest recorded in `artifacts/runtime-evidence.json`. The digest
 algorithm is implemented by `scripts/plugin-payload-digest.mjs`.
 
@@ -81,11 +81,12 @@ The sanitized machine-readable record is
 `artifacts/runtime-evidence.json`. Raw session files are not included because
 they referenced local authentication state.
 
-## Honest remaining boundaries
+## Public CI and remaining boundaries
 
-- Cross-platform CI is configured but has not run on a public CI provider.
-  Local Linux arm64 and macOS arm64 checks pass; Windows remains CI-only and
-  unproven until publication.
+- The public CI run for the runtime-bound source passed Node.js 20 and 22 on
+  Ubuntu, macOS, and Windows. See
+  [GitHub Actions run 30624509423](https://github.com/VAMFI/codsemble/actions/runs/30624509423).
+- CodeQL passed on the same source. See
+  [CodeQL run 30624509442](https://github.com/VAMFI/codsemble/actions/runs/30624509442).
 - Real-runtime proof currently covers one macOS arm64 host and Codex 0.145.0.
-- The repository has not been pushed, tagged, or released.
 - OpenAI plugin-directory submission is a separate external review boundary.

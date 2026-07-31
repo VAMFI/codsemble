@@ -7,6 +7,8 @@ until a release is explicitly published.
 
 ## Unreleased
 
+## 0.1.0 - 2026-07-31
+
 ### Added
 
 - Initial offline-first Codex plugin architecture.
@@ -22,6 +24,7 @@ until a release is explicitly published.
 - Golden, property, and adversarial security regression suites.
 - Open-source governance, security, privacy, support, and CI foundations.
 
-## 0.1.0 - Unreleased
+### Fixed
 
-No public release has been published.
+- Cross-platform transaction paths, Windows command launchers, deterministic
+  build invocation, and checksum verification in public CI.

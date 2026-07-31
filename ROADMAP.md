@@ -2,7 +2,7 @@
 
 The roadmap describes intent, not a compatibility or delivery promise.
 
-## v0.1 — local release candidate
+## v0.1 — initial public release
 
 - Bounded, offline-first workspace audit.
 - Exact 111-role catalog with evidence-backed recommendations.

@@ -38,7 +38,7 @@ size of 111 never implies 111 live workers.
 
 ## Status
 
-Codsemble is pre-release software. A passing build is structural evidence, not
+Codsemble v0.1.0 is the initial public release. A passing build is structural evidence, not
 proof that every Codex version, policy, model, or operating system will accept a
 generated team. Real runtime claims require a fresh isolated Codex session.
 
@@ -50,6 +50,18 @@ generated team. Real runtime claims require a fresh isolated Codex session.
 
 Codsemble never marks a project trusted.
 
+## Install
+
+Install the v0.1.0 plugin from its public marketplace source:
+
+```bash
+codex plugin marketplace add VAMFI/codsemble --ref v0.1.0
+codex plugin add codsemble@codsemble
+```
+
+Start a fresh Codex session after installation so project agents and skills are
+reloaded.
+
 ## Install from a local checkout
 
 ```bash
@@ -57,10 +69,10 @@ npm ci
 npm run build
 ```
 
-Add the repository marketplace to an isolated Codex development environment,
-install the local `codsemble` plugin, and start a fresh Codex session. Exact
-marketplace commands may vary with the active Codex release; verify them against
-your installed Codex help before use.
+Add the checkout as a local marketplace in an isolated Codex development
+environment, install `codsemble@codsemble`, and start a fresh Codex session.
+Use `codex plugin marketplace add --help` to confirm the local-path syntax for
+your installed Codex release.
 
 Do not test development builds against a personal Codex home containing
 important configuration.

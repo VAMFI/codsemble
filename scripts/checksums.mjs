@@ -8,7 +8,8 @@ const execFileAsync = promisify(execFile);
 const outputPath = "artifacts/CHECKSUMS.sha256";
 const checking = process.argv.includes("--check");
 const current = await readFile(outputPath, "utf8").catch(() => "");
-const manifestEntries = parseManifest(current);
+const normalizedCurrent = current.replace(/\r\n/g, "\n");
+const manifestEntries = parseManifest(normalizedCurrent);
 const files = await sourcePayloadFiles();
 if (checking) {
   const listed = manifestEntries.map(({ file }) => file);
@@ -31,7 +32,7 @@ for (const file of files) {
 const expected = `${lines.join("\n")}\n`;
 
 if (checking) {
-  if (current !== expected) {
+  if (normalizedCurrent !== expected) {
     console.error(`${outputPath} is stale`);
     process.exitCode = 1;
   } else {

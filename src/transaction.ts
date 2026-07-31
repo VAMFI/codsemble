@@ -48,6 +48,41 @@ const generatedAgentSchema = z
       });
     }
   });
+const transactionIdSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/);
+const transactionFileSchema = z
+  .object({
+    relativePath: z.string().min(1),
+    beforeSha256: digestSchema.nullable(),
+    afterSha256: digestSchema.nullable(),
+    backupRelativePath: z.string().min(1).nullable(),
+    quarantineRelativePath: z.string().min(1).nullable(),
+    mode: z.number().int().min(0).max(0o777).nullable(),
+  })
+  .strict()
+  .refine(
+    ({ beforeSha256, afterSha256 }) =>
+      beforeSha256 !== null || afterSha256 !== null,
+    { message: "transaction file must have a preimage or postimage" },
+  );
+const transactionRecordSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    transactionId: transactionIdSchema,
+    planId: z.string().min(1).max(512),
+    createdAt: z.string().datetime({ offset: true }),
+    files: z.array(transactionFileSchema).min(1).max(256),
+  })
+  .strict();
+const rollbackMarkerSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    transactionId: transactionIdSchema,
+    rolledBackAt: z.string().datetime({ offset: true }),
+    quarantineRelativePaths: z.array(z.string().min(1)).max(256),
+  })
+  .strict();
 export const generatedManifestSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -141,6 +176,13 @@ export interface TransactionHooks {
   beforeExclusivePublish?: (relativePath: string) => Promise<void>;
 }
 
+export interface RollbackMarker {
+  schemaVersion: 1;
+  transactionId: string;
+  rolledBackAt: string;
+  quarantineRelativePaths: string[];
+}
+
 export async function applyTeamPlan(
   workspace: string,
   plan: TeamPlan,
@@ -213,6 +255,7 @@ export async function applyTeamPlan(
       quarantineRelativePath,
     });
   }
+  await validateAgentDeletes(root, plan);
   await validateUnchangedManifestOwnership(root, plan);
 
   const transaction: TransactionRecord = {
@@ -338,7 +381,7 @@ export async function rollbackTransaction(
     typeof transaction === "string"
       ? await loadTransaction(root, transaction)
       : transaction;
-  validateTransaction(record);
+  assertValidTransactionRecord(record);
 
   const targets: Array<{
     record: TransactionRecord["files"][number];
@@ -347,7 +390,7 @@ export async function rollbackTransaction(
     quarantinePath: string;
     quarantineRelativePath: string;
   }> = [];
-  const rollbackOperationId = `${record.transactionId}-${randomUUID()}`;
+  const rollbackOperationId = `${record.transactionId}.rollback`;
 
   for (const file of record.files) {
     const absolutePath = await safeTarget(root, file.relativePath);
@@ -981,6 +1024,18 @@ export function assertValidTeamPlan(plan: TeamPlan): void {
       throw new Error(`Invalid planned action: ${file.relativePath}`);
     }
     if (
+      file.action === "delete" &&
+      [
+        projectConfig,
+        "AGENTS.md",
+        ".codex/codsemble/manifest.json",
+      ].includes(file.relativePath)
+    ) {
+      throw new Error(
+        `Codsemble never deletes protected project metadata: ${file.relativePath}`,
+      );
+    }
+    if (
       file.action === "delete"
         ? file.content !== null || file.afterSha256 !== null
         : typeof file.content !== "string" ||
@@ -1166,23 +1221,88 @@ async function validateUnchangedManifestOwnership(
   }
 }
 
-function validateTransaction(record: TransactionRecord): void {
-  if (
-    record.schemaVersion !== 1 ||
-    !/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/.test(record.transactionId) ||
-    !Array.isArray(record.files)
-  ) {
-    throw new Error("Invalid transaction record");
+async function validateAgentDeletes(
+  root: string,
+  plan: TeamPlan,
+): Promise<void> {
+  const deletedAgents = plan.files.filter(
+    ({ relativePath, action }) =>
+      action === "delete" && agentPathPattern.test(relativePath),
+  );
+  if (deletedAgents.length === 0) return;
+
+  const nextManifestFile = plan.files.find(
+    ({ relativePath, action }) =>
+      relativePath === ".codex/codsemble/manifest.json" &&
+      action !== "delete",
+  );
+  if (nextManifestFile?.content === null || nextManifestFile?.content === undefined) {
+    throw new Error(
+      "Deleting generated agents requires a strict manifest transition",
+    );
+  }
+  const nextManifest = generatedManifestSchema.parse(
+    JSON.parse(nextManifestFile.content),
+  );
+  const currentManifestPath = await safeTarget(
+    root,
+    ".codex/codsemble/manifest.json",
+  );
+  const currentManifestState = await readSafeRegularFile(currentManifestPath);
+  if (currentManifestState.content === null) {
+    throw new Error(
+      "Deleting generated agents requires a current strict ownership manifest",
+    );
+  }
+  let currentManifest: ReturnType<typeof generatedManifestSchema.parse>;
+  try {
+    currentManifest = generatedManifestSchema.parse(
+      JSON.parse(
+        decodeUtf8(
+          currentManifestState.content,
+          ".codex/codsemble/manifest.json",
+        ),
+      ),
+    );
+  } catch (error) {
+    throw new Error(
+      "Deleting generated agents requires a current strict ownership manifest",
+      { cause: error },
+    );
+  }
+
+  for (const file of deletedAgents) {
+    if (
+      !currentManifest.ownership.agentFiles.includes(file.relativePath) ||
+      currentManifest.ownership.agentSha256[file.relativePath] !==
+        file.beforeSha256
+    ) {
+      throw new Error(
+        `Agent deletion is not proven by current manifest ownership: ${file.relativePath}`,
+      );
+    }
+    if (
+      nextManifest.ownership.agentFiles.includes(file.relativePath) ||
+      file.relativePath in nextManifest.ownership.agentSha256
+    ) {
+      throw new Error(
+        `Deleted agent remains owned by the next manifest: ${file.relativePath}`,
+      );
+    }
+  }
+}
+
+export function assertValidTransactionRecord(
+  record: unknown,
+): asserts record is TransactionRecord {
+  const parsed = transactionRecordSchema.safeParse(record);
+  if (!parsed.success) {
+    throw new Error(`Invalid transaction record: ${parsed.error.message}`);
   }
   const paths = new Set<string>();
-  for (const file of record.files) {
+  for (const file of parsed.data.files) {
     if (
-      !file.relativePath ||
       !isCodsembleOwnedOutput(file.relativePath) ||
-      (file.afterSha256 !== null &&
-        !/^[a-f0-9]{64}$/.test(file.afterSha256)) ||
-      (file.beforeSha256 !== null &&
-        !/^[a-f0-9]{64}$/.test(file.beforeSha256)) ||
       paths.has(file.relativePath)
     ) {
       throw new Error("Invalid transaction file record");
@@ -1190,18 +1310,42 @@ function validateTransaction(record: TransactionRecord): void {
     const expectedBackup =
       file.beforeSha256 === null
         ? null
-        : `${transactionRoot}/${record.transactionId}.backups/${file.relativePath}`;
+        : `${transactionRoot}/${parsed.data.transactionId}.backups/${file.relativePath}`;
     if (file.backupRelativePath !== expectedBackup) {
       throw new Error("Transaction backup path is outside its scoped directory");
     }
     const expectedQuarantine =
       file.beforeSha256 === null
         ? null
-        : `${transactionRoot}/${record.transactionId}.quarantines/${file.relativePath}`;
+        : `${transactionRoot}/${parsed.data.transactionId}.quarantines/${file.relativePath}`;
     if (file.quarantineRelativePath !== expectedQuarantine) {
       throw new Error("Transaction quarantine path is outside its scoped location");
     }
     paths.add(file.relativePath);
+  }
+}
+
+export function assertValidRollbackMarker(
+  marker: unknown,
+): asserts marker is RollbackMarker {
+  const parsed = rollbackMarkerSchema.safeParse(marker);
+  if (!parsed.success) {
+    throw new Error(`Invalid rollback marker: ${parsed.error.message}`);
+  }
+  const expectedPrefix =
+    `${transactionRoot}/${parsed.data.transactionId}.rollback.quarantines/`;
+  const paths = new Set<string>();
+  for (const quarantineRelativePath of parsed.data.quarantineRelativePaths) {
+    if (
+      !quarantineRelativePath.startsWith(expectedPrefix) ||
+      !isCodsembleOwnedOutput(
+        quarantineRelativePath.slice(expectedPrefix.length),
+      ) ||
+      paths.has(quarantineRelativePath)
+    ) {
+      throw new Error("Invalid rollback quarantine path");
+    }
+    paths.add(quarantineRelativePath);
   }
 }
 

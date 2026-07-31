@@ -203,6 +203,48 @@ describe("doctorWorkspace", () => {
     ).toContain("all are recorded as rolled back");
   });
 
+  it("reports a hashless legacy manifest as migration-needed", async () => {
+    const workspace = await fixture();
+    const manifestPath = path.join(
+      workspace,
+      ".codex/codsemble/manifest.json",
+    );
+    await mkdir(path.dirname(manifestPath), { recursive: true });
+    await writeFile(
+      manifestPath,
+      `${JSON.stringify({
+        schemaVersion: 1,
+        generator: { name: "codsemble", version: "0.0.9" },
+        catalogVersion: "0.0.9",
+        planId: "legacy",
+        auditFingerprint: "a".repeat(64),
+        proposal: { kind: "lean", maxConcurrentWorkers: 1 },
+        capabilities: {
+          configAdapter: "agents-v1",
+          modelCapabilities: [],
+          availableTools: [],
+        },
+        roles: [],
+        ownership: {
+          agentsBlock: {
+            path: "AGENTS.md",
+            start: "<!-- codsemble:start -->",
+            end: "<!-- codsemble:end -->",
+          },
+          agentFiles: [".codex/agents/legacy.toml"],
+        },
+      })}\n`,
+    );
+
+    const report = await doctorWorkspace(workspace);
+    const manifest = report.checks.find(
+      (check) => check.id === "codsemble-manifest",
+    );
+    expect(manifest?.status).toBe("warn");
+    expect(manifest?.summary).toContain("requires migration");
+    expect(manifest?.details?.join(" ")).toContain("update-team");
+  });
+
   it("rejects transaction receipt paths outside owned outputs", async () => {
     const workspace = await fixture();
     const transactionDirectory = path.join(
@@ -223,6 +265,7 @@ describe("doctorWorkspace", () => {
             beforeSha256: null,
             afterSha256: "a".repeat(64),
             backupRelativePath: null,
+            quarantineRelativePath: null,
             mode: null,
           },
         ],
@@ -233,9 +276,102 @@ describe("doctorWorkspace", () => {
     const transactions = report.checks.find(
       (check) => check.id === "transactions",
     );
-    expect(transactions?.status).toBe("warn");
+    expect(transactions?.status).toBe("fail");
     expect(transactions?.details?.join(" ")).toContain(
-      "not a Codsemble-owned output",
+      "Invalid transaction file record",
+    );
+  });
+
+  it("rejects a forged transaction quarantine before inspecting it", async () => {
+    const workspace = await fixture();
+    const transactionDirectory = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
+    );
+    await mkdir(transactionDirectory, { recursive: true });
+    await writeFile(path.join(workspace, ".env"), "do-not-inspect");
+    await writeFile(
+      path.join(transactionDirectory, "forged.json"),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        transactionId: "forged",
+        planId: "forged-plan",
+        createdAt: new Date(0).toISOString(),
+        files: [{
+          relativePath: ".codex/agents/reviewer.toml",
+          beforeSha256: sha256("do-not-inspect"),
+          afterSha256: null,
+          backupRelativePath:
+            ".codex/codsemble/transactions/forged.backups/.codex/agents/reviewer.toml",
+          quarantineRelativePath: ".env",
+          mode: 0o600,
+        }],
+      })}\n`,
+    );
+
+    const report = await doctorWorkspace(workspace);
+    const transactions = report.checks.find(
+      (check) => check.id === "transactions",
+    );
+    expect(transactions?.status).toBe("fail");
+    expect(transactions?.details?.join(" ")).toContain(
+      "quarantine path is outside its scoped location",
+    );
+  });
+
+  it("rejects a rollback marker whose filename does not match its id", async () => {
+    const workspace = await fixture();
+    const transactionDirectory = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
+    );
+    const postimage = "managed";
+    await mkdir(transactionDirectory, { recursive: true });
+    await mkdir(path.join(workspace, ".codex/agents"), { recursive: true });
+    await writeFile(
+      path.join(workspace, ".codex/agents/reviewer.toml"),
+      postimage,
+    );
+    await writeFile(
+      path.join(transactionDirectory, "real.json"),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        transactionId: "real",
+        planId: "real-plan",
+        createdAt: new Date(0).toISOString(),
+        files: [{
+          relativePath: ".codex/agents/reviewer.toml",
+          beforeSha256: null,
+          afterSha256: sha256(postimage),
+          backupRelativePath: null,
+          quarantineRelativePath: null,
+          mode: 0o600,
+        }],
+      })}\n`,
+    );
+    await writeFile(
+      path.join(transactionDirectory, "forged-name.rollback.json"),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        transactionId: "real",
+        rolledBackAt: new Date(1).toISOString(),
+        quarantineRelativePaths: [
+          ".codex/codsemble/transactions/real.rollback.quarantines/.codex/agents/reviewer.toml",
+        ],
+      })}\n`,
+    );
+
+    const report = await doctorWorkspace(workspace);
+    const transactions = report.checks.find(
+      (check) => check.id === "transactions",
+    );
+    expect(transactions?.status).toBe("fail");
+    expect(transactions?.summary).toContain("latest active rollback");
+    expect(transactions?.details?.join(" ")).toContain(
+      "rollback marker filename does not match its id",
+    );
+    expect(transactions?.summary).not.toContain(
+      "all are recorded as rolled back",
     );
   });
 

@@ -461,18 +461,88 @@ describe("project transactions", () => {
 
   it("applies and rolls back deletion of a previously owned output", async () => {
     const workspace = await makeWorkspace();
-    const target = path.join(workspace, ".codex/agents/stale.toml");
+    const relativeTarget = ".codex/agents/stale.toml";
+    const target = path.join(workspace, relativeTarget);
+    const manifestPath = path.join(
+      workspace,
+      ".codex/codsemble/manifest.json",
+    );
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, "stale");
+    const previousManifest = manifestContent(
+      [relativeTarget],
+      { [relativeTarget]: sha256("stale") },
+      "previous-plan",
+    );
+    const nextManifest = manifestContent([], {}, "test-plan");
+    await mkdir(path.dirname(manifestPath), { recursive: true });
+    await writeFile(manifestPath, previousManifest);
     const transaction = await applyTeamPlan(
       workspace,
       makePlan([
-        planned(".codex/agents/stale.toml", "delete", "stale", null),
+        planned(relativeTarget, "delete", "stale", null),
+        planned(
+          ".codex/codsemble/manifest.json",
+          "update",
+          previousManifest,
+          nextManifest,
+        ),
       ]),
     );
 
     await expect(readFile(target)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readFile(manifestPath, "utf8")).toBe(nextManifest);
     await rollbackTransaction(workspace, transaction.transactionId);
+    expect(await readFile(target, "utf8")).toBe("stale");
+    expect(await readFile(manifestPath, "utf8")).toBe(previousManifest);
+  });
+
+  it.each([
+    ".codex/config.toml",
+    "AGENTS.md",
+    ".codex/codsemble/manifest.json",
+  ])("refuses deletion of protected project metadata: %s", async (relativePath) => {
+    const workspace = await makeWorkspace();
+    const plan = makePlan([planned(relativePath, "delete", "owned", null)]);
+
+    await expect(applyTeamPlan(workspace, plan)).rejects.toThrow(
+      "never deletes protected project metadata",
+    );
+  });
+
+  it("refuses an agent deletion not proven by strict manifest ownership", async () => {
+    const workspace = await makeWorkspace();
+    const relativeTarget = ".codex/agents/stale.toml";
+    const target = path.join(workspace, relativeTarget);
+    const manifestPath = path.join(
+      workspace,
+      ".codex/codsemble/manifest.json",
+    );
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, "stale");
+    const forgedManifest = manifestContent(
+      [relativeTarget],
+      { [relativeTarget]: sha256("different") },
+      "previous-plan",
+    );
+    const nextManifest = manifestContent([], {}, "test-plan");
+    await mkdir(path.dirname(manifestPath), { recursive: true });
+    await writeFile(manifestPath, forgedManifest);
+
+    await expect(
+      applyTeamPlan(
+        workspace,
+        makePlan([
+          planned(relativeTarget, "delete", "stale", null),
+          planned(
+            ".codex/codsemble/manifest.json",
+            "update",
+            forgedManifest,
+            nextManifest,
+          ),
+        ]),
+      ),
+    ).rejects.toThrow("not proven by current manifest ownership");
     expect(await readFile(target, "utf8")).toBe("stale");
   });
 });
@@ -508,6 +578,36 @@ function agentToml(name: string): string {
   ].join("\n");
 }
 
+function manifestContent(
+  agentFiles: string[],
+  agentSha256: Record<string, string>,
+  planId: string,
+): string {
+  return `${JSON.stringify({
+    schemaVersion: 1,
+    generator: { name: "codsemble", version: "0.1.0" },
+    catalogVersion: "0.1.0",
+    planId,
+    auditFingerprint: "a".repeat(64),
+    proposal: { kind: "balanced", maxConcurrentWorkers: 2 },
+    capabilities: {
+      configAdapter: "agents-v1",
+      modelCapabilities: [],
+      availableTools: [],
+    },
+    roles: [],
+    ownership: {
+      agentsBlock: {
+        path: "AGENTS.md",
+        start: "<!-- codsemble:start -->",
+        end: "<!-- codsemble:end -->",
+      },
+      agentFiles,
+      agentSha256,
+    },
+  })}\n`;
+}
+
 function makePlan(files: ReturnType<typeof planned>[]): TeamPlan {
   const roles = files
     .filter(
@@ -530,7 +630,7 @@ function makePlan(files: ReturnType<typeof planned>[]): TeamPlan {
   const unsigned: Omit<TeamPlan, "confirmationId"> = {
     schemaVersion: 1,
     planId: "test-plan",
-    auditFingerprint: "test",
+    auditFingerprint: "a".repeat(64),
     roles,
     concurrency: {
       requestedWorkers: 2,

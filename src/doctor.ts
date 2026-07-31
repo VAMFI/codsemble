@@ -15,8 +15,10 @@ import {
   sha256,
 } from "./util.js";
 import {
+  assertValidRollbackMarker,
+  assertValidTransactionRecord,
   generatedManifestSchema,
-  isCodsembleOwnedOutput,
+  type RollbackMarker,
 } from "./transaction.js";
 
 const execFileAsync = promisify(execFile);
@@ -37,6 +39,7 @@ function overallStatus(checks: DoctorCheck[]): DoctorReport["overallStatus"] {
 }
 
 type TeamManifest = ReturnType<typeof generatedManifestSchema.parse>;
+class LegacyManifestError extends Error {}
 
 async function readRegularFile(
   candidate: string,
@@ -167,12 +170,16 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
   let manifest: TeamManifest | undefined;
   if (manifestPath) {
     try {
-      const parsed = generatedManifestSchema.safeParse(
-        JSON.parse(
-          (await readRegularFile(manifestPath, root)).toString("utf8"),
-        ),
+      const manifestValue: unknown = JSON.parse(
+        (await readRegularFile(manifestPath, root)).toString("utf8"),
       );
+      const parsed = generatedManifestSchema.safeParse(manifestValue);
       if (!parsed.success) {
+        if (isLegacyManifestWithoutOwnershipHashes(manifestValue)) {
+          throw new LegacyManifestError(
+            "Legacy manifest has no agent ownership hashes; run the update-team workflow to migrate it safely",
+          );
+        }
         throw new Error(`invalid manifest schema: ${parsed.error.message}`);
       }
       manifest = parsed.data;
@@ -261,8 +268,11 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
     } catch (error) {
       checks.push({
         id: "codsemble-manifest",
-        status: "fail",
-        summary: "Codsemble manifest is not valid JSON",
+        status: error instanceof LegacyManifestError ? "warn" : "fail",
+        summary:
+          error instanceof LegacyManifestError
+            ? "Legacy Codsemble manifest requires migration"
+            : "Codsemble manifest is invalid",
         details: [error instanceof Error ? error.message : String(error)],
       });
     }
@@ -345,47 +355,45 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
         ? ["mutation.lock: a mutation is active or was interrupted"]
         : []),
     ];
-    const rolledBackIds = new Set<string>();
-    for (const name of rollbackMarkerNames) {
+    for (const name of receiptNames) {
       try {
-        const marker = JSON.parse(
+        const parsed: unknown = JSON.parse(
           (
             await readRegularFile(path.join(directory, name), root)
           ).toString("utf8"),
-        ) as {
-          schemaVersion?: unknown;
-          transactionId?: unknown;
-          rolledBackAt?: unknown;
-        };
-        if (
-          marker.schemaVersion !== 1 ||
-          typeof marker.transactionId !== "string" ||
-          typeof marker.rolledBackAt !== "string"
-        ) {
-          throw new Error("invalid rollback marker schema");
+        );
+        assertValidTransactionRecord(parsed);
+        if (name !== `${parsed.transactionId}.json`) {
+          throw new Error("transaction receipt filename does not match its id");
         }
-        rolledBackIds.add(marker.transactionId);
+        receipts.push(parsed);
       } catch (error) {
         invalid.push(
           `${name}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     }
-    for (const name of receiptNames) {
+    const receiptsById = new Map(
+      receipts.map((receipt) => [receipt.transactionId, receipt]),
+    );
+    const rolledBackIds = new Set<string>();
+    for (const name of rollbackMarkerNames) {
       try {
-        const parsed = JSON.parse(
+        const marker: unknown = JSON.parse(
           (
             await readRegularFile(path.join(directory, name), root)
           ).toString("utf8"),
-        ) as TransactionRecord;
-        if (
-          parsed.schemaVersion !== 1 ||
-          typeof parsed.transactionId !== "string" ||
-          !Array.isArray(parsed.files)
-        ) {
-          throw new Error("invalid transaction schema");
+        );
+        assertValidRollbackMarker(marker);
+        if (name !== `${marker.transactionId}.rollback.json`) {
+          throw new Error("rollback marker filename does not match its id");
         }
-        receipts.push(parsed);
+        const receipt = receiptsById.get(marker.transactionId);
+        if (receipt === undefined) {
+          throw new Error("rollback marker has no valid transaction receipt");
+        }
+        assertMarkerMatchesReceipt(marker, receipt);
+        rolledBackIds.add(marker.transactionId);
       } catch (error) {
         invalid.push(
           `${name}: ${error instanceof Error ? error.message : String(error)}`,
@@ -402,9 +410,6 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
     if (latest) {
       for (const file of latest.files) {
         try {
-          if (!isCodsembleOwnedOutput(file.relativePath)) {
-            throw new Error("path is not a Codsemble-owned output");
-          }
           const currentPath = await assertContainedPath(root, file.relativePath);
           if (file.beforeSha256 !== null) {
             if (typeof file.quarantineRelativePath !== "string") {
@@ -467,5 +472,46 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
       summary: "Transaction history could not be inspected safely",
       details: [error instanceof Error ? error.message : String(error)],
     };
+  }
+}
+
+function isLegacyManifestWithoutOwnershipHashes(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const ownership = (value as { ownership?: unknown }).ownership;
+  if (typeof ownership !== "object" || ownership === null) return false;
+  const candidate = ownership as {
+    agentFiles?: unknown;
+    agentSha256?: unknown;
+  };
+  return (
+    Array.isArray(candidate.agentFiles) &&
+    candidate.agentFiles.every(
+      (entry) =>
+        typeof entry === "string" &&
+        /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(entry),
+    ) &&
+    candidate.agentSha256 === undefined
+  );
+}
+
+function assertMarkerMatchesReceipt(
+  marker: RollbackMarker,
+  receipt: TransactionRecord,
+): void {
+  const expected = receipt.files
+    .filter(({ afterSha256 }) => afterSha256 !== null)
+    .map(
+      ({ relativePath }) =>
+        `.codex/codsemble/transactions/${receipt.transactionId}.rollback.quarantines/${relativePath}`,
+    )
+    .sort();
+  const actual = [...marker.quarantineRelativePaths].sort();
+  if (
+    expected.length !== actual.length ||
+    expected.some((entry, index) => entry !== actual[index])
+  ) {
+    throw new Error(
+      "rollback marker quarantine paths do not match its transaction receipt",
+    );
   }
 }

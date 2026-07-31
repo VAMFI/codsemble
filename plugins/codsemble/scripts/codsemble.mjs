@@ -1322,7 +1322,9 @@ import { execFile as execFile2 } from "node:child_process";
 import { promisify as promisify2 } from "node:util";
 var execFileAsync2 = promisify2(execFile2);
 var defaultRunner = async (arguments_, workspace) => {
-  const result = await execFileAsync2("codex", arguments_, {
+  const executable = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "codex";
+  const commandArguments = process.platform === "win32" ? ["/d", "/s", "/c", "codex.cmd", ...arguments_] : arguments_;
+  const result = await execFileAsync2(executable, commandArguments, {
     cwd: workspace,
     timeout: 3e4,
     maxBuffer: 32 * 1024 * 1024
@@ -17668,6 +17670,31 @@ var generatedAgentSchema = external_exports.object({
     });
   }
 });
+var transactionIdSchema = external_exports.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/);
+var transactionFileSchema = external_exports.object({
+  relativePath: external_exports.string().min(1),
+  beforeSha256: digestSchema.nullable(),
+  afterSha256: digestSchema.nullable(),
+  backupRelativePath: external_exports.string().min(1).nullable(),
+  quarantineRelativePath: external_exports.string().min(1).nullable(),
+  mode: external_exports.number().int().min(0).max(511).nullable()
+}).strict().refine(
+  ({ beforeSha256, afterSha256 }) => beforeSha256 !== null || afterSha256 !== null,
+  { message: "transaction file must have a preimage or postimage" }
+);
+var transactionRecordSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  transactionId: transactionIdSchema,
+  planId: external_exports.string().min(1).max(512),
+  createdAt: external_exports.string().datetime({ offset: true }),
+  files: external_exports.array(transactionFileSchema).min(1).max(256)
+}).strict();
+var rollbackMarkerSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  transactionId: transactionIdSchema,
+  rolledBackAt: external_exports.string().datetime({ offset: true }),
+  quarantineRelativePaths: external_exports.array(external_exports.string().min(1)).max(256)
+}).strict();
 var generatedManifestSchema = external_exports.object({
   schemaVersion: external_exports.literal(1),
   generator: external_exports.object({ name: external_exports.literal("codsemble"), version: external_exports.string().min(1) }).strict(),
@@ -17774,6 +17801,7 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
       quarantineRelativePath
     });
   }
+  await validateAgentDeletes(root, plan);
   await validateUnchangedManifestOwnership(root, plan);
   const transaction = {
     schemaVersion: 1,
@@ -17876,9 +17904,9 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
 async function rollbackTransaction(workspace, transaction, hooks = {}) {
   const root = await resolveSafeWorkspace(workspace);
   const record2 = typeof transaction === "string" ? await loadTransaction(root, transaction) : transaction;
-  validateTransaction(record2);
+  assertValidTransactionRecord(record2);
   const targets = [];
-  const rollbackOperationId = `${record2.transactionId}-${randomUUID()}`;
+  const rollbackOperationId = `${record2.transactionId}.rollback`;
   for (const file2 of record2.files) {
     const absolutePath = await safeTarget(root, file2.relativePath);
     const current = await readSafeRegularFile(absolutePath);
@@ -18401,6 +18429,15 @@ function assertValidTeamPlan(plan) {
     if (!["create", "update", "delete"].includes(file2.action)) {
       throw new Error(`Invalid planned action: ${file2.relativePath}`);
     }
+    if (file2.action === "delete" && [
+      projectConfig,
+      "AGENTS.md",
+      ".codex/codsemble/manifest.json"
+    ].includes(file2.relativePath)) {
+      throw new Error(
+        `Codsemble never deletes protected project metadata: ${file2.relativePath}`
+      );
+    }
     if (file2.action === "delete" ? file2.content !== null || file2.afterSha256 !== null : typeof file2.content !== "string" || file2.afterSha256 === null || !/^[a-f0-9]{64}$/.test(file2.afterSha256)) {
       throw new Error(`Invalid planned after-image: ${file2.relativePath}`);
     }
@@ -18521,24 +18558,96 @@ async function validateUnchangedManifestOwnership(root, plan) {
     }
   }
 }
-function validateTransaction(record2) {
-  if (record2.schemaVersion !== 1 || !/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/.test(record2.transactionId) || !Array.isArray(record2.files)) {
-    throw new Error("Invalid transaction record");
+async function validateAgentDeletes(root, plan) {
+  const deletedAgents = plan.files.filter(
+    ({ relativePath, action }) => action === "delete" && agentPathPattern.test(relativePath)
+  );
+  if (deletedAgents.length === 0) return;
+  const nextManifestFile = plan.files.find(
+    ({ relativePath, action }) => relativePath === ".codex/codsemble/manifest.json" && action !== "delete"
+  );
+  if (nextManifestFile?.content === null || nextManifestFile?.content === void 0) {
+    throw new Error(
+      "Deleting generated agents requires a strict manifest transition"
+    );
+  }
+  const nextManifest = generatedManifestSchema.parse(
+    JSON.parse(nextManifestFile.content)
+  );
+  const currentManifestPath = await safeTarget(
+    root,
+    ".codex/codsemble/manifest.json"
+  );
+  const currentManifestState = await readSafeRegularFile(currentManifestPath);
+  if (currentManifestState.content === null) {
+    throw new Error(
+      "Deleting generated agents requires a current strict ownership manifest"
+    );
+  }
+  let currentManifest;
+  try {
+    currentManifest = generatedManifestSchema.parse(
+      JSON.parse(
+        decodeUtf8(
+          currentManifestState.content,
+          ".codex/codsemble/manifest.json"
+        )
+      )
+    );
+  } catch (error51) {
+    throw new Error(
+      "Deleting generated agents requires a current strict ownership manifest",
+      { cause: error51 }
+    );
+  }
+  for (const file2 of deletedAgents) {
+    if (!currentManifest.ownership.agentFiles.includes(file2.relativePath) || currentManifest.ownership.agentSha256[file2.relativePath] !== file2.beforeSha256) {
+      throw new Error(
+        `Agent deletion is not proven by current manifest ownership: ${file2.relativePath}`
+      );
+    }
+    if (nextManifest.ownership.agentFiles.includes(file2.relativePath) || file2.relativePath in nextManifest.ownership.agentSha256) {
+      throw new Error(
+        `Deleted agent remains owned by the next manifest: ${file2.relativePath}`
+      );
+    }
+  }
+}
+function assertValidTransactionRecord(record2) {
+  const parsed = transactionRecordSchema.safeParse(record2);
+  if (!parsed.success) {
+    throw new Error(`Invalid transaction record: ${parsed.error.message}`);
   }
   const paths = /* @__PURE__ */ new Set();
-  for (const file2 of record2.files) {
-    if (!file2.relativePath || !isCodsembleOwnedOutput(file2.relativePath) || file2.afterSha256 !== null && !/^[a-f0-9]{64}$/.test(file2.afterSha256) || file2.beforeSha256 !== null && !/^[a-f0-9]{64}$/.test(file2.beforeSha256) || paths.has(file2.relativePath)) {
+  for (const file2 of parsed.data.files) {
+    if (!isCodsembleOwnedOutput(file2.relativePath) || paths.has(file2.relativePath)) {
       throw new Error("Invalid transaction file record");
     }
-    const expectedBackup = file2.beforeSha256 === null ? null : `${transactionRoot}/${record2.transactionId}.backups/${file2.relativePath}`;
+    const expectedBackup = file2.beforeSha256 === null ? null : `${transactionRoot}/${parsed.data.transactionId}.backups/${file2.relativePath}`;
     if (file2.backupRelativePath !== expectedBackup) {
       throw new Error("Transaction backup path is outside its scoped directory");
     }
-    const expectedQuarantine = file2.beforeSha256 === null ? null : `${transactionRoot}/${record2.transactionId}.quarantines/${file2.relativePath}`;
+    const expectedQuarantine = file2.beforeSha256 === null ? null : `${transactionRoot}/${parsed.data.transactionId}.quarantines/${file2.relativePath}`;
     if (file2.quarantineRelativePath !== expectedQuarantine) {
       throw new Error("Transaction quarantine path is outside its scoped location");
     }
     paths.add(file2.relativePath);
+  }
+}
+function assertValidRollbackMarker(marker) {
+  const parsed = rollbackMarkerSchema.safeParse(marker);
+  if (!parsed.success) {
+    throw new Error(`Invalid rollback marker: ${parsed.error.message}`);
+  }
+  const expectedPrefix = `${transactionRoot}/${parsed.data.transactionId}.rollback.quarantines/`;
+  const paths = /* @__PURE__ */ new Set();
+  for (const quarantineRelativePath of parsed.data.quarantineRelativePaths) {
+    if (!quarantineRelativePath.startsWith(expectedPrefix) || !isCodsembleOwnedOutput(
+      quarantineRelativePath.slice(expectedPrefix.length)
+    ) || paths.has(quarantineRelativePath)) {
+      throw new Error("Invalid rollback quarantine path");
+    }
+    paths.add(quarantineRelativePath);
   }
 }
 function isCodsembleOwnedOutput(relativePath) {
@@ -18573,6 +18682,8 @@ function overallStatus(checks) {
   if (checks.some((check2) => check2.status === "warn")) return "warn";
   return "pass";
 }
+var LegacyManifestError = class extends Error {
+};
 async function readRegularFile(candidate, root) {
   await assertNoSymlinkAncestors(root, candidate);
   const stats = await lstat5(candidate);
@@ -18678,12 +18789,16 @@ async function doctorWorkspace(workspace) {
   let manifest;
   if (manifestPath) {
     try {
-      const parsed = generatedManifestSchema.safeParse(
-        JSON.parse(
-          (await readRegularFile(manifestPath, root)).toString("utf8")
-        )
+      const manifestValue = JSON.parse(
+        (await readRegularFile(manifestPath, root)).toString("utf8")
       );
+      const parsed = generatedManifestSchema.safeParse(manifestValue);
       if (!parsed.success) {
+        if (isLegacyManifestWithoutOwnershipHashes(manifestValue)) {
+          throw new LegacyManifestError(
+            "Legacy manifest has no agent ownership hashes; run the update-team workflow to migrate it safely"
+          );
+        }
         throw new Error(`invalid manifest schema: ${parsed.error.message}`);
       }
       manifest = parsed.data;
@@ -18747,8 +18862,8 @@ async function doctorWorkspace(workspace) {
     } catch (error51) {
       checks.push({
         id: "codsemble-manifest",
-        status: "fail",
-        summary: "Codsemble manifest is not valid JSON",
+        status: error51 instanceof LegacyManifestError ? "warn" : "fail",
+        summary: error51 instanceof LegacyManifestError ? "Legacy Codsemble manifest requires migration" : "Codsemble manifest is invalid",
         details: [error51 instanceof Error ? error51.message : String(error51)]
       });
     }
@@ -18810,31 +18925,41 @@ async function inspectTransactions(root) {
       ),
       ...lockPresent ? ["mutation.lock: a mutation is active or was interrupted"] : []
     ];
-    const rolledBackIds = /* @__PURE__ */ new Set();
-    for (const name of rollbackMarkerNames) {
+    for (const name of receiptNames) {
       try {
-        const marker = JSON.parse(
+        const parsed = JSON.parse(
           (await readRegularFile(path5.join(directory, name), root)).toString("utf8")
         );
-        if (marker.schemaVersion !== 1 || typeof marker.transactionId !== "string" || typeof marker.rolledBackAt !== "string") {
-          throw new Error("invalid rollback marker schema");
+        assertValidTransactionRecord(parsed);
+        if (name !== `${parsed.transactionId}.json`) {
+          throw new Error("transaction receipt filename does not match its id");
         }
-        rolledBackIds.add(marker.transactionId);
+        receipts.push(parsed);
       } catch (error51) {
         invalid.push(
           `${name}: ${error51 instanceof Error ? error51.message : String(error51)}`
         );
       }
     }
-    for (const name of receiptNames) {
+    const receiptsById = new Map(
+      receipts.map((receipt) => [receipt.transactionId, receipt])
+    );
+    const rolledBackIds = /* @__PURE__ */ new Set();
+    for (const name of rollbackMarkerNames) {
       try {
-        const parsed = JSON.parse(
+        const marker = JSON.parse(
           (await readRegularFile(path5.join(directory, name), root)).toString("utf8")
         );
-        if (parsed.schemaVersion !== 1 || typeof parsed.transactionId !== "string" || !Array.isArray(parsed.files)) {
-          throw new Error("invalid transaction schema");
+        assertValidRollbackMarker(marker);
+        if (name !== `${marker.transactionId}.rollback.json`) {
+          throw new Error("rollback marker filename does not match its id");
         }
-        receipts.push(parsed);
+        const receipt = receiptsById.get(marker.transactionId);
+        if (receipt === void 0) {
+          throw new Error("rollback marker has no valid transaction receipt");
+        }
+        assertMarkerMatchesReceipt(marker, receipt);
+        rolledBackIds.add(marker.transactionId);
       } catch (error51) {
         invalid.push(
           `${name}: ${error51 instanceof Error ? error51.message : String(error51)}`
@@ -18849,9 +18974,6 @@ async function inspectTransactions(root) {
     if (latest) {
       for (const file2 of latest.files) {
         try {
-          if (!isCodsembleOwnedOutput(file2.relativePath)) {
-            throw new Error("path is not a Codsemble-owned output");
-          }
           const currentPath = await assertContainedPath(root, file2.relativePath);
           if (file2.beforeSha256 !== null) {
             if (typeof file2.quarantineRelativePath !== "string") {
@@ -18902,6 +19024,26 @@ async function inspectTransactions(root) {
       summary: "Transaction history could not be inspected safely",
       details: [error51 instanceof Error ? error51.message : String(error51)]
     };
+  }
+}
+function isLegacyManifestWithoutOwnershipHashes(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const ownership = value.ownership;
+  if (typeof ownership !== "object" || ownership === null) return false;
+  const candidate = ownership;
+  return Array.isArray(candidate.agentFiles) && candidate.agentFiles.every(
+    (entry) => typeof entry === "string" && /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(entry)
+  ) && candidate.agentSha256 === void 0;
+}
+function assertMarkerMatchesReceipt(marker, receipt) {
+  const expected = receipt.files.filter(({ afterSha256 }) => afterSha256 !== null).map(
+    ({ relativePath }) => `.codex/codsemble/transactions/${receipt.transactionId}.rollback.quarantines/${relativePath}`
+  ).sort();
+  const actual = [...marker.quarantineRelativePaths].sort();
+  if (expected.length !== actual.length || expected.some((entry, index) => entry !== actual[index])) {
+    throw new Error(
+      "rollback marker quarantine paths do not match its transaction receipt"
+    );
   }
 }
 

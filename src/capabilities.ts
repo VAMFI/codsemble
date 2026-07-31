@@ -47,7 +47,15 @@ export type CapabilityRunner = (
 ) => Promise<CapabilityCommandResult>;
 
 const defaultRunner: CapabilityRunner = async (arguments_, workspace) => {
-  const result = await execFileAsync("codex", arguments_, {
+  const executable =
+    process.platform === "win32"
+      ? process.env.ComSpec ?? "cmd.exe"
+      : "codex";
+  const commandArguments =
+    process.platform === "win32"
+      ? ["/d", "/s", "/c", "codex.cmd", ...arguments_]
+      : arguments_;
+  const result = await execFileAsync(executable, commandArguments, {
     cwd: workspace,
     timeout: 30_000,
     maxBuffer: 32 * 1024 * 1024,

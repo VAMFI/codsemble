@@ -10,15 +10,17 @@ The local release-candidate command is:
 ```bash
 npm ci
 npm run check
+npm run sbom:verify
 node .github/scripts/validate-repository.mjs
 node .github/scripts/check-deterministic-build.mjs
 npm run checksums:verify
+npm audit --audit-level=high
 ```
 
 The current candidate passes:
 
 - strict TypeScript checking;
-- 72 unit, golden, property, security, fixture, transaction, capability,
+- 79 unit, golden, property, security, fixture, transaction, capability,
   doctor, compiler, and bundled-CLI tests;
 - deterministic bundle generation;
 - full source-payload checksum verification;

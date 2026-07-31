@@ -18,8 +18,10 @@ async function fingerprints() {
 }
 
 const before = await fingerprints();
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-execFileSync(npm, ["run", "build"], { cwd: root, stdio: "inherit" });
+execFileSync(process.execPath, [path.join(root, "scripts/build.mjs")], {
+  cwd: root,
+  stdio: "inherit",
+});
 const after = await fingerprints();
 
 for (const relative of outputs) {

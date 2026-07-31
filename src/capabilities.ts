@@ -73,6 +73,10 @@ export async function runCodexCommand(
     cwd: workspace,
     timeout: 30_000,
     maxBuffer: 32 * 1024 * 1024,
+    // cmd.exe parses its /c payload itself. Letting Node quote that payload
+    // with the C runtime rules turns the launcher's quotes into literal
+    // characters on Windows, so a resolved .cmd/.bat shim is never executed.
+    windowsVerbatimArguments: isWindowsScript,
   });
   return { stdout: result.stdout };
 }
@@ -150,7 +154,10 @@ async function resolveWindowsCommand(
       "/d",
       "/s",
       "/c",
-      `"${executable}" ${arguments_.join(" ")}`,
+      // The first and last quotes delimit cmd.exe's /c command string; the
+      // inner pair quotes the trusted launcher path. Probe arguments have
+      // already been restricted to a shell-metacharacter-free alphabet.
+      `""${executable}" ${arguments_.join(" ")}"`,
     ],
   };
 }

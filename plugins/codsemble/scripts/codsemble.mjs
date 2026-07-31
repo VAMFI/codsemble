@@ -1374,7 +1374,11 @@ async function runCodexCommand(arguments_, workspace) {
   const result = await execFileAsync2(command.executable, command.arguments, {
     cwd: workspace,
     timeout: 3e4,
-    maxBuffer: 32 * 1024 * 1024
+    maxBuffer: 32 * 1024 * 1024,
+    // cmd.exe parses its /c payload itself. Letting Node quote that payload
+    // with the C runtime rules turns the launcher's quotes into literal
+    // characters on Windows, so a resolved .cmd/.bat shim is never executed.
+    windowsVerbatimArguments: isWindowsScript
   });
   return { stdout: result.stdout };
 }
@@ -1434,7 +1438,10 @@ async function resolveWindowsCommand(executable, arguments_, workspace) {
       "/d",
       "/s",
       "/c",
-      `"${executable}" ${arguments_.join(" ")}`
+      // The first and last quotes delimit cmd.exe's /c command string; the
+      // inner pair quotes the trusted launcher path. Probe arguments have
+      // already been restricted to a shell-metacharacter-free alphabet.
+      `""${executable}" ${arguments_.join(" ")}"`
     ]
   };
 }
@@ -18000,7 +18007,7 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
           relativePath: file2.planned.relativePath,
           sourceSha256: file2.planned.beforeSha256,
           desiredSha256: file2.planned.afterSha256,
-          quarantinePath: path5.relative(root, file2.quarantinePath)
+          quarantinePath: toPosix(path5.relative(root, file2.quarantinePath))
         }))
       }
     );
@@ -18254,7 +18261,7 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
       transactionId: record2.transactionId,
       rolledBackAt: (/* @__PURE__ */ new Date()).toISOString(),
       quarantineRelativePaths: completed.map(
-        ({ quarantinePath }) => quarantinePath === null ? null : path5.relative(root, quarantinePath)
+        ({ quarantinePath }) => quarantinePath === null ? null : toPosix(path5.relative(root, quarantinePath))
       ).filter((entry) => entry !== null)
     };
     assertValidRollbackMarker(rollbackMarker);

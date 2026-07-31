@@ -86,7 +86,7 @@ describe("project transactions", () => {
 
     await rollbackTransaction(workspace, transaction.transactionId);
     expect(await readFile(configPath, "utf8")).toBe(before);
-    expect(
+    const rollbackMarker = JSON.parse(
       await readFile(
         path.join(
           workspace,
@@ -94,7 +94,17 @@ describe("project transactions", () => {
         ),
         "utf8",
       ),
-    ).toContain('"rolledBackAt"');
+    ) as { rolledBackAt: string; quarantineRelativePaths: string[] };
+    expect(rollbackMarker.rolledBackAt).toBeTruthy();
+    expect(rollbackMarker.quarantineRelativePaths).toEqual([
+      `.codex/codsemble/transactions/${transaction.transactionId}.rollback.quarantines/.codex/config.toml`,
+      `.codex/codsemble/transactions/${transaction.transactionId}.rollback.quarantines/.codex/agents/reviewer.toml`,
+    ]);
+    expect(
+      rollbackMarker.quarantineRelativePaths.every(
+        (relativePath) => !relativePath.includes("\\"),
+      ),
+    ).toBe(true);
     await expect(
       readFile(path.join(workspace, ".codex/agents/reviewer.toml")),
     ).rejects.toMatchObject({ code: "ENOENT" });

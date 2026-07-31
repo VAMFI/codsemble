@@ -24,7 +24,12 @@ import type {
   TeamPlan,
   TransactionRecord,
 } from "./types.js";
-import { assertContainedPath, sha256, stableStringify } from "./util.js";
+import {
+  assertContainedPath,
+  sha256,
+  stableStringify,
+  toPosix,
+} from "./util.js";
 
 const transactionRoot = ".codex/codsemble/transactions";
 const projectConfig = ".codex/config.toml";
@@ -355,7 +360,7 @@ export async function applyTeamPlan(
           relativePath: file.planned.relativePath,
           sourceSha256: file.planned.beforeSha256,
           desiredSha256: file.planned.afterSha256,
-          quarantinePath: path.relative(root, file.quarantinePath),
+          quarantinePath: toPosix(path.relative(root, file.quarantinePath)),
         })),
       },
     );
@@ -676,7 +681,9 @@ export async function rollbackTransaction(
       rolledBackAt: new Date().toISOString(),
       quarantineRelativePaths: completed
         .map(({ quarantinePath }) =>
-          quarantinePath === null ? null : path.relative(root, quarantinePath),
+          quarantinePath === null
+            ? null
+            : toPosix(path.relative(root, quarantinePath)),
         )
         .filter((entry): entry is string => entry !== null),
     };

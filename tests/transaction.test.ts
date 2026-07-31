@@ -283,21 +283,28 @@ describe("project transactions", () => {
     ).rejects.toThrow("preserved for manual recovery");
 
     expect(await readFile(target, "utf8")).toBe("racing user bytes");
-    const agentDirectory = await readdir(path.dirname(target));
-    const quarantine = agentDirectory.find((entry) =>
-      entry.includes(".quarantine"),
+    const transactionDirectory = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
     );
-    expect(quarantine).toBeDefined();
-    expect(
-      await readFile(path.join(path.dirname(target), quarantine as string), "utf8"),
-    ).toBe(before);
-    const transactionEntries = await readdir(
-      path.join(workspace, ".codex/codsemble/transactions"),
-    );
+    const transactionEntries = await readdir(transactionDirectory);
     expect(transactionEntries).toContain("mutation.lock");
+    const pendingName = transactionEntries.find((entry) =>
+      entry.endsWith(".apply.pending.json"),
+    );
+    expect(pendingName).toBeDefined();
+    const pending = JSON.parse(
+      await readFile(
+        path.join(transactionDirectory, pendingName as string),
+        "utf8",
+      ),
+    ) as { files: Array<{ quarantinePath: string }> };
     expect(
-      transactionEntries.some((entry) => entry.endsWith(".apply.pending.json")),
-    ).toBe(true);
+      await readFile(
+        path.join(workspace, pending.files[0]?.quarantinePath as string),
+        "utf8",
+      ),
+    ).toBe(before);
   });
 
   it("retains late writes made through an already-open source inode", async () => {

@@ -17763,13 +17763,15 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
     if (planned.content !== null) {
       validatePlannedOutput(planned.relativePath, planned.content, plan);
     }
+    const quarantineRelativePath = `${transactionRoot}/${transactionId}.quarantines/${planned.relativePath}`;
     prepared.push({
       planned,
       absolutePath,
       before: state.content,
       mode: state.mode,
       backupRelativePath: state.content === null ? null : `${transactionRoot}/${transactionId}.backups/${planned.relativePath}`,
-      quarantinePath: `${absolutePath}.codsemble-${transactionId}.quarantine`
+      quarantinePath: await safeTarget(root, quarantineRelativePath),
+      quarantineRelativePath
     });
   }
   await validateUnchangedManifestOwnership(root, plan);
@@ -17784,7 +17786,7 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
       afterSha256: file2.planned.afterSha256,
       backupRelativePath: file2.backupRelativePath,
       mode: file2.mode,
-      quarantineRelativePath: file2.before === null ? null : path4.relative(root, file2.quarantinePath)
+      quarantineRelativePath: file2.before === null ? null : file2.quarantineRelativePath
     }))
   };
   const staged = /* @__PURE__ */ new Map();
@@ -17800,6 +17802,7 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
         await atomicWrite(backup, file2.before, file2.mode ?? 384);
       }
       await ensureSafeParentDirectories(root, file2.absolutePath);
+      await ensureSafeParentDirectories(root, file2.quarantinePath);
       if (file2.planned.action !== "delete") {
         const temporary = await stageFile(
           file2.absolutePath,
@@ -17875,6 +17878,7 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
   const record2 = typeof transaction === "string" ? await loadTransaction(root, transaction) : transaction;
   validateTransaction(record2);
   const targets = [];
+  const rollbackOperationId = `${record2.transactionId}-${randomUUID()}`;
   for (const file2 of record2.files) {
     const absolutePath = await safeTarget(root, file2.relativePath);
     const current = await readSafeRegularFile(absolutePath);
@@ -17899,15 +17903,16 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
         validateToml(decodeUtf8(backup, file2.relativePath));
       }
     }
+    const quarantineRelativePath = `${transactionRoot}/${rollbackOperationId}.quarantines/${file2.relativePath}`;
     targets.push({
       record: file2,
       absolutePath,
       backup,
-      postimage: current.content
+      quarantinePath: await safeTarget(root, quarantineRelativePath),
+      quarantineRelativePath
     });
   }
   const staged = /* @__PURE__ */ new Map();
-  const rollbackOperationId = `${record2.transactionId}-${randomUUID()}`;
   const completed = [];
   let releaseLock;
   let pendingPath;
@@ -17918,6 +17923,7 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
       record2.transactionId
     );
     for (const target of targets) {
+      await ensureSafeParentDirectories(root, target.quarantinePath);
       if (target.backup !== null) {
         const temporary = await stageFile(
           target.absolutePath,
@@ -17939,10 +17945,7 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
           relativePath: target.record.relativePath,
           sourceSha256: target.record.afterSha256,
           desiredSha256: target.record.beforeSha256,
-          quarantinePath: path4.relative(
-            root,
-            `${target.absolutePath}.codsemble-${rollbackOperationId}.quarantine`
-          )
+          quarantinePath: target.quarantineRelativePath
         }))
       }
     );
@@ -17958,7 +17961,7 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
           sourceSha256: target.record.afterSha256,
           desiredSha256: target.record.beforeSha256,
           stagedPath: temporary ?? null,
-          quarantinePath: `${target.absolutePath}.codsemble-${rollbackOperationId}.quarantine`,
+          quarantinePath: target.quarantinePath,
           mode: target.record.mode ?? 384,
           hooks
         })
@@ -17977,7 +17980,10 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
       stableStringify({
         schemaVersion: 1,
         transactionId: record2.transactionId,
-        rolledBackAt: (/* @__PURE__ */ new Date()).toISOString()
+        rolledBackAt: (/* @__PURE__ */ new Date()).toISOString(),
+        quarantineRelativePaths: completed.map(
+          ({ quarantinePath }) => quarantinePath === null ? null : path4.relative(root, quarantinePath)
+        ).filter((entry) => entry !== null)
       }),
       384
     );
@@ -18528,7 +18534,7 @@ function validateTransaction(record2) {
     if (file2.backupRelativePath !== expectedBackup) {
       throw new Error("Transaction backup path is outside its scoped directory");
     }
-    const expectedQuarantine = file2.beforeSha256 === null ? null : `${file2.relativePath}.codsemble-${record2.transactionId}.quarantine`;
+    const expectedQuarantine = file2.beforeSha256 === null ? null : `${transactionRoot}/${record2.transactionId}.quarantines/${file2.relativePath}`;
     if (file2.quarantineRelativePath !== expectedQuarantine) {
       throw new Error("Transaction quarantine path is outside its scoped location");
     }

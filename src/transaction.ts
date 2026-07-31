@@ -123,6 +123,7 @@ interface PreflightFile {
   mode: number | null;
   backupRelativePath: string | null;
   quarantinePath: string;
+  quarantineRelativePath: string;
 }
 
 interface CompletedMutation {
@@ -197,6 +198,8 @@ export async function applyTeamPlan(
     if (planned.content !== null) {
       validatePlannedOutput(planned.relativePath, planned.content, plan);
     }
+    const quarantineRelativePath =
+      `${transactionRoot}/${transactionId}.quarantines/${planned.relativePath}`;
     prepared.push({
       planned,
       absolutePath,
@@ -206,7 +209,8 @@ export async function applyTeamPlan(
         state.content === null
           ? null
           : `${transactionRoot}/${transactionId}.backups/${planned.relativePath}`,
-      quarantinePath: `${absolutePath}.codsemble-${transactionId}.quarantine`,
+      quarantinePath: await safeTarget(root, quarantineRelativePath),
+      quarantineRelativePath,
     });
   }
   await validateUnchangedManifestOwnership(root, plan);
@@ -226,7 +230,7 @@ export async function applyTeamPlan(
       quarantineRelativePath:
         file.before === null
           ? null
-          : path.relative(root, file.quarantinePath),
+          : file.quarantineRelativePath,
     })),
   };
 
@@ -243,6 +247,7 @@ export async function applyTeamPlan(
         await atomicWrite(backup, file.before, file.mode ?? 0o600);
       }
       await ensureSafeParentDirectories(root, file.absolutePath);
+      await ensureSafeParentDirectories(root, file.quarantinePath);
       if (file.planned.action !== "delete") {
         const temporary = await stageFile(
           file.absolutePath,
@@ -339,8 +344,10 @@ export async function rollbackTransaction(
     record: TransactionRecord["files"][number];
     absolutePath: string;
     backup: Buffer | null;
-    postimage: Buffer | null;
+    quarantinePath: string;
+    quarantineRelativePath: string;
   }> = [];
+  const rollbackOperationId = `${record.transactionId}-${randomUUID()}`;
 
   for (const file of record.files) {
     const absolutePath = await safeTarget(root, file.relativePath);
@@ -371,16 +378,18 @@ export async function rollbackTransaction(
         validateToml(decodeUtf8(backup, file.relativePath));
       }
     }
+    const quarantineRelativePath =
+      `${transactionRoot}/${rollbackOperationId}.quarantines/${file.relativePath}`;
     targets.push({
       record: file,
       absolutePath,
       backup,
-      postimage: current.content,
+      quarantinePath: await safeTarget(root, quarantineRelativePath),
+      quarantineRelativePath,
     });
   }
 
   const staged = new Map<string, string>();
-  const rollbackOperationId = `${record.transactionId}-${randomUUID()}`;
   const completed: CompletedMutation[] = [];
   let releaseLock: (() => Promise<void>) | undefined;
   let pendingPath: string | undefined;
@@ -391,6 +400,7 @@ export async function rollbackTransaction(
       record.transactionId,
     );
     for (const target of targets) {
+      await ensureSafeParentDirectories(root, target.quarantinePath);
       if (target.backup !== null) {
         const temporary = await stageFile(
           target.absolutePath,
@@ -412,10 +422,7 @@ export async function rollbackTransaction(
           relativePath: target.record.relativePath,
           sourceSha256: target.record.afterSha256,
           desiredSha256: target.record.beforeSha256,
-          quarantinePath: path.relative(
-            root,
-            `${target.absolutePath}.codsemble-${rollbackOperationId}.quarantine`,
-          ),
+          quarantinePath: target.quarantineRelativePath,
         })),
       },
     );
@@ -432,7 +439,7 @@ export async function rollbackTransaction(
           sourceSha256: target.record.afterSha256,
           desiredSha256: target.record.beforeSha256,
           stagedPath: temporary ?? null,
-          quarantinePath: `${target.absolutePath}.codsemble-${rollbackOperationId}.quarantine`,
+          quarantinePath: target.quarantinePath,
           mode: target.record.mode ?? 0o600,
           hooks,
         }),
@@ -452,6 +459,11 @@ export async function rollbackTransaction(
         schemaVersion: 1,
         transactionId: record.transactionId,
         rolledBackAt: new Date().toISOString(),
+        quarantineRelativePaths: completed
+          .map(({ quarantinePath }) =>
+            quarantinePath === null ? null : path.relative(root, quarantinePath),
+          )
+          .filter((entry): entry is string => entry !== null),
       }),
       0o600,
     );
@@ -1185,7 +1197,7 @@ function validateTransaction(record: TransactionRecord): void {
     const expectedQuarantine =
       file.beforeSha256 === null
         ? null
-        : `${file.relativePath}.codsemble-${record.transactionId}.quarantine`;
+        : `${transactionRoot}/${record.transactionId}.quarantines/${file.relativePath}`;
     if (file.quarantineRelativePath !== expectedQuarantine) {
       throw new Error("Transaction quarantine path is outside its scoped location");
     }

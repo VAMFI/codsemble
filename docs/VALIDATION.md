@@ -49,7 +49,7 @@ and a disposable trusted Git project. Existing authentication was referenced
 without copying or recording credential contents.
 
 The refreshed run is bound to source commit
-`9bdd2381cac00015eaa0698edde36d589e542859` and the reproducible 12-file plugin
+`75feec9ad6763473f0719a53743219e578633301` and the reproducible 12-file plugin
 payload digest recorded in `artifacts/runtime-evidence.json`. The digest
 algorithm is implemented by `scripts/plugin-payload-digest.mjs`.
 
@@ -69,10 +69,13 @@ The following boundaries passed:
 7. A three-spawn capacity test admitted two children and rejected the third
    with `agent thread limit reached`; no retry storm occurred.
 8. A trivial turn produced no subagent activity.
-9. The project transaction rolled back, leaving no generated project files
-   outside receipt-owned transaction history. Five rollback source
-   quarantines remained under transaction history as the documented
-   open-inode recovery boundary.
+9. A converged update produced five state-bound `verify` actions. Applying that
+   exact plan returned `noChanges: true`, `transaction: null`, and
+   `reloadRequired: false`, while the receipt count remained unchanged.
+10. Both mutating transactions rolled back in reverse order, leaving no
+    generated project files outside receipt-owned transaction history. Six
+    rollback source quarantines remained under transaction history as the
+    documented open-inode recovery boundary.
 
 The sanitized machine-readable record is
 `artifacts/runtime-evidence.json`. Raw session files are not included because

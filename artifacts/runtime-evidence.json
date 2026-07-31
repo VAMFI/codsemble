@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-07-31T08:54:28Z",
+  "capturedAt": "2026-07-31T09:36:04Z",
   "source": {
-    "validatedCommit": "9bdd2381cac00015eaa0698edde36d589e542859",
-    "pluginPayloadSha256": "8894082e57301a5b0471fe6a5ea2016d7096b8f5a793b0da6d5a0c11f427a408",
+    "validatedCommit": "75feec9ad6763473f0719a53743219e578633301",
+    "pluginPayloadSha256": "6af24b7a1ef81c7d41e7993ac08f66fbb396482ff40e667ac20be99978b77ba2",
     "pluginPayloadDigestAlgorithm": "sha256(path-nul-length-nul-content-nul)",
     "pluginFileCount": 12
   },
@@ -31,8 +31,9 @@
     "rawModelInstructionsRetained": false
   },
   "confirmedPlan": {
-    "confirmationId": "e0be89d10754ab8e7211e60497d7413b",
-    "transactionId": "ec00b452-80ec-4590-8dd8-ba62dd51f52f",
+    "planId": "f5349b97b7cdd0d31756cdad",
+    "confirmationId": "0057cf33c32d4006fc9c47d8d1af8c02",
+    "transactionId": "a82df316-a7de-420b-87a1-f980602dfdfb",
     "configMode": "apply-project",
     "projectCurrentValue": null,
     "requestedSpawnedWorkerCeiling": 2,
@@ -40,41 +41,58 @@
     "doctorAfterApply": "pass"
   },
   "nativeAgentRun": {
-    "parentThreadId": "019fb760-4bc2-7883-9123-43c4b036b9ca",
+    "parentThreadId": "019fb783-fc8a-72a3-9651-d422b03ec87c",
     "children": [
       {
-        "threadId": "019fb760-64f7-7b32-a9f5-e1a16af8b377",
+        "threadId": "019fb784-10da-7043-b791-468ec8e58f77",
         "agentRole": "delivery_planner",
         "generatedDeveloperInstructionsObserved": true,
-        "result": "PLAN-OK The fixture requires two specialist confirmations before the root reports the combined result."
+        "result": "PLAN-OK Delivery planning and integration testing must be independently reviewed before the root reports readiness."
       },
       {
-        "threadId": "019fb760-6d54-7292-88c9-96aa456a8ab1",
+        "threadId": "019fb784-1c13-7ca3-81bf-7cabea15be2d",
         "agentRole": "integration_test_engineer",
         "generatedDeveloperInstructionsObserved": true,
-        "result": "TEST-OK The fixture requires confirming integration readiness without modifying repository files."
+        "result": "TEST-OK Delivery planning and integration testing must be independently reviewed before the root reports readiness."
       }
     ],
     "rootIntegratedResult": "ROOT-OK PLAN-OK TEST-OK",
     "generatedForkGuidanceObserved": true
   },
   "capacityRun": {
-    "parentThreadId": "019fb760-a8fc-77b0-8fa2-3f67fd6e801d",
+    "parentThreadId": "019fb784-b1a4-7410-9b01-6ce2ed04b91b",
     "configuredSpawnedWorkerCeiling": 2,
     "successfulChildren": 2,
     "thirdSpawn": "collab spawn failed: agent thread limit reached",
     "unboundedRetryObserved": false
   },
   "trivialRun": {
-    "parentThreadId": "019fb761-50ae-76e1-b150-b7914579ae09",
+    "parentThreadId": "019fb786-529e-78f0-b490-4bb1fdfc8642",
     "result": "TRIVIAL-OK",
     "subagentActivityEvents": 0
   },
+  "idempotentUpdate": {
+    "convergenceTransactionId": "45c12594-07bb-487f-a9c6-391283ea242c",
+    "convergedPlanId": "f73aef6a4039c1dc01c35ed2",
+    "allManagedActions": "verify",
+    "noChanges": true,
+    "transaction": null,
+    "reloadRequired": false,
+    "receiptCountBefore": 2,
+    "receiptCountAfter": 2,
+    "doctorAfterNoOp": "pass"
+  },
   "rollback": {
-    "transactionReverted": true,
+    "transactionsRevertedInReverseOrder": [
+      "45c12594-07bb-487f-a9c6-391283ea242c",
+      "a82df316-a7de-420b-87a1-f980602dfdfb"
+    ],
     "generatedProjectFilesRemaining": 0,
-    "receiptOwnedRecoveryQuarantinesRetainedUnderTransactionHistory": 5,
-    "userReadmePreserved": true
+    "receiptOwnedRecoveryQuarantinesRetainedUnderTransactionHistory": 6,
+    "userReadmePreserved": true,
+    "ordinaryInputArtifactsPreserved": true,
+    "transactionHistoryCheckAfterRollback": "pass",
+    "doctorAfterRollback": "warn-as-uninitialized"
   },
   "evidencePolicy": {
     "rawSessionFilesIncluded": false,

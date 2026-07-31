@@ -17428,6 +17428,7 @@ function renderManagedAgentsBody(roles, proposal) {
     ),
     "",
     "Delegate only separable, bounded work. The primary thread owns scope, integration, authorization, and final claims.",
+    'When spawning a generated agent type, use `fork_turns="none"` or a bounded positive turn count; full-history forks inherit the parent agent type.',
     "Treat the worker ceiling as capacity, not a target. Keep trivial or tightly coupled work on the primary thread."
   ].join("\n");
 }

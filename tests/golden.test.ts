@@ -69,7 +69,7 @@ describe("generated team golden", () => {
       ".codex/config.toml":
         "94df6d9753a820e91b6795b30d77be256a0cf849d789b1f0313c07d27439440f",
       "AGENTS.md":
-        "9ca0bc8f30b14ee17101569a1be9439a1e7b2e915bf4c34815e195749aa2affa",
+        "146ff71556f933861da021df825e89f15edefcb708c8e2beff2eab35b0ea7501",
     });
   });
 });

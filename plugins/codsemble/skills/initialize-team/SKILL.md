@@ -23,14 +23,27 @@ not download, install, or substitute another executable.
   credentials, providers, hooks, MCP servers, or third-party skills/plugins.
 - Never push, publish, deploy, release, submit, or message external systems.
 - Do not infer apply approval from a request to initialize. Apply only after
-  showing the final exact diff and receiving confirmation of its exact plan id.
+  showing the final exact diff and receiving its exact confirmation id.
 - Keep installed role count separate from concurrent spawned workers. The
   worker count excludes the primary/orchestrator thread. Never derive it from
   the catalog size of 111.
 
 ## Workflow
 
-1. Resolve the exact workspace root and run:
+1. Resolve the exact workspace root and probe the installed Codex runtime:
+
+   ```text
+   node <plugin-root>/scripts/codsemble.mjs capabilities --workspace <absolute-workspace>
+   ```
+
+   The probe is read-only. Copy its model ids into `availableModelIds`, use
+   only those ids in `verifiedModels`, and record only tools actually available
+   to the current session in `availableTools`.
+   If it cannot confirm native multi-agent support, keep models inherited and
+   use `manual` or `unchanged` config mode. A requested sandbox never grants
+   authority beyond the parent session.
+
+2. Run the workspace audit:
 
    ```text
    node <plugin-root>/scripts/codsemble.mjs audit --workspace <absolute-workspace>
@@ -39,7 +52,7 @@ not download, install, or substitute another executable.
    Inspect the JSON. Surface truncation, exclusions, dirty-worktree state, and
    existing Codex configuration. Do not write audit output inside the workspace.
 
-2. Ask only for facts the audit cannot establish. Collect:
+3. Ask only for facts the audit cannot establish. Collect:
 
    - goals and project stage;
    - desired number of installed roles;
@@ -53,7 +66,7 @@ not download, install, or substitute another executable.
    Warn before concurrency above 16 and require explicit high-concurrency
    acceptance. Explain that a role can be installed without running.
 
-3. Write the typed answers JSON to a temporary path outside the workspace.
+4. Write the typed answers JSON to a temporary path outside the workspace.
    Never place credentials, repository source, or arbitrary repository prose in
    it. Run:
 
@@ -63,12 +76,12 @@ not download, install, or substitute another executable.
      --answers <absolute-temporary-answers-json>
    ```
 
-4. Present Lean, Balanced, and Full proposals with evidence, overlap warnings,
+5. Present Lean, Balanced, and Full proposals with evidence, overlap warnings,
    and worker ceilings. Recommend the smallest option that covers the user's
    goals. Use `catalog --search <term>` only when the user wants another
    specialist; do not dump all 111 roles into onboarding.
 
-5. After the user selects and customizes one proposal, run:
+6. After the user selects and customizes one proposal, run:
 
    ```text
    node <plugin-root>/scripts/codsemble.mjs plan \
@@ -82,25 +95,25 @@ not download, install, or substitute another executable.
    exact diff. State that project config is a persistent default loaded only
    when Codex trusts the project and may require a fresh session.
 
-6. For `preview`, stop after the plan. For `manual`, explain that apply will
+7. For `preview`, stop after the plan. For `manual`, explain that apply will
    write the confirmed team artifacts while leaving `.codex/config.toml`
    untouched, and show the concurrency snippet for the user to install
    separately. For `unchanged`, explain that apply will write the confirmed
    team artifacts without changing concurrency configuration.
 
-7. For any non-preview mode, ask the user to confirm the displayed exact plan
-   id. Accept only an unambiguous match. Then run:
+8. For any non-preview mode, ask the user to confirm the displayed exact plan
+   confirmation id. Accept only an unambiguous match. Then run:
 
    ```text
    node <plugin-root>/scripts/codsemble.mjs apply \
      --workspace <absolute-workspace> \
      --plan <absolute-temporary-plan-json> \
-     --confirm <exact-plan-id>
+     --confirm <exact-confirmation-id>
    ```
 
    Do not alter the plan after confirmation. If any preimage changed, stop and
    regenerate instead of retrying or overwriting.
 
-8. Run `doctor --workspace <absolute-workspace>`. Report structural results
+9. Run `doctor --workspace <absolute-workspace>`. Report structural results
    separately from checks that require a fresh Codex session. Remove temporary
    answer and plan files when they are no longer needed.

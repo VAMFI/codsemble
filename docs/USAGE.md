@@ -41,6 +41,9 @@ Direct CLI flow:
 node "<plugin-root>/scripts/codsemble.mjs" audit \
   --workspace "/absolute/path/to/workspace"
 
+node "<plugin-root>/scripts/codsemble.mjs" capabilities \
+  --workspace "/absolute/path/to/workspace"
+
 node "<plugin-root>/scripts/codsemble.mjs" recommend \
   --workspace "/absolute/path/to/workspace" \
   --answers "/temporary/path/answers.json"
@@ -52,14 +55,18 @@ node "<plugin-root>/scripts/codsemble.mjs" plan \
 ```
 
 These commands emit JSON to standard output and do not write workspace files.
+`capabilities` asks the installed local Codex executable for its version,
+multi-agent feature state, and bounded model metadata. It discards raw provider
+instructions and cannot grant permissions. If probing fails, keep model
+configuration inherited and use manual or unchanged config mode.
 Save the plan outside the workspace, inspect every proposed path and diff, then
-apply with the exact plan id:
+apply with the exact confirmation id, which is a digest of the complete plan:
 
 ```bash
 node "<plugin-root>/scripts/codsemble.mjs" apply \
   --workspace "/absolute/path/to/workspace" \
   --plan "/temporary/path/plan.json" \
-  --confirm "<exact-plan-id>"
+  --confirm "<exact-confirmation-id>"
 ```
 
 `apply` is the mutating boundary. Do not infer confirmation from an earlier
@@ -122,11 +129,13 @@ Or select a transaction:
 ```bash
 node "<plugin-root>/scripts/codsemble.mjs" rollback \
   --workspace "/absolute/path/to/workspace" \
-  --transaction "<transaction-id-or-json-path>" \
+  --transaction "<transaction-id>" \
   --confirm "<exact-transaction-id>"
 ```
 
-The `$rollback-team` skill performs a read-only reverse preview first. The
+Only a canonical receipt selected by transaction id can be rolled back;
+external receipt JSON is never accepted. The `$rollback-team` skill performs a
+read-only reverse preview first. The
 direct `rollback` CLI command is the mutating boundary and requires the exact
 transaction id after that review. Rollback restores only Codsemble-owned
 postimages whose hashes still match. It refuses to overwrite later edits and

@@ -8,7 +8,13 @@ import type {
   DoctorReport,
   TransactionRecord,
 } from "./types.js";
-import { assertWorkspaceRoot, sha256 } from "./util.js";
+import {
+  assertContainedPath,
+  assertNoSymlinkAncestors,
+  assertWorkspaceRoot,
+  sha256,
+} from "./util.js";
+import { isCodsembleOwnedOutput } from "./transaction.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -29,6 +35,8 @@ function overallStatus(checks: DoctorCheck[]): DoctorReport["overallStatus"] {
 
 interface TeamManifest {
   schemaVersion?: unknown;
+  generator?: { name?: unknown; version?: unknown };
+  catalogVersion?: unknown;
   planId?: unknown;
   proposal?: { maxConcurrentWorkers?: unknown };
   ownership?: {
@@ -37,7 +45,11 @@ interface TeamManifest {
   };
 }
 
-async function readRegularFile(candidate: string): Promise<Buffer> {
+async function readRegularFile(
+  candidate: string,
+  root: string,
+): Promise<Buffer> {
+  await assertNoSymlinkAncestors(root, candidate);
   const stats = await lstat(candidate);
   if (!stats.isFile() || stats.isSymbolicLink() || stats.nlink !== 1) {
     throw new Error("Expected a regular, single-link file");
@@ -53,7 +65,7 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
   if (await exists(configPath)) {
     try {
       const parsed = parseToml(
-        (await readRegularFile(configPath)).toString("utf8"),
+        (await readRegularFile(configPath, root)).toString("utf8"),
       ) as { agents?: { max_concurrent_threads_per_session?: unknown } };
       const concurrency =
         parsed.agents?.max_concurrent_threads_per_session;
@@ -93,7 +105,7 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
       try {
         const parsed = parseToml(
           (
-            await readRegularFile(path.join(agentsDirectory, entry))
+            await readRegularFile(path.join(agentsDirectory, entry), root)
           ).toString("utf8"),
         ) as Record<string, unknown>;
         for (const required of [
@@ -144,16 +156,20 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
   if (manifestPath) {
     try {
       manifest = JSON.parse(
-        (await readRegularFile(manifestPath)).toString("utf8"),
+        (await readRegularFile(manifestPath, root)).toString("utf8"),
       ) as TeamManifest;
       const valid =
-        manifest.schemaVersion === 1 && typeof manifest.planId === "string";
+        manifest.schemaVersion === 1 &&
+        typeof manifest.planId === "string" &&
+        manifest.generator?.name === "codsemble" &&
+        typeof manifest.generator.version === "string" &&
+        typeof manifest.catalogVersion === "string";
       checks.push({
         id: "codsemble-manifest",
         status: valid ? "pass" : "fail",
         summary: valid
           ? `Codsemble manifest loaded from ${path.relative(root, manifestPath)}`
-          : "Codsemble manifest is missing schemaVersion=1 or planId",
+          : "Codsemble manifest is missing required schema, generator, catalog, or plan metadata",
       });
       if (valid) {
         const ownedAgents = Array.isArray(manifest.ownership?.agentFiles)
@@ -193,7 +209,7 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
         ) {
           try {
             const agentsText = (
-              await readRegularFile(path.join(root, "AGENTS.md"))
+              await readRegularFile(path.join(root, "AGENTS.md"), root)
             ).toString("utf8");
             const starts = agentsText.split(block.start).length - 1;
             const ends = agentsText.split(block.end).length - 1;
@@ -292,7 +308,7 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
       try {
         const marker = JSON.parse(
           (
-            await readRegularFile(path.join(directory, name))
+            await readRegularFile(path.join(directory, name), root)
           ).toString("utf8"),
         ) as {
           schemaVersion?: unknown;
@@ -317,7 +333,7 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
       try {
         const parsed = JSON.parse(
           (
-            await readRegularFile(path.join(directory, name))
+            await readRegularFile(path.join(directory, name), root)
           ).toString("utf8"),
         ) as TransactionRecord;
         if (
@@ -344,12 +360,28 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
     if (latest) {
       for (const file of latest.files) {
         try {
-          const current = await readRegularFile(path.join(root, file.relativePath));
+          if (!isCodsembleOwnedOutput(file.relativePath)) {
+            throw new Error("path is not a Codsemble-owned output");
+          }
+          const currentPath = await assertContainedPath(root, file.relativePath);
+          if (file.afterSha256 === null) {
+            if (await exists(currentPath)) {
+              drift.push(`${file.relativePath}: deleted output was recreated`);
+            }
+            continue;
+          }
+          const current = await readRegularFile(currentPath, root);
           if (sha256(current) !== file.afterSha256) {
             drift.push(`${file.relativePath}: content changed after apply`);
           }
-        } catch {
-          drift.push(`${file.relativePath}: missing or not a regular file`);
+        } catch (error) {
+          drift.push(
+            `${file.relativePath}: ${
+              error instanceof Error
+                ? error.message
+                : "missing or not a regular file"
+            }`,
+          );
         }
       }
     }

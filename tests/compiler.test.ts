@@ -70,10 +70,13 @@ function answers(
     maxConcurrentWorkers: 3,
     optimizeFor: "quality",
     configMode: "preview",
+    configAdapter: "agents-v1",
     prohibitedActions: ["Do not publish."],
     requiredRoles: [],
     excludedRoles: [],
     customRoles: [],
+    availableTools: ["workspace-read"],
+    availableModelIds: [],
     verifiedModels: {},
     allowHighConcurrency: false,
     ...overrides,
@@ -118,7 +121,7 @@ describe("compileTeamPlan", () => {
       ({ relativePath }) => relativePath === "AGENTS.md",
     );
     expect(agentsFile?.content).toContain("Keep this exact.");
-    expect(agentsFile?.content.match(/codsemble:start/g)).toHaveLength(1);
+    expect(agentsFile?.content?.match(/codsemble:start/g)).toHaveLength(1);
     expect(plan.concurrency.requestedWorkers).toBe(3);
     expect(plan.roles).toHaveLength(1);
     expect(plan.concurrency.warning).toContain("roles and concurrency");
@@ -137,7 +140,10 @@ describe("compileTeamPlan", () => {
     const pinned = await compileTeamPlan(
       root,
       audit,
-      answers({ verifiedModels: { deep: "gpt-verified-deep" } }),
+      answers({
+        availableModelIds: ["gpt-verified-deep"],
+        verifiedModels: { deep: "gpt-verified-deep" },
+      }),
       proposal,
       [blueprint],
       {},
@@ -148,6 +154,20 @@ describe("compileTeamPlan", () => {
     expect(inheritedRole).not.toHaveProperty("model");
     expect(pinnedRole?.model).toBe("gpt-verified-deep");
     expect(pinnedRole?.reasoningEffort).toBe("high");
+  });
+
+  it("rejects a model not present in the bounded capability result", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codsemble-model-reject-"));
+    await expect(
+      compileTeamPlan(
+        root,
+        audit,
+        answers({ verifiedModels: { deep: "unverified-model" } }),
+        proposal,
+        [blueprint],
+        {},
+      ),
+    ).rejects.toThrow("not present in the local capability probe");
   });
 
   it("uses a Codex-safe identifier as the native agent name", async () => {
@@ -265,7 +285,7 @@ describe("compileTeamPlan", () => {
         ({ relativePath }) => relativePath === ".codex/config.toml",
       ),
     ).toBe(false);
-    expect(higher.concurrency.effectiveCurrentValue).toBe(8);
+    expect(higher.concurrency.projectCurrentValue).toBe(8);
     expect(higher.concurrency.warning).toContain("will not be lowered");
   });
 
@@ -298,5 +318,63 @@ describe("compileTeamPlan", () => {
         "AGENTS.md": "<!-- codsemble:start -->\nbroken\n",
       }),
     ).rejects.toThrow(/malformed/);
+  });
+
+  it("rejects cross-platform reserved agent identifiers", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codsemble-reserved-name-"));
+    const reserved = { ...blueprint, id: "con" };
+    await expect(
+      compileTeamPlan(
+        root,
+        audit,
+        answers(),
+        {
+          ...proposal,
+          roles: [{ roleId: "con", score: 1, reasons: [], warnings: [] }],
+        },
+        [reserved],
+        {},
+      ),
+    ).rejects.toThrow("reserved on Windows");
+  });
+
+  it("deletes only stale agents owned by the prior manifest", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codsemble-stale-agent-"));
+    const manifest = JSON.stringify({
+      schemaVersion: 1,
+      planId: "prior",
+      ownership: {
+        agentFiles: [".codex/agents/stale-role.toml"],
+      },
+    });
+    const plan = await compileTeamPlan(
+      root,
+      audit,
+      answers(),
+      proposal,
+      [blueprint],
+      {
+        ".codex/codsemble/manifest.json": manifest,
+        ".codex/agents/stale-role.toml": 'name = "stale_role"\n',
+      },
+    );
+
+    expect(plan.files).toContainEqual(
+      expect.objectContaining({
+        relativePath: ".codex/agents/stale-role.toml",
+        action: "delete",
+        afterSha256: null,
+        content: null,
+      }),
+    );
+  });
+
+  it("refuses to overwrite an agent not owned by the prior manifest", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codsemble-owned-agent-"));
+    await expect(
+      compileTeamPlan(root, audit, answers(), proposal, [blueprint], {
+        ".codex/agents/planner.toml": 'name = "user_planner"\n',
+      }),
+    ).rejects.toThrow("user-owned agent file");
   });
 });

@@ -49,3 +49,6 @@ jobs:
 
       - name: Verify deterministic bundled CLI
         run: node .github/scripts/check-deterministic-build.mjs
+
+      - name: Verify source payload checksums
+        run: npm run checksums:verify

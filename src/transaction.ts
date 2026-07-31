@@ -11,6 +11,7 @@ import {
 import path from "node:path";
 
 import { validateToml } from "./config.js";
+import { computeConfirmationId } from "./compiler.js";
 import type {
   PlannedFile,
   TeamPlan,
@@ -47,7 +48,15 @@ export async function applyTeamPlan(
         `Preimage conflict for ${planned.relativePath}: expected ${formatHash(planned.beforeSha256)}, found ${formatHash(beforeHash)}`,
       );
     }
-    if (sha256(planned.content) !== planned.afterSha256) {
+    if (planned.action === "delete") {
+      if (planned.content !== null || planned.afterSha256 !== null) {
+        throw new Error(`Delete plan has an after-image for ${planned.relativePath}`);
+      }
+    } else if (
+      typeof planned.content !== "string" ||
+      planned.afterSha256 === null ||
+      sha256(planned.content) !== planned.afterSha256
+    ) {
       throw new Error(`After-image hash mismatch for ${planned.relativePath}`);
     }
     if (planned.action === "create" && state.content !== null) {
@@ -56,11 +65,17 @@ export async function applyTeamPlan(
     if (planned.action === "update" && state.content === null) {
       throw new Error(`Update target does not exist: ${planned.relativePath}`);
     }
+    if (planned.action === "delete" && state.content === null) {
+      throw new Error(`Delete target does not exist: ${planned.relativePath}`);
+    }
     if (planned.relativePath === projectConfig) {
       if (state.content !== null) {
         validateToml(decodeUtf8(state.content, planned.relativePath));
       }
-      validateToml(planned.content);
+      if (planned.content !== null) validateToml(planned.content);
+    }
+    if (planned.content !== null) {
+      validatePlannedOutput(planned.relativePath, planned.content);
     }
     prepared.push({
       planned,
@@ -99,19 +114,17 @@ export async function applyTeamPlan(
         await atomicWrite(backup, file.before, file.mode ?? 0o600);
       }
       await ensureSafeParentDirectories(root, file.absolutePath);
-      const temporary = await stageFile(
-        file.absolutePath,
-        Buffer.from(file.planned.content, "utf8"),
-        file.mode ?? 0o600,
-      );
-      staged.set(file.absolutePath, temporary);
+      if (file.planned.action !== "delete") {
+        const temporary = await stageFile(
+          file.absolutePath,
+          Buffer.from(file.planned.content as string, "utf8"),
+          file.mode ?? 0o600,
+        );
+        staged.set(file.absolutePath, temporary);
+      }
     }
 
     for (const file of prepared) {
-      const temporary = staged.get(file.absolutePath);
-      if (temporary === undefined) {
-        throw new Error(`Missing staged file for ${file.planned.relativePath}`);
-      }
       const current = await readSafeRegularFile(file.absolutePath);
       const currentHash =
         current.content === null ? null : sha256(current.content);
@@ -120,10 +133,18 @@ export async function applyTeamPlan(
           `Concurrent modification of ${file.planned.relativePath}: expected ${formatHash(file.planned.beforeSha256)}, found ${formatHash(currentHash)}`,
         );
       }
-      await rename(temporary, file.absolutePath);
-      staged.delete(file.absolutePath);
-      await syncDirectory(path.dirname(file.absolutePath));
+      if (file.planned.action === "delete") {
+        await unlink(file.absolutePath);
+      } else {
+        const temporary = staged.get(file.absolutePath);
+        if (temporary === undefined) {
+          throw new Error(`Missing staged file for ${file.planned.relativePath}`);
+        }
+        await rename(temporary, file.absolutePath);
+        staged.delete(file.absolutePath);
+      }
       installed.push(file);
+      await syncDirectory(path.dirname(file.absolutePath));
     }
 
     const receiptRelativePath = `${transactionRoot}/${transactionId}.json`;
@@ -159,6 +180,7 @@ export async function rollbackTransaction(
     record: TransactionRecord["files"][number];
     absolutePath: string;
     backup: Buffer | null;
+    postimage: Buffer | null;
   }> = [];
 
   for (const file of record.files) {
@@ -190,7 +212,12 @@ export async function rollbackTransaction(
         validateToml(decodeUtf8(backup, file.relativePath));
       }
     }
-    targets.push({ record: file, absolutePath, backup });
+    targets.push({
+      record: file,
+      absolutePath,
+      backup,
+      postimage: current.content,
+    });
   }
 
   const staged = new Map<string, string>();
@@ -205,8 +232,17 @@ export async function rollbackTransaction(
     }
   }
 
+  const completed: typeof targets = [];
   try {
     for (const target of targets) {
+      const current = await readSafeRegularFile(target.absolutePath);
+      const currentHash =
+        current.content === null ? null : sha256(current.content);
+      if (currentHash !== target.record.afterSha256) {
+        throw new Error(
+          `Rollback concurrent modification of ${target.record.relativePath}`,
+        );
+      }
       if (target.backup === null) {
         await unlink(target.absolutePath);
       } else {
@@ -217,6 +253,7 @@ export async function rollbackTransaction(
         await rename(temporary, target.absolutePath);
         staged.delete(target.absolutePath);
       }
+      completed.push(target);
       await syncDirectory(path.dirname(target.absolutePath));
     }
     const rollbackMarker = await safeTarget(
@@ -235,8 +272,52 @@ export async function rollbackTransaction(
     );
   } catch (error) {
     await cleanupStaged(staged);
+    const restoreErrors = await restoreRolledBack(completed);
+    if (restoreErrors.length > 0) {
+      throw new AggregateError(
+        [error, ...restoreErrors],
+        "Rollback failed and forward restoration was incomplete",
+      );
+    }
     throw error;
   }
+}
+
+async function restoreRolledBack(
+  completed: Array<{
+    record: TransactionRecord["files"][number];
+    absolutePath: string;
+    backup: Buffer | null;
+    postimage: Buffer | null;
+  }>,
+): Promise<unknown[]> {
+  const errors: unknown[] = [];
+  for (const target of [...completed].reverse()) {
+    try {
+      const current = await readSafeRegularFile(target.absolutePath);
+      const expectedRollbackHash = target.record.beforeSha256;
+      const currentHash =
+        current.content === null ? null : sha256(current.content);
+      if (currentHash !== expectedRollbackHash) {
+        throw new Error(
+          `Refusing forward restoration after concurrent modification of ${target.record.relativePath}`,
+        );
+      }
+      if (target.postimage === null) {
+        await unlink(target.absolutePath);
+        await syncDirectory(path.dirname(target.absolutePath));
+      } else {
+        await atomicWrite(
+          target.absolutePath,
+          target.postimage,
+          target.record.mode ?? 0o600,
+        );
+      }
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  return errors;
 }
 
 async function resolveSafeWorkspace(workspace: string): Promise<string> {
@@ -378,12 +459,35 @@ async function stageFile(
 }
 
 async function syncDirectory(directory: string): Promise<void> {
-  const handle = await open(directory, "r");
+  let handle;
   try {
-    await handle.sync();
+    handle = await open(directory, "r");
+  } catch (error) {
+    if (process.platform === "win32" && isUnsupportedDirectorySync(error)) {
+      return;
+    }
+    throw error;
+  }
+  try {
+    try {
+      await handle.sync();
+    } catch (error) {
+      if (!(process.platform === "win32" && isUnsupportedDirectorySync(error))) {
+        throw error;
+      }
+    }
   } finally {
     await handle.close();
   }
+}
+
+function isUnsupportedDirectorySync(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
+  return ["EACCES", "EINVAL", "EISDIR", "ENOTSUP", "EPERM"].includes(
+    String((error as NodeJS.ErrnoException).code),
+  );
 }
 
 async function restoreInstalled(installed: PreflightFile[]): Promise<unknown[]> {
@@ -450,12 +554,17 @@ function validatePlan(plan: TeamPlan): void {
   if (
     plan.schemaVersion !== 1 ||
     !plan.planId ||
+    !/^[a-f0-9]{32}$/.test(plan.confirmationId) ||
     !Array.isArray(plan.files) ||
     !Array.isArray(plan.preimages)
   ) {
     throw new Error("Invalid team plan");
   }
+  if (computeConfirmationId(plan) !== plan.confirmationId) {
+    throw new Error("Plan confirmation digest mismatch");
+  }
   const paths = new Set<string>();
+  let totalContentBytes = 0;
   for (const file of plan.files) {
     if (!isCodsembleOwnedOutput(file.relativePath)) {
       throw new Error(
@@ -465,24 +574,107 @@ function validatePlan(plan: TeamPlan): void {
     if (paths.has(file.relativePath)) {
       throw new Error(`Duplicate planned path: ${file.relativePath}`);
     }
+    if (!["create", "update", "delete"].includes(file.action)) {
+      throw new Error(`Invalid planned action: ${file.relativePath}`);
+    }
+    if (
+      file.action === "delete"
+        ? file.content !== null || file.afterSha256 !== null
+        : typeof file.content !== "string" ||
+          file.afterSha256 === null ||
+          !/^[a-f0-9]{64}$/.test(file.afterSha256)
+    ) {
+      throw new Error(`Invalid planned after-image: ${file.relativePath}`);
+    }
+    if (typeof file.content === "string") {
+      const bytes = Buffer.byteLength(file.content, "utf8");
+      if (bytes > 1024 * 1024) {
+        throw new Error(`Planned output exceeds 1 MiB: ${file.relativePath}`);
+      }
+      totalContentBytes += bytes;
+    }
     paths.add(file.relativePath);
   }
-  if (plan.preimages.length > 0) {
-    const preimages = new Map(
-      plan.preimages.map((preimage) => [preimage.relativePath, preimage]),
-    );
-    if (preimages.size !== plan.preimages.length) {
-      throw new Error("Duplicate plan preimage path");
+  if (totalContentBytes > 8 * 1024 * 1024) {
+    throw new Error("Combined planned output exceeds 8 MiB");
+  }
+  const preimages = new Map(
+    plan.preimages.map((preimage) => [preimage.relativePath, preimage]),
+  );
+  if (
+    preimages.size !== plan.preimages.length ||
+    preimages.size !== plan.files.length
+  ) {
+    throw new Error("Plan must contain exactly one preimage per planned path");
+  }
+  for (const file of plan.files) {
+    const preimage = preimages.get(file.relativePath);
+    if (
+      preimage === undefined ||
+      preimage.sha256 !== file.beforeSha256 ||
+      preimage.exists !== (file.beforeSha256 !== null) ||
+      (file.beforeSha256 !== null &&
+        !/^[a-f0-9]{64}$/.test(file.beforeSha256))
+    ) {
+      throw new Error(`Plan preimage metadata mismatch: ${file.relativePath}`);
     }
-    for (const file of plan.files) {
-      const preimage = preimages.get(file.relativePath);
-      if (
-        preimage === undefined ||
-        preimage.sha256 !== file.beforeSha256 ||
-        preimage.exists !== (file.beforeSha256 !== null)
-      ) {
-        throw new Error(`Plan preimage metadata mismatch: ${file.relativePath}`);
+  }
+}
+
+function validatePlannedOutput(
+  relativePath: string,
+  content: string,
+): void {
+  if (/^\.codex\/agents\/.+\.toml$/.test(relativePath)) {
+    const parsed = validateToml(content);
+    const allowed = new Set([
+      "name",
+      "description",
+      "developer_instructions",
+      "model",
+      "model_reasoning_effort",
+      "sandbox_mode",
+    ]);
+    for (const key of Object.keys(parsed)) {
+      if (!allowed.has(key)) {
+        throw new Error(`Generated agent contains unsupported key: ${key}`);
       }
+    }
+    for (const required of ["name", "description", "developer_instructions"]) {
+      if (typeof parsed[required] !== "string" || parsed[required] === "") {
+        throw new Error(`Generated agent is missing ${required}`);
+      }
+    }
+    if (
+      parsed.sandbox_mode !== "read-only" &&
+      parsed.sandbox_mode !== "workspace-write"
+    ) {
+      throw new Error("Generated agent has an unsupported sandbox_mode");
+    }
+  } else if (relativePath === ".codex/codsemble/manifest.json") {
+    const parsed = JSON.parse(content) as {
+      schemaVersion?: unknown;
+      planId?: unknown;
+      generator?: { name?: unknown; version?: unknown };
+      catalogVersion?: unknown;
+      ownership?: unknown;
+    };
+    if (
+      parsed.schemaVersion !== 1 ||
+      typeof parsed.planId !== "string" ||
+      parsed.generator?.name !== "codsemble" ||
+      typeof parsed.generator.version !== "string" ||
+      typeof parsed.catalogVersion !== "string" ||
+      typeof parsed.ownership !== "object" ||
+      parsed.ownership === null
+    ) {
+      throw new Error("Generated Codsemble manifest has an invalid schema");
+    }
+  } else if (relativePath === "AGENTS.md") {
+    const starts = content.split("<!-- codsemble:start -->").length - 1;
+    const ends = content.split("<!-- codsemble:end -->").length - 1;
+    if (starts !== 1 || ends !== 1) {
+      throw new Error("Generated AGENTS.md must contain exactly one managed block");
     }
   }
 }
@@ -500,7 +692,8 @@ function validateTransaction(record: TransactionRecord): void {
     if (
       !file.relativePath ||
       !isCodsembleOwnedOutput(file.relativePath) ||
-      !/^[a-f0-9]{64}$/.test(file.afterSha256) ||
+      (file.afterSha256 !== null &&
+        !/^[a-f0-9]{64}$/.test(file.afterSha256)) ||
       (file.beforeSha256 !== null &&
         !/^[a-f0-9]{64}$/.test(file.beforeSha256)) ||
       paths.has(file.relativePath)
@@ -518,7 +711,7 @@ function validateTransaction(record: TransactionRecord): void {
   }
 }
 
-function isCodsembleOwnedOutput(relativePath: string): boolean {
+export function isCodsembleOwnedOutput(relativePath: string): boolean {
   return (
     relativePath === "AGENTS.md" ||
     relativePath === ".codex/config.toml" ||

@@ -7,6 +7,7 @@ import {
   applyTeamPlan,
   rollbackTransaction,
 } from "../src/transaction.js";
+import { computeConfirmationId } from "../src/compiler.js";
 import type { TeamPlan } from "../src/types.js";
 import { sha256 } from "../src/util.js";
 
@@ -73,9 +74,11 @@ describe("doctorWorkspace", () => {
       ".codex/config.toml":
         "[agents]\nmax_concurrent_threads_per_session = 2\n",
       ".codex/agents/reviewer.toml":
-        'name = "Reviewer"\ndescription = "Review changes"\ndeveloper_instructions = "Report evidence."\n',
+        'name = "Reviewer"\ndescription = "Review changes"\ndeveloper_instructions = "Report evidence."\nsandbox_mode = "read-only"\n',
       ".codex/codsemble/manifest.json": `${JSON.stringify({
         schemaVersion: 1,
+        generator: { name: "codsemble", version: "0.1.0" },
+        catalogVersion: "0.1.0",
         planId: "doctor-plan",
         ownership: {
           agentsBlock: {
@@ -87,16 +90,19 @@ describe("doctorWorkspace", () => {
         },
       })}\n`,
     };
-    const plan: TeamPlan = {
+    const unsignedPlan: Omit<TeamPlan, "confirmationId"> = {
       schemaVersion: 1,
       planId: "doctor-plan",
       auditFingerprint: "fixture",
       roles: [],
       concurrency: {
         requestedWorkers: 2,
-        effectiveCurrentValue: null,
+        projectCurrentValue: null,
         adapter: "agents-v1",
         configMode: "apply-project",
+        willApply: true,
+        manualSnippet:
+          "[agents]\nmax_concurrent_threads_per_session = 2\n",
       },
       preimages: Object.entries(files).map(([relativePath]) => ({
         relativePath,
@@ -111,6 +117,10 @@ describe("doctorWorkspace", () => {
         afterSha256: sha256(content),
         content,
       })),
+    };
+    const plan: TeamPlan = {
+      ...unsignedPlan,
+      confirmationId: computeConfirmationId(unsignedPlan),
     };
     const transaction = await applyTeamPlan(workspace, plan);
 
@@ -143,5 +153,41 @@ describe("doctorWorkspace", () => {
     expect(
       rolledBack.checks.find((check) => check.id === "transactions")?.summary,
     ).toContain("all are recorded as rolled back");
+  });
+
+  it("rejects transaction receipt paths outside owned outputs", async () => {
+    const workspace = await fixture();
+    const transactionDirectory = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
+    );
+    await mkdir(transactionDirectory, { recursive: true });
+    await writeFile(
+      path.join(transactionDirectory, "forged.json"),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        transactionId: "forged",
+        planId: "forged-plan",
+        createdAt: new Date(0).toISOString(),
+        files: [
+          {
+            relativePath: "../../outside",
+            beforeSha256: null,
+            afterSha256: "a".repeat(64),
+            backupRelativePath: null,
+            mode: null,
+          },
+        ],
+      })}\n`,
+    );
+
+    const report = await doctorWorkspace(workspace);
+    const transactions = report.checks.find(
+      (check) => check.id === "transactions",
+    );
+    expect(transactions?.status).toBe("warn");
+    expect(transactions?.details?.join(" ")).toContain(
+      "not a Codsemble-owned output",
+    );
   });
 });

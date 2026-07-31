@@ -11,20 +11,30 @@ The local release-candidate command is:
 npm ci
 npm run check
 node .github/scripts/validate-repository.mjs
+node .github/scripts/check-deterministic-build.mjs
+npm run checksums:verify
 ```
 
 The current candidate passes:
 
 - strict TypeScript checking;
-- 44 unit, security, fixture, transaction, doctor, compiler, and bundled-CLI
-  tests;
+- 58 unit, golden, property, security, fixture, transaction, capability,
+  doctor, compiler, and bundled-CLI tests;
 - deterministic bundle generation;
+- full source-payload checksum verification;
 - exactly 111 schema-valid, uniquely identified role blueprints;
 - the official plugin validator;
 - the official skill validator for all four skills;
 - repository metadata and absolute-path leak checks;
 - CycloneDX 1.5 SBOM generation for 133 components;
 - `npm audit` with zero reported vulnerabilities.
+- the complete 58-test check on Linux arm64 in a clean Node 20
+  `bookworm-slim` container with Git installed.
+
+Ignored secret-like fixture files are created dynamically, so a clean checkout
+does not depend on ignored developer-worktree state. Git audits exclude
+ordinary untracked files by default while still recognizing bounded untracked
+Codex-managed state.
 
 The checked-in SBOM is
 `artifacts/codsemble-0.1.0-rc.sbom.cdx.json`.
@@ -59,6 +69,8 @@ they referenced local authentication state.
 ## Honest remaining boundaries
 
 - Cross-platform CI is configured but has not run on a public CI provider.
+  Local Linux arm64 and macOS arm64 checks pass; Windows remains CI-only and
+  unproven until publication.
 - Real-runtime proof currently covers one macOS arm64 host and Codex 0.145.0.
 - The repository has not been pushed, tagged, or released.
 - OpenAI plugin-directory submission is a separate external review boundary.

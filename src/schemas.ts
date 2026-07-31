@@ -58,10 +58,23 @@ export const intakeAnswersSchema = z
     maxConcurrentWorkers: z.number().int().min(1).max(111),
     optimizeFor: z.enum(["balanced", "quality", "speed", "cost"]),
     configMode: z.enum(["preview", "apply-project", "manual", "unchanged"]),
+    configAdapter: z.literal("agents-v1").nullable(),
     prohibitedActions: z.array(z.string()),
     requiredRoles: z.array(z.string()),
     excludedRoles: z.array(z.string()),
     customRoles: z.array(customRoleInputSchema).max(20),
+    availableTools: z
+      .array(z.string().regex(/^[a-z][a-z0-9-]{1,63}$/))
+      .max(100)
+      .refine((values) => new Set(values).size === values.length, {
+        message: "availableTools must not contain duplicates",
+      }),
+    availableModelIds: z
+      .array(z.string().min(1).max(200).regex(/^[^\s]+$/))
+      .max(100)
+      .refine((values) => new Set(values).size === values.length, {
+        message: "availableModelIds must not contain duplicates",
+      }),
     verifiedModels: z
       .object({
         inherit: z.string().optional(),
@@ -80,6 +93,28 @@ export const intakeAnswersSchema = z
         message:
           "Concurrency above 16 requires allowHighConcurrency=true after an explicit warning",
         path: ["maxConcurrentWorkers"],
+      });
+    }
+    const available = new Set(answers.availableModelIds);
+    for (const [profile, model] of Object.entries(answers.verifiedModels)) {
+      if (model !== undefined && !available.has(model)) {
+        context.addIssue({
+          code: "custom",
+          message: `Model ${model} was not present in the local capability probe`,
+          path: ["verifiedModels", profile],
+        });
+      }
+    }
+    if (
+      (answers.configMode === "preview" ||
+        answers.configMode === "apply-project") &&
+      answers.configAdapter !== "agents-v1"
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "preview and apply-project require an agents-v1 adapter confirmed by the local capability probe",
+        path: ["configAdapter"],
       });
     }
   });

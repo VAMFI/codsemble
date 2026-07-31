@@ -251,7 +251,7 @@ export async function auditWorkspace(
   let candidates: Candidate[];
 
   if (git) {
-    const enumeration = await enumerateGitCandidates(root, git);
+    const enumeration = await enumerateGitCandidates(root, git, skips);
     candidates = enumeration.candidates;
     dirtyWorktree = enumeration.dirty;
     if (enumeration.warning) {
@@ -286,6 +286,10 @@ export async function auditWorkspace(
     }
     if (!isAllowlisted(relativePath)) {
       increment(skips, "not-allowlisted");
+      continue;
+    }
+    if (isAuxiliaryEvidencePath(relativePath)) {
+      increment(skips, "fixture-or-example");
       continue;
     }
     if (BINARY_EXTENSIONS.has(path.posix.extname(relativePath).toLowerCase())) {
@@ -363,6 +367,14 @@ export async function auditWorkspace(
   };
 }
 
+function isAuxiliaryEvidencePath(relativePath: string): boolean {
+  const lower = relativePath.toLowerCase();
+  return (
+    /(^|\/)(?:fixtures?|examples?|snapshots?)(\/|$)/.test(lower) ||
+    /(^|\/)__fixtures__(\/|$)/.test(lower)
+  );
+}
+
 function resolveOptions(options: AuditOptions): ResolvedAuditOptions {
   return {
     maxFiles: boundedInteger(options.maxFiles, DEFAULT_MAX_FILES, 1, HARD_MAX_FILES, "maxFiles"),
@@ -417,6 +429,7 @@ async function detectGit(root: string): Promise<GitContext | null> {
 async function enumerateGitCandidates(
   root: string,
   git: GitContext,
+  skips: Map<string, number>,
 ): Promise<{ candidates: Candidate[]; dirty: boolean | null; warning?: string }> {
   const pathspec = git.workspacePrefix || ".";
   try {
@@ -445,10 +458,16 @@ async function enumerateGitCandidates(
     const trackedSet = new Set(tracked.map(({ relativePath }) => relativePath));
     const untracked = parseGitPaths(untrackedOutput, git.workspacePrefix)
       .filter((relativePath) => !trackedSet.has(relativePath))
-      .sort(compareText)
+      .sort(compareText);
+    const managedUntracked = untracked
+      .filter(isCodexStateCandidate)
       .map((relativePath) => ({ relativePath, source: "untracked" as const }));
+    const excludedUntracked = untracked.length - managedUntracked.length;
+    if (excludedUntracked > 0) {
+      increment(skips, "untracked", excludedUntracked);
+    }
     return {
-      candidates: [...tracked, ...untracked],
+      candidates: [...tracked, ...managedUntracked],
       dirty: statusOutput.length > 0,
     };
   } catch {
@@ -463,6 +482,15 @@ async function enumerateGitCandidates(
       warning: "Git metadata was detected but could not be queried; used a bounded filesystem scan.",
     };
   }
+}
+
+function isCodexStateCandidate(relativePath: string): boolean {
+  return (
+    relativePath === "AGENTS.md" ||
+    relativePath === ".codex/config.toml" ||
+    relativePath === ".codex/codsemble/manifest.json" ||
+    /^\.codex\/agents\/[^/]+\.toml$/.test(relativePath)
+  );
 }
 
 async function runGit(cwd: string, args: string[]): Promise<string> {
@@ -906,8 +934,12 @@ function confidenceForEvidence(
   return evidence.length >= 2 ? "medium" : "low";
 }
 
-function increment(counts: Map<string, number>, reason: string): void {
-  counts.set(reason, (counts.get(reason) ?? 0) + 1);
+function increment(
+  counts: Map<string, number>,
+  reason: string,
+  amount = 1,
+): void {
+  counts.set(reason, (counts.get(reason) ?? 0) + amount);
 }
 
 function toSkipSummary(counts: Map<string, number>): AuditSkipSummary[] {

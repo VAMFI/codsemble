@@ -25,7 +25,7 @@ reconstruct ownership from guesses or download replacement tooling.
 - Ask separately for installed role count and concurrent spawned workers. The
   worker count excludes the primary thread; never set it from 111 catalog
   entries.
-- Apply only the exact reviewed plan after exact plan-id confirmation.
+- Apply only the exact reviewed plan after exact confirmation-id approval.
 
 ## Workflow
 
@@ -73,13 +73,13 @@ reconstruct ownership from guesses or download replacement tooling.
    update will leave `.codex/config.toml` untouched and show the concurrency
    snippet separately. For `unchanged`, state that the confirmed update will
    preserve concurrency configuration. For any non-preview mode, ask for exact
-   confirmation of the displayed plan id, then run:
+   confirmation of the displayed confirmation id, then run:
 
    ```text
    node <plugin-root>/scripts/codsemble.mjs apply \
      --workspace <absolute-workspace> \
      --plan <absolute-temporary-plan-json> \
-     --confirm <exact-plan-id>
+     --confirm <exact-confirmation-id>
    ```
 
    Abort on preimage drift. Do not force, merge around, or overwrite a

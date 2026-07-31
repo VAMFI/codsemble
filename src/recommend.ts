@@ -82,6 +82,7 @@ function validateSelectionInputs(
   roles: RoleBlueprint[],
 ): void {
   const catalogIds = new Set(roles.map(({ id }) => id));
+  const availableTools = new Set(answers.availableTools);
   const customIds = new Set<string>();
 
   for (const custom of answers.customRoles) {
@@ -106,6 +107,17 @@ function validateSelectionInputs(
       throw new Error(`Role cannot be both required and excluded: ${id}`);
     }
   }
+  for (const id of answers.requiredRoles) {
+    const role = roles.find((candidate) => candidate.id === id);
+    const missing = role?.requiredTools.filter(
+      (tool) => !availableTools.has(tool),
+    );
+    if (missing && missing.length > 0) {
+      throw new Error(
+        `Required role ${id} needs unavailable tools: ${missing.join(", ")}`,
+      );
+    }
+  }
 }
 
 function scoreCandidates(
@@ -115,6 +127,7 @@ function scoreCandidates(
 ): ScoredCandidate[] {
   const excluded = new Set(answers.excludedRoles);
   const required = new Set(answers.requiredRoles);
+  const availableTools = new Set(answers.availableTools);
   const goals = new Set(answers.goals);
   const signalTokens = new Map<string, string[]>();
 
@@ -141,7 +154,11 @@ function scoreCandidates(
   }
 
   return roles
-    .filter(({ id }) => !excluded.has(id))
+    .filter(
+      ({ id, requiredTools }) =>
+        !excluded.has(id) &&
+        requiredTools.every((tool) => availableTools.has(tool)),
+    )
     .map((role) => {
       let score = 0;
       const reasons: string[] = [];

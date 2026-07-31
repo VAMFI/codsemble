@@ -90,10 +90,13 @@ export interface IntakeAnswers {
   maxConcurrentWorkers: number;
   optimizeFor: OptimizeFor;
   configMode: ConfigMode;
+  configAdapter: "agents-v1" | null;
   prohibitedActions: string[];
   requiredRoles: string[];
   excludedRoles: string[];
   customRoles: CustomRoleInput[];
+  availableTools: string[];
+  availableModelIds: string[];
   verifiedModels: Partial<Record<ModelProfile, string>>;
   allowHighConcurrency: boolean;
 }
@@ -138,23 +141,26 @@ export interface FilePreimage {
 
 export interface PlannedFile {
   relativePath: string;
-  action: "create" | "update";
+  action: "create" | "update" | "delete";
   beforeSha256: string | null;
-  afterSha256: string;
-  content: string;
+  afterSha256: string | null;
+  content: string | null;
 }
 
 export interface ConcurrencyPlan {
   requestedWorkers: number;
-  effectiveCurrentValue: number | null;
-  adapter: "agents-v1" | "multi-agent-v2";
+  projectCurrentValue: number | null;
+  adapter: "agents-v1" | null;
   configMode: ConfigMode;
+  willApply: boolean;
+  manualSnippet: string | null;
   warning?: string;
 }
 
 export interface TeamPlan {
   schemaVersion: 1;
   planId: string;
+  confirmationId: string;
   auditFingerprint: string;
   roles: ResolvedRole[];
   concurrency: ConcurrencyPlan;
@@ -170,7 +176,7 @@ export interface TransactionRecord {
   files: Array<{
     relativePath: string;
     beforeSha256: string | null;
-    afterSha256: string;
+    afterSha256: string | null;
     backupRelativePath: string | null;
     mode: number | null;
   }>;

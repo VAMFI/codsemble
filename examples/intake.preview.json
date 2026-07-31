@@ -9,12 +9,17 @@
   "maxConcurrentWorkers": 3,
   "optimizeFor": "balanced",
   "configMode": "preview",
+  "configAdapter": "agents-v1",
   "prohibitedActions": [
     "Do not push, publish, deploy, or change credentials."
   ],
   "requiredRoles": [],
   "excludedRoles": [],
   "customRoles": [],
+  "availableTools": [
+    "workspace-read"
+  ],
+  "availableModelIds": [],
   "verifiedModels": {},
   "allowHighConcurrency": false
 }

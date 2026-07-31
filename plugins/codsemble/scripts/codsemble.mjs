@@ -525,6 +525,10 @@ function assertSafeIdentifier(value, label) {
   if (!/^[a-z][a-z0-9_-]{1,63}$/.test(value)) {
     throw new Error(`${label} must match ^[a-z][a-z0-9_-]{1,63}$`);
   }
+  const windowsStem = value.split(/[._-]/, 1)[0]?.toLowerCase();
+  if (windowsStem !== void 0 && /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/.test(windowsStem)) {
+    throw new Error(`${label} is reserved on Windows`);
+  }
 }
 function toPosix(relativePath) {
   return relativePath.split(path.sep).join("/");
@@ -545,13 +549,33 @@ async function assertContainedPath(workspaceRoot, candidate) {
   }
   return absolute;
 }
+async function assertNoSymlinkAncestors(workspaceRoot, candidate) {
+  const contained = await assertContainedPath(workspaceRoot, candidate);
+  const relativeDirectory = path.relative(
+    workspaceRoot,
+    path.dirname(contained)
+  );
+  let cursor = workspaceRoot;
+  for (const part of relativeDirectory === "" ? [] : relativeDirectory.split(path.sep)) {
+    cursor = path.join(cursor, part);
+    try {
+      const stats = await lstat(cursor);
+      if (stats.isSymbolicLink() || !stats.isDirectory()) {
+        throw new Error(`Unsafe path ancestor: ${cursor}`);
+      }
+    } catch (error51) {
+      if (typeof error51 === "object" && error51 !== null && "code" in error51 && error51.code === "ENOENT") {
+        return;
+      }
+      throw error51;
+    }
+  }
+}
 function escapeTomlBasicString(value) {
   return JSON.stringify(value);
 }
 function escapeTomlMultiline(value) {
-  const normalized = value.replace(/\r\n?/g, "\n").replace(/"""/g, '\\"\\"\\"');
-  return `"""${normalized.endsWith("\n") ? normalized : `${normalized}
-`}"""`;
+  return JSON.stringify(value.replace(/\r\n?/g, "\n"));
 }
 function managedBlock(startMarker, endMarker, body) {
   return `${startMarker}
@@ -754,7 +778,7 @@ async function auditWorkspace(workspace, options = {}) {
   let dirtyWorktree = null;
   let candidates;
   if (git) {
-    const enumeration = await enumerateGitCandidates(root, git);
+    const enumeration = await enumerateGitCandidates(root, git, skips);
     candidates = enumeration.candidates;
     dirtyWorktree = enumeration.dirty;
     if (enumeration.warning) {
@@ -787,6 +811,10 @@ async function auditWorkspace(workspace, options = {}) {
     }
     if (!isAllowlisted(relativePath)) {
       increment(skips, "not-allowlisted");
+      continue;
+    }
+    if (isAuxiliaryEvidencePath(relativePath)) {
+      increment(skips, "fixture-or-example");
       continue;
     }
     if (BINARY_EXTENSIONS.has(path2.posix.extname(relativePath).toLowerCase())) {
@@ -858,6 +886,10 @@ async function auditWorkspace(workspace, options = {}) {
     warnings: [...new Set(warnings)].sort(compareText)
   };
 }
+function isAuxiliaryEvidencePath(relativePath) {
+  const lower = relativePath.toLowerCase();
+  return /(^|\/)(?:fixtures?|examples?|snapshots?)(\/|$)/.test(lower) || /(^|\/)__fixtures__(\/|$)/.test(lower);
+}
 function resolveOptions(options) {
   return {
     maxFiles: boundedInteger(options.maxFiles, DEFAULT_MAX_FILES, 1, HARD_MAX_FILES, "maxFiles"),
@@ -896,7 +928,7 @@ async function detectGit(root) {
     return null;
   }
 }
-async function enumerateGitCandidates(root, git) {
+async function enumerateGitCandidates(root, git, skips) {
   const pathspec = git.workspacePrefix || ".";
   try {
     const [trackedOutput, untrackedOutput, statusOutput] = await Promise.all([
@@ -920,9 +952,14 @@ async function enumerateGitCandidates(root, git) {
     ]);
     const tracked = parseGitPaths(trackedOutput, git.workspacePrefix).sort(compareText).map((relativePath) => ({ relativePath, source: "tracked" }));
     const trackedSet = new Set(tracked.map(({ relativePath }) => relativePath));
-    const untracked = parseGitPaths(untrackedOutput, git.workspacePrefix).filter((relativePath) => !trackedSet.has(relativePath)).sort(compareText).map((relativePath) => ({ relativePath, source: "untracked" }));
+    const untracked = parseGitPaths(untrackedOutput, git.workspacePrefix).filter((relativePath) => !trackedSet.has(relativePath)).sort(compareText);
+    const managedUntracked = untracked.filter(isCodexStateCandidate).map((relativePath) => ({ relativePath, source: "untracked" }));
+    const excludedUntracked = untracked.length - managedUntracked.length;
+    if (excludedUntracked > 0) {
+      increment(skips, "untracked", excludedUntracked);
+    }
     return {
-      candidates: [...tracked, ...untracked],
+      candidates: [...tracked, ...managedUntracked],
       dirty: statusOutput.length > 0
     };
   } catch {
@@ -937,6 +974,9 @@ async function enumerateGitCandidates(root, git) {
       warning: "Git metadata was detected but could not be queried; used a bounded filesystem scan."
     };
   }
+}
+function isCodexStateCandidate(relativePath) {
+  return relativePath === "AGENTS.md" || relativePath === ".codex/config.toml" || relativePath === ".codex/codsemble/manifest.json" || /^\.codex\/agents\/[^/]+\.toml$/.test(relativePath);
 }
 async function runGit(cwd, args) {
   const result = await execFileAsync("git", ["-c", "core.quotepath=false", ...args], {
@@ -1267,14 +1307,132 @@ function confidenceForEvidence(evidence) {
   }
   return evidence.length >= 2 ? "medium" : "low";
 }
-function increment(counts, reason) {
-  counts.set(reason, (counts.get(reason) ?? 0) + 1);
+function increment(counts, reason, amount = 1) {
+  counts.set(reason, (counts.get(reason) ?? 0) + amount);
 }
 function toSkipSummary(counts) {
   return [...counts.entries()].filter(([, count]) => count > 0).sort(([left], [right]) => compareText(left, right)).map(([reason, count]) => ({ reason, count }));
 }
 function compareText(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+// src/capabilities.ts
+import { execFile as execFile2 } from "node:child_process";
+import { promisify as promisify2 } from "node:util";
+var execFileAsync2 = promisify2(execFile2);
+var defaultRunner = async (arguments_, workspace) => {
+  const result = await execFileAsync2("codex", arguments_, {
+    cwd: workspace,
+    timeout: 3e4,
+    maxBuffer: 32 * 1024 * 1024
+  });
+  return { stdout: result.stdout };
+};
+async function detectCodexCapabilities(workspace, runner = defaultRunner) {
+  const root = await assertWorkspaceRoot(workspace);
+  const warnings = [];
+  let version2 = null;
+  let featureOutput = null;
+  let modelOutput = null;
+  try {
+    version2 = parseCodexVersion((await runner(["--version"], root)).stdout);
+    if (version2 === null) {
+      warnings.push("Codex returned an unrecognized version string.");
+    }
+  } catch (error51) {
+    warnings.push(`Codex version probe failed: ${errorMessage(error51)}`);
+  }
+  if (version2 !== null) {
+    try {
+      featureOutput = (await runner(["features", "list"], root)).stdout;
+    } catch (error51) {
+      warnings.push(`Codex feature probe failed: ${errorMessage(error51)}`);
+    }
+    try {
+      modelOutput = (await runner(["debug", "models"], root)).stdout;
+    } catch (error51) {
+      warnings.push(`Codex model probe failed: ${errorMessage(error51)}`);
+    }
+  }
+  const multiAgent = parseFeature(featureOutput, "multi_agent");
+  const adapterSupported = multiAgent === true && version2 !== null && supportsAgentsV1(version2);
+  const models = parseModels(modelOutput, warnings);
+  if (multiAgent !== true) {
+    warnings.push(
+      "Native multi-agent support was not confirmed; do not apply a concurrency setting until the active Codex runtime reports it enabled."
+    );
+  } else if (!adapterSupported) {
+    warnings.push(
+      `Codex ${version2 ?? "unknown"} is outside Codsemble's tested config-adapter range; use manual or unchanged config mode.`
+    );
+  }
+  return {
+    schemaVersion: 1,
+    probe: "local-read-only",
+    codex: { available: version2 !== null, version: version2 },
+    multiAgent: {
+      enabled: multiAgent,
+      configAdapter: adapterSupported ? "agents-v1" : null
+    },
+    models: {
+      status: modelOutput === null ? "unavailable" : "available",
+      entries: models
+    },
+    permissions: {
+      enforcement: "inherited-from-parent-session",
+      canGrantPermissions: false,
+      supportedSandboxModes: ["read-only", "workspace-write"]
+    },
+    tools: {
+      intrinsic: ["workspace-read"],
+      sessionDependent: ["workspace-edit", "local-validation"]
+    },
+    warnings
+  };
+}
+function supportsAgentsV1(version2) {
+  const match = version2.match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major === 0 && minor === 145;
+}
+function parseCodexVersion(output) {
+  const match = output.trim().match(/^codex-cli\s+([0-9]+\.[0-9]+\.[0-9]+(?:[-+][^\s]+)?)$/);
+  return match?.[1] ?? null;
+}
+function parseFeature(output, feature) {
+  if (output === null) return null;
+  const line = output.split(/\r?\n/).find((candidate) => candidate.trimStart().startsWith(`${feature} `));
+  if (!line) return null;
+  const value = line.trim().split(/\s+/).at(-1);
+  return value === "true" ? true : value === "false" ? false : null;
+}
+function parseModels(output, warnings) {
+  if (output === null) return [];
+  try {
+    const parsed = JSON.parse(output);
+    if (!Array.isArray(parsed.models)) {
+      throw new Error("model catalog has no models array");
+    }
+    return parsed.models.filter(
+      (model) => typeof model.slug === "string" && model.slug.length > 0
+    ).map((model) => ({
+      id: model.slug,
+      displayName: typeof model.display_name === "string" ? model.display_name : model.slug,
+      defaultReasoningEffort: typeof model.default_reasoning_level === "string" ? model.default_reasoning_level : null,
+      supportedReasoningEfforts: Array.isArray(
+        model.supported_reasoning_levels
+      ) ? model.supported_reasoning_levels.map(({ effort }) => effort).filter((effort) => typeof effort === "string") : []
+    })).sort((left, right) => left.id.localeCompare(right.id));
+  } catch (error51) {
+    warnings.push(`Codex model catalog could not be parsed: ${errorMessage(error51)}`);
+    return [];
+  }
+}
+function errorMessage(error51) {
+  return error51 instanceof Error ? error51.message : String(error51);
 }
 
 // src/catalog.ts
@@ -15846,10 +16004,17 @@ var intakeAnswersSchema = external_exports.object({
   maxConcurrentWorkers: external_exports.number().int().min(1).max(111),
   optimizeFor: external_exports.enum(["balanced", "quality", "speed", "cost"]),
   configMode: external_exports.enum(["preview", "apply-project", "manual", "unchanged"]),
+  configAdapter: external_exports.literal("agents-v1").nullable(),
   prohibitedActions: external_exports.array(external_exports.string()),
   requiredRoles: external_exports.array(external_exports.string()),
   excludedRoles: external_exports.array(external_exports.string()),
   customRoles: external_exports.array(customRoleInputSchema).max(20),
+  availableTools: external_exports.array(external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/)).max(100).refine((values) => new Set(values).size === values.length, {
+    message: "availableTools must not contain duplicates"
+  }),
+  availableModelIds: external_exports.array(external_exports.string().min(1).max(200).regex(/^[^\s]+$/)).max(100).refine((values) => new Set(values).size === values.length, {
+    message: "availableModelIds must not contain duplicates"
+  }),
   verifiedModels: external_exports.object({
     inherit: external_exports.string().optional(),
     deep: external_exports.string().optional(),
@@ -15863,6 +16028,23 @@ var intakeAnswersSchema = external_exports.object({
       code: "custom",
       message: "Concurrency above 16 requires allowHighConcurrency=true after an explicit warning",
       path: ["maxConcurrentWorkers"]
+    });
+  }
+  const available = new Set(answers.availableModelIds);
+  for (const [profile, model] of Object.entries(answers.verifiedModels)) {
+    if (model !== void 0 && !available.has(model)) {
+      context.addIssue({
+        code: "custom",
+        message: `Model ${model} was not present in the local capability probe`,
+        path: ["verifiedModels", profile]
+      });
+    }
+  }
+  if ((answers.configMode === "preview" || answers.configMode === "apply-project") && answers.configAdapter !== "agents-v1") {
+    context.addIssue({
+      code: "custom",
+      message: "preview and apply-project require an agents-v1 adapter confirmed by the local capability probe",
+      path: ["configAdapter"]
     });
   }
 });
@@ -16621,11 +16803,6 @@ var CONFIG_ADAPTERS = Object.freeze({
     id: "agents-v1",
     section: "agents",
     key: "max_concurrent_threads_per_session"
-  }),
-  "multi-agent-v2": Object.freeze({
-    id: "multi-agent-v2",
-    section: "multi_agent",
-    key: "max_concurrent_workers"
   })
 });
 var bareKey = /^[A-Za-z0-9_-]+$/;
@@ -16895,16 +17072,29 @@ var AGENTS_START = "<!-- codsemble:start -->";
 var AGENTS_END = "<!-- codsemble:end -->";
 async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, existingFiles) {
   const root = await assertWorkspaceRoot(workspaceRoot);
+  validateModelMappings(answers);
   if (proposal.maxConcurrentWorkers !== answers.maxConcurrentWorkers) {
     throw new Error(
       "Proposal worker ceiling does not match the confirmed intake answer"
     );
   }
   const resolvedRoles = resolveRoles(proposal, answers, roles);
+  for (const role of resolvedRoles) {
+    assertSafeManagedLine(role.name, `Role ${role.id} name`);
+    assertSafeManagedLine(role.description, `Role ${role.id} description`);
+  }
   const auditFingerprint = sha256(stableStringify(audit));
   const desiredFiles = /* @__PURE__ */ new Map();
+  const priorOwnedAgents = await readPriorOwnedAgents(root, existingFiles);
   for (const role of resolvedRoles) {
-    desiredFiles.set(`.codex/agents/${role.id}.toml`, renderRoleToml(role));
+    const relativePath = `.codex/agents/${role.id}.toml`;
+    const existing = await getExistingContent(root, relativePath, existingFiles);
+    if (existing !== void 0 && !priorOwnedAgents.has(relativePath)) {
+      throw new Error(
+        `Refusing to overwrite user-owned agent file: ${relativePath}`
+      );
+    }
+    desiredFiles.set(relativePath, renderRoleToml(role));
   }
   const agentsPath = "AGENTS.md";
   const existingAgents = await getExistingContent(
@@ -16925,10 +17115,15 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
     configPath,
     existingFiles
   );
-  const concurrencyPatch = patchConcurrencyToml(
+  if ((answers.configMode === "preview" || answers.configMode === "apply-project") && answers.configAdapter === null) {
+    throw new Error(
+      "Cannot preview or apply project concurrency without a capability-confirmed config adapter"
+    );
+  }
+  const concurrencyPatch = answers.configAdapter === null ? { content: existingConfig ?? "", currentValue: null, changed: false } : patchConcurrencyToml(
     existingConfig ?? "",
     answers.maxConcurrentWorkers,
-    "agents-v1"
+    answers.configAdapter
   );
   const shouldPlanConfig = answers.configMode === "preview" || answers.configMode === "apply-project";
   const shouldRaiseConcurrency = concurrencyPatch.currentValue === null || concurrencyPatch.currentValue < answers.maxConcurrentWorkers;
@@ -16937,9 +17132,13 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
   }
   const concurrency = {
     requestedWorkers: answers.maxConcurrentWorkers,
-    effectiveCurrentValue: concurrencyPatch.currentValue,
-    adapter: "agents-v1",
+    projectCurrentValue: concurrencyPatch.currentValue,
+    adapter: answers.configAdapter,
     configMode: answers.configMode,
+    willApply: answers.configMode === "apply-project" && shouldRaiseConcurrency,
+    manualSnippet: answers.configAdapter === null ? null : `[agents]
+max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
+`,
     ...buildConcurrencyWarning(
       answers,
       resolvedRoles.length,
@@ -16959,12 +17158,21 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
   const planId = sha256(stableStringify(planSeed)).slice(0, 24);
   const manifest = {
     schemaVersion: 1,
-    generator: "codsemble",
+    generator: { name: "codsemble", version: "0.1.0" },
+    catalogVersion: [...new Set(resolvedRoles.map((role) => {
+      const blueprint = roles.find(({ id }) => id === role.id);
+      return blueprint?.catalogVersion ?? "custom";
+    }))].sort().join(","),
     planId,
     auditFingerprint,
     proposal: {
       kind: proposal.kind,
       maxConcurrentWorkers: proposal.maxConcurrentWorkers
+    },
+    capabilities: {
+      configAdapter: answers.configAdapter,
+      availableModelIds: answers.availableModelIds,
+      availableTools: answers.availableTools
     },
     roles: resolvedRoles.map((role) => ({
       id: role.id,
@@ -16993,13 +17201,13 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
   )) {
     const before = await getExistingFile(root, relativePath, existingFiles);
     const afterSha256 = sha256(content);
-    preimages.push({
-      relativePath,
-      exists: before.content !== void 0,
-      sha256: before.content === void 0 ? null : sha256(Buffer.from(before.content)),
-      mode: before.mode
-    });
     if (before.content !== content) {
+      preimages.push({
+        relativePath,
+        exists: before.content !== void 0,
+        sha256: before.content === void 0 ? null : sha256(Buffer.from(before.content)),
+        mode: before.mode
+      });
       files.push({
         relativePath,
         action: before.content === void 0 ? "create" : "update",
@@ -17009,7 +17217,26 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
       });
     }
   }
-  return {
+  for (const relativePath of [...priorOwnedAgents].sort()) {
+    if (desiredFiles.has(relativePath)) continue;
+    const before = await getExistingFile(root, relativePath, existingFiles);
+    if (before.content === void 0) continue;
+    const beforeSha256 = sha256(Buffer.from(before.content));
+    preimages.push({
+      relativePath,
+      exists: true,
+      sha256: beforeSha256,
+      mode: before.mode
+    });
+    files.push({
+      relativePath,
+      action: "delete",
+      beforeSha256,
+      afterSha256: null,
+      content: null
+    });
+  }
+  const unsignedPlan = {
     schemaVersion: 1,
     planId,
     auditFingerprint,
@@ -17018,6 +17245,57 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
     preimages,
     files
   };
+  return {
+    ...unsignedPlan,
+    confirmationId: computeConfirmationId(unsignedPlan)
+  };
+}
+async function readPriorOwnedAgents(root, existingFiles) {
+  const source = await getExistingContent(
+    root,
+    ".codex/codsemble/manifest.json",
+    existingFiles
+  );
+  if (source === void 0) return /* @__PURE__ */ new Set();
+  let parsed;
+  try {
+    parsed = JSON.parse(source);
+  } catch (error51) {
+    throw new Error("Existing Codsemble manifest is not valid JSON", {
+      cause: error51
+    });
+  }
+  const owned = typeof parsed === "object" && parsed !== null && "ownership" in parsed && typeof parsed.ownership === "object" && parsed.ownership !== null && "agentFiles" in parsed.ownership && Array.isArray(parsed.ownership.agentFiles) ? parsed.ownership.agentFiles : null;
+  if (owned === null) {
+    throw new Error("Existing Codsemble manifest has invalid agent ownership");
+  }
+  const result = /* @__PURE__ */ new Set();
+  for (const entry of owned) {
+    if (typeof entry !== "string" || !/^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(entry)) {
+      throw new Error("Existing Codsemble manifest contains an unsafe agent path");
+    }
+    result.add(entry);
+  }
+  return result;
+}
+function computeConfirmationId(plan) {
+  const { confirmationId: _ignored, ...unsigned } = plan;
+  return sha256(stableStringify(unsigned)).slice(0, 32);
+}
+function validateModelMappings(answers) {
+  const available = new Set(answers.availableModelIds);
+  for (const [profile, model] of Object.entries(answers.verifiedModels)) {
+    if (model !== void 0 && !available.has(model)) {
+      throw new Error(
+        `Model mapping ${profile}=${model} was not present in the local capability probe`
+      );
+    }
+  }
+}
+function assertSafeManagedLine(value, label) {
+  if (/[\r\n\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value) || value.includes(AGENTS_START) || value.includes(AGENTS_END)) {
+    throw new Error(`${label} must be a single safe managed-block line`);
+  }
 }
 function buildConcurrencyWarning(answers, roleCount, currentValue) {
   const warnings = [];
@@ -17191,6 +17469,7 @@ async function getExistingFile(root, relativePath, existingFiles) {
     };
   }
   const absolute = await assertContainedPath(root, relativePath);
+  await assertNoSymlinkAncestors(root, absolute);
   try {
     const stats = await lstat3(absolute);
     if (!stats.isFile() || stats.isSymbolicLink()) {
@@ -17209,11 +17488,574 @@ async function getExistingFile(root, relativePath, existingFiles) {
 }
 
 // src/doctor.ts
-import { execFile as execFile2 } from "node:child_process";
-import { access, lstat as lstat4, readFile as readFile3, readdir as readdir2 } from "node:fs/promises";
+import { execFile as execFile3 } from "node:child_process";
+import { access, lstat as lstat5, readFile as readFile4, readdir as readdir2 } from "node:fs/promises";
+import path5 from "node:path";
+import { promisify as promisify3 } from "node:util";
+
+// src/transaction.ts
+import { randomUUID } from "node:crypto";
+import {
+  chmod,
+  lstat as lstat4,
+  mkdir,
+  open as open2,
+  readFile as readFile3,
+  rename,
+  unlink
+} from "node:fs/promises";
 import path4 from "node:path";
-import { promisify as promisify2 } from "node:util";
-var execFileAsync2 = promisify2(execFile2);
+var transactionRoot = ".codex/codsemble/transactions";
+var projectConfig = ".codex/config.toml";
+async function applyTeamPlan(workspace, plan) {
+  validatePlan(plan);
+  const root = await resolveSafeWorkspace(workspace);
+  const transactionId = randomUUID();
+  const prepared = [];
+  for (const planned of plan.files) {
+    const absolutePath = await safeTarget(root, planned.relativePath);
+    const state = await readSafeRegularFile(absolutePath);
+    const beforeHash = state.content === null ? null : sha256(state.content);
+    if (beforeHash !== planned.beforeSha256) {
+      throw new Error(
+        `Preimage conflict for ${planned.relativePath}: expected ${formatHash(planned.beforeSha256)}, found ${formatHash(beforeHash)}`
+      );
+    }
+    if (planned.action === "delete") {
+      if (planned.content !== null || planned.afterSha256 !== null) {
+        throw new Error(`Delete plan has an after-image for ${planned.relativePath}`);
+      }
+    } else if (typeof planned.content !== "string" || planned.afterSha256 === null || sha256(planned.content) !== planned.afterSha256) {
+      throw new Error(`After-image hash mismatch for ${planned.relativePath}`);
+    }
+    if (planned.action === "create" && state.content !== null) {
+      throw new Error(`Create target already exists: ${planned.relativePath}`);
+    }
+    if (planned.action === "update" && state.content === null) {
+      throw new Error(`Update target does not exist: ${planned.relativePath}`);
+    }
+    if (planned.action === "delete" && state.content === null) {
+      throw new Error(`Delete target does not exist: ${planned.relativePath}`);
+    }
+    if (planned.relativePath === projectConfig) {
+      if (state.content !== null) {
+        validateToml(decodeUtf8(state.content, planned.relativePath));
+      }
+      if (planned.content !== null) validateToml(planned.content);
+    }
+    if (planned.content !== null) {
+      validatePlannedOutput(planned.relativePath, planned.content);
+    }
+    prepared.push({
+      planned,
+      absolutePath,
+      before: state.content,
+      mode: state.mode,
+      backupRelativePath: state.content === null ? null : `${transactionRoot}/${transactionId}.backups/${planned.relativePath}`
+    });
+  }
+  const transaction = {
+    schemaVersion: 1,
+    transactionId,
+    planId: plan.planId,
+    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+    files: prepared.map((file2) => ({
+      relativePath: file2.planned.relativePath,
+      beforeSha256: file2.before === null ? null : sha256(file2.before),
+      afterSha256: file2.planned.afterSha256,
+      backupRelativePath: file2.backupRelativePath,
+      mode: file2.mode
+    }))
+  };
+  const staged = /* @__PURE__ */ new Map();
+  const installed = [];
+  try {
+    for (const file2 of prepared) {
+      if (file2.before !== null && file2.backupRelativePath !== null) {
+        const backup = await safeTarget(root, file2.backupRelativePath);
+        await ensureSafeParentDirectories(root, backup);
+        await atomicWrite(backup, file2.before, file2.mode ?? 384);
+      }
+      await ensureSafeParentDirectories(root, file2.absolutePath);
+      if (file2.planned.action !== "delete") {
+        const temporary = await stageFile(
+          file2.absolutePath,
+          Buffer.from(file2.planned.content, "utf8"),
+          file2.mode ?? 384
+        );
+        staged.set(file2.absolutePath, temporary);
+      }
+    }
+    for (const file2 of prepared) {
+      const current = await readSafeRegularFile(file2.absolutePath);
+      const currentHash = current.content === null ? null : sha256(current.content);
+      if (currentHash !== file2.planned.beforeSha256) {
+        throw new Error(
+          `Concurrent modification of ${file2.planned.relativePath}: expected ${formatHash(file2.planned.beforeSha256)}, found ${formatHash(currentHash)}`
+        );
+      }
+      if (file2.planned.action === "delete") {
+        await unlink(file2.absolutePath);
+      } else {
+        const temporary = staged.get(file2.absolutePath);
+        if (temporary === void 0) {
+          throw new Error(`Missing staged file for ${file2.planned.relativePath}`);
+        }
+        await rename(temporary, file2.absolutePath);
+        staged.delete(file2.absolutePath);
+      }
+      installed.push(file2);
+      await syncDirectory(path4.dirname(file2.absolutePath));
+    }
+    const receiptRelativePath = `${transactionRoot}/${transactionId}.json`;
+    const receiptPath = await safeTarget(root, receiptRelativePath);
+    await ensureSafeParentDirectories(root, receiptPath);
+    await atomicWrite(receiptPath, stableStringify(transaction), 384);
+    return transaction;
+  } catch (error51) {
+    await cleanupStaged(staged);
+    const restoreErrors = await restoreInstalled(installed);
+    if (restoreErrors.length > 0) {
+      throw new AggregateError(
+        [error51, ...restoreErrors],
+        "Transaction failed and automatic restoration was incomplete"
+      );
+    }
+    throw error51;
+  }
+}
+async function rollbackTransaction(workspace, transaction) {
+  const root = await resolveSafeWorkspace(workspace);
+  const record2 = typeof transaction === "string" ? await loadTransaction(root, transaction) : transaction;
+  validateTransaction(record2);
+  const targets = [];
+  for (const file2 of record2.files) {
+    const absolutePath = await safeTarget(root, file2.relativePath);
+    const current = await readSafeRegularFile(absolutePath);
+    const currentHash = current.content === null ? null : sha256(current.content);
+    if (currentHash !== file2.afterSha256) {
+      throw new Error(
+        `Rollback conflict for ${file2.relativePath}: expected ${file2.afterSha256}, found ${formatHash(currentHash)}`
+      );
+    }
+    let backup = null;
+    if (file2.beforeSha256 !== null) {
+      if (file2.backupRelativePath === null) {
+        throw new Error(`Missing backup path for ${file2.relativePath}`);
+      }
+      const backupPath = await safeTarget(root, file2.backupRelativePath);
+      const backupState = await readSafeRegularFile(backupPath);
+      if (backupState.content === null || sha256(backupState.content) !== file2.beforeSha256) {
+        throw new Error(`Backup integrity failure for ${file2.relativePath}`);
+      }
+      backup = backupState.content;
+      if (file2.relativePath === projectConfig) {
+        validateToml(decodeUtf8(backup, file2.relativePath));
+      }
+    }
+    targets.push({
+      record: file2,
+      absolutePath,
+      backup,
+      postimage: current.content
+    });
+  }
+  const staged = /* @__PURE__ */ new Map();
+  for (const target of targets) {
+    if (target.backup !== null) {
+      const temporary = await stageFile(
+        target.absolutePath,
+        target.backup,
+        target.record.mode ?? 384
+      );
+      staged.set(target.absolutePath, temporary);
+    }
+  }
+  const completed = [];
+  try {
+    for (const target of targets) {
+      const current = await readSafeRegularFile(target.absolutePath);
+      const currentHash = current.content === null ? null : sha256(current.content);
+      if (currentHash !== target.record.afterSha256) {
+        throw new Error(
+          `Rollback concurrent modification of ${target.record.relativePath}`
+        );
+      }
+      if (target.backup === null) {
+        await unlink(target.absolutePath);
+      } else {
+        const temporary = staged.get(target.absolutePath);
+        if (temporary === void 0) {
+          throw new Error(`Missing rollback stage for ${target.record.relativePath}`);
+        }
+        await rename(temporary, target.absolutePath);
+        staged.delete(target.absolutePath);
+      }
+      completed.push(target);
+      await syncDirectory(path4.dirname(target.absolutePath));
+    }
+    const rollbackMarker = await safeTarget(
+      root,
+      `${transactionRoot}/${record2.transactionId}.rollback.json`
+    );
+    await ensureSafeParentDirectories(root, rollbackMarker);
+    await atomicWrite(
+      rollbackMarker,
+      stableStringify({
+        schemaVersion: 1,
+        transactionId: record2.transactionId,
+        rolledBackAt: (/* @__PURE__ */ new Date()).toISOString()
+      }),
+      384
+    );
+  } catch (error51) {
+    await cleanupStaged(staged);
+    const restoreErrors = await restoreRolledBack(completed);
+    if (restoreErrors.length > 0) {
+      throw new AggregateError(
+        [error51, ...restoreErrors],
+        "Rollback failed and forward restoration was incomplete"
+      );
+    }
+    throw error51;
+  }
+}
+async function restoreRolledBack(completed) {
+  const errors = [];
+  for (const target of [...completed].reverse()) {
+    try {
+      const current = await readSafeRegularFile(target.absolutePath);
+      const expectedRollbackHash = target.record.beforeSha256;
+      const currentHash = current.content === null ? null : sha256(current.content);
+      if (currentHash !== expectedRollbackHash) {
+        throw new Error(
+          `Refusing forward restoration after concurrent modification of ${target.record.relativePath}`
+        );
+      }
+      if (target.postimage === null) {
+        await unlink(target.absolutePath);
+        await syncDirectory(path4.dirname(target.absolutePath));
+      } else {
+        await atomicWrite(
+          target.absolutePath,
+          target.postimage,
+          target.record.mode ?? 384
+        );
+      }
+    } catch (error51) {
+      errors.push(error51);
+    }
+  }
+  return errors;
+}
+async function resolveSafeWorkspace(workspace) {
+  const supplied = path4.resolve(workspace);
+  const suppliedStats = await lstat4(supplied);
+  if (!suppliedStats.isDirectory() || suppliedStats.isSymbolicLink()) {
+    throw new Error("Workspace must be a real directory, not a symlink");
+  }
+  return supplied;
+}
+async function safeTarget(root, relativePath) {
+  if (relativePath === "" || relativePath.includes("\\") || path4.isAbsolute(relativePath) || path4.posix.normalize(relativePath) !== relativePath || relativePath === ".." || relativePath.startsWith("../")) {
+    throw new Error(`Unsafe transaction path: ${relativePath}`);
+  }
+  const target = await assertContainedPath(root, relativePath);
+  await assertExistingAncestorsSafe(root, target);
+  return target;
+}
+async function assertExistingAncestorsSafe(root, target) {
+  const relative = path4.relative(root, path4.dirname(target));
+  if (relative === "") {
+    return;
+  }
+  let cursor = root;
+  for (const part of relative.split(path4.sep)) {
+    cursor = path4.join(cursor, part);
+    try {
+      const stats = await lstat4(cursor);
+      if (stats.isSymbolicLink() || !stats.isDirectory()) {
+        throw new Error(`Unsafe transaction ancestor: ${cursor}`);
+      }
+    } catch (error51) {
+      if (isMissing(error51)) {
+        return;
+      }
+      throw error51;
+    }
+  }
+}
+async function ensureSafeParentDirectories(root, target) {
+  const relative = path4.relative(root, path4.dirname(target));
+  let cursor = root;
+  for (const part of relative === "" ? [] : relative.split(path4.sep)) {
+    cursor = path4.join(cursor, part);
+    try {
+      const stats = await lstat4(cursor);
+      if (stats.isSymbolicLink() || !stats.isDirectory()) {
+        throw new Error(`Unsafe transaction ancestor: ${cursor}`);
+      }
+    } catch (error51) {
+      if (!isMissing(error51)) {
+        throw error51;
+      }
+      await mkdir(cursor, { mode: 448 });
+      await syncDirectory(path4.dirname(cursor));
+    }
+  }
+}
+async function readSafeRegularFile(target) {
+  try {
+    const stats = await lstat4(target);
+    if (stats.isSymbolicLink() || !stats.isFile() || stats.nlink !== 1) {
+      throw new Error(
+        `Transaction target must be a regular, single-link file: ${target}`
+      );
+    }
+    return {
+      content: await readFile3(target),
+      mode: stats.mode & 511
+    };
+  } catch (error51) {
+    if (isMissing(error51)) {
+      return { content: null, mode: null };
+    }
+    throw error51;
+  }
+}
+async function atomicWrite(target, content, mode) {
+  const temporary = await stageFile(
+    target,
+    typeof content === "string" ? Buffer.from(content, "utf8") : content,
+    mode
+  );
+  try {
+    await rename(temporary, target);
+    await syncDirectory(path4.dirname(target));
+  } catch (error51) {
+    await unlink(temporary).catch(() => void 0);
+    throw error51;
+  }
+}
+async function stageFile(target, content, mode) {
+  const temporary = path4.join(
+    path4.dirname(target),
+    `.${path4.basename(target)}.codsemble-${randomUUID()}.tmp`
+  );
+  const handle = await open2(temporary, "wx", mode);
+  try {
+    await handle.writeFile(content);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  await chmod(temporary, mode);
+  return temporary;
+}
+async function syncDirectory(directory) {
+  let handle;
+  try {
+    handle = await open2(directory, "r");
+  } catch (error51) {
+    if (process.platform === "win32" && isUnsupportedDirectorySync(error51)) {
+      return;
+    }
+    throw error51;
+  }
+  try {
+    try {
+      await handle.sync();
+    } catch (error51) {
+      if (!(process.platform === "win32" && isUnsupportedDirectorySync(error51))) {
+        throw error51;
+      }
+    }
+  } finally {
+    await handle.close();
+  }
+}
+function isUnsupportedDirectorySync(error51) {
+  if (typeof error51 !== "object" || error51 === null || !("code" in error51)) {
+    return false;
+  }
+  return ["EACCES", "EINVAL", "EISDIR", "ENOTSUP", "EPERM"].includes(
+    String(error51.code)
+  );
+}
+async function restoreInstalled(installed) {
+  const errors = [];
+  for (const file2 of [...installed].reverse()) {
+    try {
+      const current = await readSafeRegularFile(file2.absolutePath);
+      const currentHash = current.content === null ? null : sha256(current.content);
+      if (currentHash !== file2.planned.afterSha256) {
+        throw new Error(
+          `Refusing automatic restoration after concurrent modification of ${file2.planned.relativePath}`
+        );
+      }
+      if (file2.before === null) {
+        await unlink(file2.absolutePath);
+      } else {
+        await atomicWrite(
+          file2.absolutePath,
+          file2.before,
+          file2.mode ?? 384
+        );
+      }
+    } catch (error51) {
+      errors.push(error51);
+    }
+  }
+  return errors;
+}
+async function cleanupStaged(staged) {
+  await Promise.all(
+    [...staged.values()].map(
+      (temporary) => unlink(temporary).catch(() => void 0)
+    )
+  );
+}
+async function loadTransaction(root, transactionId) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/.test(transactionId)) {
+    throw new Error("Invalid transaction id");
+  }
+  const receipt = await safeTarget(
+    root,
+    `${transactionRoot}/${transactionId}.json`
+  );
+  const state = await readSafeRegularFile(receipt);
+  if (state.content === null) {
+    throw new Error(`Transaction receipt not found: ${transactionId}`);
+  }
+  try {
+    return JSON.parse(decodeUtf8(state.content, receipt));
+  } catch (error51) {
+    throw new Error(`Invalid transaction receipt: ${transactionId}`, {
+      cause: error51
+    });
+  }
+}
+function validatePlan(plan) {
+  if (plan.schemaVersion !== 1 || !plan.planId || !/^[a-f0-9]{32}$/.test(plan.confirmationId) || !Array.isArray(plan.files) || !Array.isArray(plan.preimages)) {
+    throw new Error("Invalid team plan");
+  }
+  if (computeConfirmationId(plan) !== plan.confirmationId) {
+    throw new Error("Plan confirmation digest mismatch");
+  }
+  const paths = /* @__PURE__ */ new Set();
+  let totalContentBytes = 0;
+  for (const file2 of plan.files) {
+    if (!isCodsembleOwnedOutput(file2.relativePath)) {
+      throw new Error(
+        `Plan contains a non-Codsemble output path: ${file2.relativePath}`
+      );
+    }
+    if (paths.has(file2.relativePath)) {
+      throw new Error(`Duplicate planned path: ${file2.relativePath}`);
+    }
+    if (!["create", "update", "delete"].includes(file2.action)) {
+      throw new Error(`Invalid planned action: ${file2.relativePath}`);
+    }
+    if (file2.action === "delete" ? file2.content !== null || file2.afterSha256 !== null : typeof file2.content !== "string" || file2.afterSha256 === null || !/^[a-f0-9]{64}$/.test(file2.afterSha256)) {
+      throw new Error(`Invalid planned after-image: ${file2.relativePath}`);
+    }
+    if (typeof file2.content === "string") {
+      const bytes = Buffer.byteLength(file2.content, "utf8");
+      if (bytes > 1024 * 1024) {
+        throw new Error(`Planned output exceeds 1 MiB: ${file2.relativePath}`);
+      }
+      totalContentBytes += bytes;
+    }
+    paths.add(file2.relativePath);
+  }
+  if (totalContentBytes > 8 * 1024 * 1024) {
+    throw new Error("Combined planned output exceeds 8 MiB");
+  }
+  const preimages = new Map(
+    plan.preimages.map((preimage) => [preimage.relativePath, preimage])
+  );
+  if (preimages.size !== plan.preimages.length || preimages.size !== plan.files.length) {
+    throw new Error("Plan must contain exactly one preimage per planned path");
+  }
+  for (const file2 of plan.files) {
+    const preimage = preimages.get(file2.relativePath);
+    if (preimage === void 0 || preimage.sha256 !== file2.beforeSha256 || preimage.exists !== (file2.beforeSha256 !== null) || file2.beforeSha256 !== null && !/^[a-f0-9]{64}$/.test(file2.beforeSha256)) {
+      throw new Error(`Plan preimage metadata mismatch: ${file2.relativePath}`);
+    }
+  }
+}
+function validatePlannedOutput(relativePath, content) {
+  if (/^\.codex\/agents\/.+\.toml$/.test(relativePath)) {
+    const parsed = validateToml(content);
+    const allowed = /* @__PURE__ */ new Set([
+      "name",
+      "description",
+      "developer_instructions",
+      "model",
+      "model_reasoning_effort",
+      "sandbox_mode"
+    ]);
+    for (const key of Object.keys(parsed)) {
+      if (!allowed.has(key)) {
+        throw new Error(`Generated agent contains unsupported key: ${key}`);
+      }
+    }
+    for (const required2 of ["name", "description", "developer_instructions"]) {
+      if (typeof parsed[required2] !== "string" || parsed[required2] === "") {
+        throw new Error(`Generated agent is missing ${required2}`);
+      }
+    }
+    if (parsed.sandbox_mode !== "read-only" && parsed.sandbox_mode !== "workspace-write") {
+      throw new Error("Generated agent has an unsupported sandbox_mode");
+    }
+  } else if (relativePath === ".codex/codsemble/manifest.json") {
+    const parsed = JSON.parse(content);
+    if (parsed.schemaVersion !== 1 || typeof parsed.planId !== "string" || parsed.generator?.name !== "codsemble" || typeof parsed.generator.version !== "string" || typeof parsed.catalogVersion !== "string" || typeof parsed.ownership !== "object" || parsed.ownership === null) {
+      throw new Error("Generated Codsemble manifest has an invalid schema");
+    }
+  } else if (relativePath === "AGENTS.md") {
+    const starts = content.split("<!-- codsemble:start -->").length - 1;
+    const ends = content.split("<!-- codsemble:end -->").length - 1;
+    if (starts !== 1 || ends !== 1) {
+      throw new Error("Generated AGENTS.md must contain exactly one managed block");
+    }
+  }
+}
+function validateTransaction(record2) {
+  if (record2.schemaVersion !== 1 || !/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/.test(record2.transactionId) || !Array.isArray(record2.files)) {
+    throw new Error("Invalid transaction record");
+  }
+  const paths = /* @__PURE__ */ new Set();
+  for (const file2 of record2.files) {
+    if (!file2.relativePath || !isCodsembleOwnedOutput(file2.relativePath) || file2.afterSha256 !== null && !/^[a-f0-9]{64}$/.test(file2.afterSha256) || file2.beforeSha256 !== null && !/^[a-f0-9]{64}$/.test(file2.beforeSha256) || paths.has(file2.relativePath)) {
+      throw new Error("Invalid transaction file record");
+    }
+    const expectedBackup = file2.beforeSha256 === null ? null : `${transactionRoot}/${record2.transactionId}.backups/${file2.relativePath}`;
+    if (file2.backupRelativePath !== expectedBackup) {
+      throw new Error("Transaction backup path is outside its scoped directory");
+    }
+    paths.add(file2.relativePath);
+  }
+}
+function isCodsembleOwnedOutput(relativePath) {
+  return relativePath === "AGENTS.md" || relativePath === ".codex/config.toml" || relativePath === ".codex/codsemble/manifest.json" || /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(relativePath);
+}
+function decodeUtf8(content, label) {
+  const decoded = content.toString("utf8");
+  if (!Buffer.from(decoded, "utf8").equals(content)) {
+    throw new Error(`File is not valid UTF-8: ${label}`);
+  }
+  return decoded;
+}
+function isMissing(error51) {
+  return typeof error51 === "object" && error51 !== null && "code" in error51 && error51.code === "ENOENT";
+}
+function formatHash(value) {
+  return value ?? "<missing>";
+}
+
+// src/doctor.ts
+var execFileAsync3 = promisify3(execFile3);
 async function exists(candidate) {
   try {
     await access(candidate);
@@ -17227,21 +18069,22 @@ function overallStatus(checks) {
   if (checks.some((check2) => check2.status === "warn")) return "warn";
   return "pass";
 }
-async function readRegularFile(candidate) {
-  const stats = await lstat4(candidate);
+async function readRegularFile(candidate, root) {
+  await assertNoSymlinkAncestors(root, candidate);
+  const stats = await lstat5(candidate);
   if (!stats.isFile() || stats.isSymbolicLink() || stats.nlink !== 1) {
     throw new Error("Expected a regular, single-link file");
   }
-  return readFile3(candidate);
+  return readFile4(candidate);
 }
 async function doctorWorkspace(workspace) {
   const root = await assertWorkspaceRoot(workspace);
   const checks = [];
-  const configPath = path4.join(root, ".codex", "config.toml");
+  const configPath = path5.join(root, ".codex", "config.toml");
   if (await exists(configPath)) {
     try {
       const parsed = parse3(
-        (await readRegularFile(configPath)).toString("utf8")
+        (await readRegularFile(configPath, root)).toString("utf8")
       );
       const concurrency = parsed.agents?.max_concurrent_threads_per_session;
       checks.push({
@@ -17264,7 +18107,7 @@ async function doctorWorkspace(workspace) {
       summary: "No project .codex/config.toml is present"
     });
   }
-  const agentsDirectory = path4.join(root, ".codex", "agents");
+  const agentsDirectory = path5.join(root, ".codex", "agents");
   let agentEntries = [];
   if (await exists(agentsDirectory)) {
     const invalid = [];
@@ -17273,7 +18116,7 @@ async function doctorWorkspace(workspace) {
     for (const entry of entries) {
       try {
         const parsed = parse3(
-          (await readRegularFile(path4.join(agentsDirectory, entry))).toString("utf8")
+          (await readRegularFile(path5.join(agentsDirectory, entry), root)).toString("utf8")
         );
         for (const required2 of [
           "name",
@@ -17304,8 +18147,8 @@ async function doctorWorkspace(workspace) {
     });
   }
   const manifestCandidates = [
-    path4.join(root, ".codex", "codsemble", "manifest.json"),
-    path4.join(root, ".codex", "team", "manifest.json")
+    path5.join(root, ".codex", "codsemble", "manifest.json"),
+    path5.join(root, ".codex", "team", "manifest.json")
   ];
   const manifestPath = (await Promise.all(
     manifestCandidates.map(async (candidate) => ({
@@ -17317,13 +18160,13 @@ async function doctorWorkspace(workspace) {
   if (manifestPath) {
     try {
       manifest = JSON.parse(
-        (await readRegularFile(manifestPath)).toString("utf8")
+        (await readRegularFile(manifestPath, root)).toString("utf8")
       );
-      const valid = manifest.schemaVersion === 1 && typeof manifest.planId === "string";
+      const valid = manifest.schemaVersion === 1 && typeof manifest.planId === "string" && manifest.generator?.name === "codsemble" && typeof manifest.generator.version === "string" && typeof manifest.catalogVersion === "string";
       checks.push({
         id: "codsemble-manifest",
         status: valid ? "pass" : "fail",
-        summary: valid ? `Codsemble manifest loaded from ${path4.relative(root, manifestPath)}` : "Codsemble manifest is missing schemaVersion=1 or planId"
+        summary: valid ? `Codsemble manifest loaded from ${path5.relative(root, manifestPath)}` : "Codsemble manifest is missing required schema, generator, catalog, or plan metadata"
       });
       if (valid) {
         const ownedAgents = Array.isArray(manifest.ownership?.agentFiles) ? manifest.ownership.agentFiles.filter(
@@ -17349,7 +18192,7 @@ async function doctorWorkspace(workspace) {
         const block = manifest.ownership?.agentsBlock;
         if (block && block.path === "AGENTS.md" && typeof block.start === "string" && typeof block.end === "string") {
           try {
-            const agentsText = (await readRegularFile(path4.join(root, "AGENTS.md"))).toString("utf8");
+            const agentsText = (await readRegularFile(path5.join(root, "AGENTS.md"), root)).toString("utf8");
             const starts = agentsText.split(block.start).length - 1;
             const ends = agentsText.split(block.end).length - 1;
             checks.push({
@@ -17384,7 +18227,7 @@ async function doctorWorkspace(workspace) {
   }
   checks.push(await inspectTransactions(root));
   try {
-    const { stdout } = await execFileAsync2("codex", ["features", "list"], {
+    const { stdout } = await execFileAsync3("codex", ["features", "list"], {
       cwd: root,
       timeout: 15e3,
       maxBuffer: 1024 * 1024
@@ -17410,7 +18253,7 @@ async function doctorWorkspace(workspace) {
   };
 }
 async function inspectTransactions(root) {
-  const directory = path4.join(root, ".codex", "codsemble", "transactions");
+  const directory = path5.join(root, ".codex", "codsemble", "transactions");
   if (!await exists(directory)) {
     return {
       id: "transactions",
@@ -17429,7 +18272,7 @@ async function inspectTransactions(root) {
     for (const name of rollbackMarkerNames) {
       try {
         const marker = JSON.parse(
-          (await readRegularFile(path4.join(directory, name))).toString("utf8")
+          (await readRegularFile(path5.join(directory, name), root)).toString("utf8")
         );
         if (marker.schemaVersion !== 1 || typeof marker.transactionId !== "string" || typeof marker.rolledBackAt !== "string") {
           throw new Error("invalid rollback marker schema");
@@ -17444,7 +18287,7 @@ async function inspectTransactions(root) {
     for (const name of receiptNames) {
       try {
         const parsed = JSON.parse(
-          (await readRegularFile(path4.join(directory, name))).toString("utf8")
+          (await readRegularFile(path5.join(directory, name), root)).toString("utf8")
         );
         if (parsed.schemaVersion !== 1 || typeof parsed.transactionId !== "string" || !Array.isArray(parsed.files)) {
           throw new Error("invalid transaction schema");
@@ -17464,12 +18307,24 @@ async function inspectTransactions(root) {
     if (latest) {
       for (const file2 of latest.files) {
         try {
-          const current = await readRegularFile(path4.join(root, file2.relativePath));
+          if (!isCodsembleOwnedOutput(file2.relativePath)) {
+            throw new Error("path is not a Codsemble-owned output");
+          }
+          const currentPath = await assertContainedPath(root, file2.relativePath);
+          if (file2.afterSha256 === null) {
+            if (await exists(currentPath)) {
+              drift.push(`${file2.relativePath}: deleted output was recreated`);
+            }
+            continue;
+          }
+          const current = await readRegularFile(currentPath, root);
           if (sha256(current) !== file2.afterSha256) {
             drift.push(`${file2.relativePath}: content changed after apply`);
           }
-        } catch {
-          drift.push(`${file2.relativePath}: missing or not a regular file`);
+        } catch (error51) {
+          drift.push(
+            `${file2.relativePath}: ${error51 instanceof Error ? error51.message : "missing or not a regular file"}`
+          );
         }
       }
     }
@@ -17537,6 +18392,7 @@ function recommendTeams(audit, answers, roles) {
 }
 function validateSelectionInputs(answers, roles) {
   const catalogIds = new Set(roles.map(({ id }) => id));
+  const availableTools = new Set(answers.availableTools);
   const customIds = /* @__PURE__ */ new Set();
   for (const custom2 of answers.customRoles) {
     if (catalogIds.has(custom2.id) || customIds.has(custom2.id)) {
@@ -17558,10 +18414,22 @@ function validateSelectionInputs(answers, roles) {
       throw new Error(`Role cannot be both required and excluded: ${id}`);
     }
   }
+  for (const id of answers.requiredRoles) {
+    const role = roles.find((candidate) => candidate.id === id);
+    const missing = role?.requiredTools.filter(
+      (tool) => !availableTools.has(tool)
+    );
+    if (missing && missing.length > 0) {
+      throw new Error(
+        `Required role ${id} needs unavailable tools: ${missing.join(", ")}`
+      );
+    }
+  }
 }
 function scoreCandidates(audit, answers, roles) {
   const excluded = new Set(answers.excludedRoles);
   const required2 = new Set(answers.requiredRoles);
+  const availableTools = new Set(answers.availableTools);
   const goals = new Set(answers.goals);
   const signalTokens = /* @__PURE__ */ new Map();
   for (const signal of audit.signals) {
@@ -17583,7 +18451,9 @@ function scoreCandidates(audit, answers, roles) {
       signalTokens.set(token, [.../* @__PURE__ */ new Set([...previous, ...citation])].sort());
     }
   }
-  return roles.filter(({ id }) => !excluded.has(id)).map((role) => {
+  return roles.filter(
+    ({ id, requiredTools }) => !excluded.has(id) && requiredTools.every((tool) => availableTools.has(tool))
+  ).map((role) => {
     let score = 0;
     const reasons = [];
     const warnings = [];
@@ -17767,438 +18637,20 @@ function capitalize(value) {
   return `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}`;
 }
 
-// src/transaction.ts
-import { randomUUID } from "node:crypto";
-import {
-  chmod,
-  lstat as lstat5,
-  mkdir,
-  open as open2,
-  readFile as readFile4,
-  rename,
-  unlink
-} from "node:fs/promises";
-import path5 from "node:path";
-var transactionRoot = ".codex/codsemble/transactions";
-var projectConfig = ".codex/config.toml";
-async function applyTeamPlan(workspace, plan) {
-  validatePlan(plan);
-  const root = await resolveSafeWorkspace(workspace);
-  const transactionId = randomUUID();
-  const prepared = [];
-  for (const planned of plan.files) {
-    const absolutePath = await safeTarget(root, planned.relativePath);
-    const state = await readSafeRegularFile(absolutePath);
-    const beforeHash = state.content === null ? null : sha256(state.content);
-    if (beforeHash !== planned.beforeSha256) {
-      throw new Error(
-        `Preimage conflict for ${planned.relativePath}: expected ${formatHash(planned.beforeSha256)}, found ${formatHash(beforeHash)}`
-      );
-    }
-    if (sha256(planned.content) !== planned.afterSha256) {
-      throw new Error(`After-image hash mismatch for ${planned.relativePath}`);
-    }
-    if (planned.action === "create" && state.content !== null) {
-      throw new Error(`Create target already exists: ${planned.relativePath}`);
-    }
-    if (planned.action === "update" && state.content === null) {
-      throw new Error(`Update target does not exist: ${planned.relativePath}`);
-    }
-    if (planned.relativePath === projectConfig) {
-      if (state.content !== null) {
-        validateToml(decodeUtf8(state.content, planned.relativePath));
-      }
-      validateToml(planned.content);
-    }
-    prepared.push({
-      planned,
-      absolutePath,
-      before: state.content,
-      mode: state.mode,
-      backupRelativePath: state.content === null ? null : `${transactionRoot}/${transactionId}.backups/${planned.relativePath}`
-    });
-  }
-  const transaction = {
-    schemaVersion: 1,
-    transactionId,
-    planId: plan.planId,
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    files: prepared.map((file2) => ({
-      relativePath: file2.planned.relativePath,
-      beforeSha256: file2.before === null ? null : sha256(file2.before),
-      afterSha256: file2.planned.afterSha256,
-      backupRelativePath: file2.backupRelativePath,
-      mode: file2.mode
-    }))
-  };
-  const staged = /* @__PURE__ */ new Map();
-  const installed = [];
-  try {
-    for (const file2 of prepared) {
-      if (file2.before !== null && file2.backupRelativePath !== null) {
-        const backup = await safeTarget(root, file2.backupRelativePath);
-        await ensureSafeParentDirectories(root, backup);
-        await atomicWrite(backup, file2.before, file2.mode ?? 384);
-      }
-      await ensureSafeParentDirectories(root, file2.absolutePath);
-      const temporary = await stageFile(
-        file2.absolutePath,
-        Buffer.from(file2.planned.content, "utf8"),
-        file2.mode ?? 384
-      );
-      staged.set(file2.absolutePath, temporary);
-    }
-    for (const file2 of prepared) {
-      const temporary = staged.get(file2.absolutePath);
-      if (temporary === void 0) {
-        throw new Error(`Missing staged file for ${file2.planned.relativePath}`);
-      }
-      const current = await readSafeRegularFile(file2.absolutePath);
-      const currentHash = current.content === null ? null : sha256(current.content);
-      if (currentHash !== file2.planned.beforeSha256) {
-        throw new Error(
-          `Concurrent modification of ${file2.planned.relativePath}: expected ${formatHash(file2.planned.beforeSha256)}, found ${formatHash(currentHash)}`
-        );
-      }
-      await rename(temporary, file2.absolutePath);
-      staged.delete(file2.absolutePath);
-      await syncDirectory(path5.dirname(file2.absolutePath));
-      installed.push(file2);
-    }
-    const receiptRelativePath = `${transactionRoot}/${transactionId}.json`;
-    const receiptPath = await safeTarget(root, receiptRelativePath);
-    await ensureSafeParentDirectories(root, receiptPath);
-    await atomicWrite(receiptPath, stableStringify(transaction), 384);
-    return transaction;
-  } catch (error51) {
-    await cleanupStaged(staged);
-    const restoreErrors = await restoreInstalled(installed);
-    if (restoreErrors.length > 0) {
-      throw new AggregateError(
-        [error51, ...restoreErrors],
-        "Transaction failed and automatic restoration was incomplete"
-      );
-    }
-    throw error51;
-  }
-}
-async function rollbackTransaction(workspace, transaction) {
-  const root = await resolveSafeWorkspace(workspace);
-  const record2 = typeof transaction === "string" ? await loadTransaction(root, transaction) : transaction;
-  validateTransaction(record2);
-  const targets = [];
-  for (const file2 of record2.files) {
-    const absolutePath = await safeTarget(root, file2.relativePath);
-    const current = await readSafeRegularFile(absolutePath);
-    const currentHash = current.content === null ? null : sha256(current.content);
-    if (currentHash !== file2.afterSha256) {
-      throw new Error(
-        `Rollback conflict for ${file2.relativePath}: expected ${file2.afterSha256}, found ${formatHash(currentHash)}`
-      );
-    }
-    let backup = null;
-    if (file2.beforeSha256 !== null) {
-      if (file2.backupRelativePath === null) {
-        throw new Error(`Missing backup path for ${file2.relativePath}`);
-      }
-      const backupPath = await safeTarget(root, file2.backupRelativePath);
-      const backupState = await readSafeRegularFile(backupPath);
-      if (backupState.content === null || sha256(backupState.content) !== file2.beforeSha256) {
-        throw new Error(`Backup integrity failure for ${file2.relativePath}`);
-      }
-      backup = backupState.content;
-      if (file2.relativePath === projectConfig) {
-        validateToml(decodeUtf8(backup, file2.relativePath));
-      }
-    }
-    targets.push({ record: file2, absolutePath, backup });
-  }
-  const staged = /* @__PURE__ */ new Map();
-  for (const target of targets) {
-    if (target.backup !== null) {
-      const temporary = await stageFile(
-        target.absolutePath,
-        target.backup,
-        target.record.mode ?? 384
-      );
-      staged.set(target.absolutePath, temporary);
-    }
-  }
-  try {
-    for (const target of targets) {
-      if (target.backup === null) {
-        await unlink(target.absolutePath);
-      } else {
-        const temporary = staged.get(target.absolutePath);
-        if (temporary === void 0) {
-          throw new Error(`Missing rollback stage for ${target.record.relativePath}`);
-        }
-        await rename(temporary, target.absolutePath);
-        staged.delete(target.absolutePath);
-      }
-      await syncDirectory(path5.dirname(target.absolutePath));
-    }
-    const rollbackMarker = await safeTarget(
-      root,
-      `${transactionRoot}/${record2.transactionId}.rollback.json`
-    );
-    await ensureSafeParentDirectories(root, rollbackMarker);
-    await atomicWrite(
-      rollbackMarker,
-      stableStringify({
-        schemaVersion: 1,
-        transactionId: record2.transactionId,
-        rolledBackAt: (/* @__PURE__ */ new Date()).toISOString()
-      }),
-      384
-    );
-  } catch (error51) {
-    await cleanupStaged(staged);
-    throw error51;
-  }
-}
-async function resolveSafeWorkspace(workspace) {
-  const supplied = path5.resolve(workspace);
-  const suppliedStats = await lstat5(supplied);
-  if (!suppliedStats.isDirectory() || suppliedStats.isSymbolicLink()) {
-    throw new Error("Workspace must be a real directory, not a symlink");
-  }
-  return supplied;
-}
-async function safeTarget(root, relativePath) {
-  if (relativePath === "" || relativePath.includes("\\") || path5.isAbsolute(relativePath) || path5.posix.normalize(relativePath) !== relativePath || relativePath === ".." || relativePath.startsWith("../")) {
-    throw new Error(`Unsafe transaction path: ${relativePath}`);
-  }
-  const target = await assertContainedPath(root, relativePath);
-  await assertExistingAncestorsSafe(root, target);
-  return target;
-}
-async function assertExistingAncestorsSafe(root, target) {
-  const relative = path5.relative(root, path5.dirname(target));
-  if (relative === "") {
-    return;
-  }
-  let cursor = root;
-  for (const part of relative.split(path5.sep)) {
-    cursor = path5.join(cursor, part);
-    try {
-      const stats = await lstat5(cursor);
-      if (stats.isSymbolicLink() || !stats.isDirectory()) {
-        throw new Error(`Unsafe transaction ancestor: ${cursor}`);
-      }
-    } catch (error51) {
-      if (isMissing(error51)) {
-        return;
-      }
-      throw error51;
-    }
-  }
-}
-async function ensureSafeParentDirectories(root, target) {
-  const relative = path5.relative(root, path5.dirname(target));
-  let cursor = root;
-  for (const part of relative === "" ? [] : relative.split(path5.sep)) {
-    cursor = path5.join(cursor, part);
-    try {
-      const stats = await lstat5(cursor);
-      if (stats.isSymbolicLink() || !stats.isDirectory()) {
-        throw new Error(`Unsafe transaction ancestor: ${cursor}`);
-      }
-    } catch (error51) {
-      if (!isMissing(error51)) {
-        throw error51;
-      }
-      await mkdir(cursor, { mode: 448 });
-      await syncDirectory(path5.dirname(cursor));
-    }
-  }
-}
-async function readSafeRegularFile(target) {
-  try {
-    const stats = await lstat5(target);
-    if (stats.isSymbolicLink() || !stats.isFile() || stats.nlink !== 1) {
-      throw new Error(
-        `Transaction target must be a regular, single-link file: ${target}`
-      );
-    }
-    return {
-      content: await readFile4(target),
-      mode: stats.mode & 511
-    };
-  } catch (error51) {
-    if (isMissing(error51)) {
-      return { content: null, mode: null };
-    }
-    throw error51;
-  }
-}
-async function atomicWrite(target, content, mode) {
-  const temporary = await stageFile(
-    target,
-    typeof content === "string" ? Buffer.from(content, "utf8") : content,
-    mode
-  );
-  try {
-    await rename(temporary, target);
-    await syncDirectory(path5.dirname(target));
-  } catch (error51) {
-    await unlink(temporary).catch(() => void 0);
-    throw error51;
-  }
-}
-async function stageFile(target, content, mode) {
-  const temporary = path5.join(
-    path5.dirname(target),
-    `.${path5.basename(target)}.codsemble-${randomUUID()}.tmp`
-  );
-  const handle = await open2(temporary, "wx", mode);
-  try {
-    await handle.writeFile(content);
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-  await chmod(temporary, mode);
-  return temporary;
-}
-async function syncDirectory(directory) {
-  const handle = await open2(directory, "r");
-  try {
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-}
-async function restoreInstalled(installed) {
-  const errors = [];
-  for (const file2 of [...installed].reverse()) {
-    try {
-      const current = await readSafeRegularFile(file2.absolutePath);
-      const currentHash = current.content === null ? null : sha256(current.content);
-      if (currentHash !== file2.planned.afterSha256) {
-        throw new Error(
-          `Refusing automatic restoration after concurrent modification of ${file2.planned.relativePath}`
-        );
-      }
-      if (file2.before === null) {
-        await unlink(file2.absolutePath);
-      } else {
-        await atomicWrite(
-          file2.absolutePath,
-          file2.before,
-          file2.mode ?? 384
-        );
-      }
-    } catch (error51) {
-      errors.push(error51);
-    }
-  }
-  return errors;
-}
-async function cleanupStaged(staged) {
-  await Promise.all(
-    [...staged.values()].map(
-      (temporary) => unlink(temporary).catch(() => void 0)
-    )
-  );
-}
-async function loadTransaction(root, transactionId) {
-  if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/.test(transactionId)) {
-    throw new Error("Invalid transaction id");
-  }
-  const receipt = await safeTarget(
-    root,
-    `${transactionRoot}/${transactionId}.json`
-  );
-  const state = await readSafeRegularFile(receipt);
-  if (state.content === null) {
-    throw new Error(`Transaction receipt not found: ${transactionId}`);
-  }
-  try {
-    return JSON.parse(decodeUtf8(state.content, receipt));
-  } catch (error51) {
-    throw new Error(`Invalid transaction receipt: ${transactionId}`, {
-      cause: error51
-    });
-  }
-}
-function validatePlan(plan) {
-  if (plan.schemaVersion !== 1 || !plan.planId || !Array.isArray(plan.files) || !Array.isArray(plan.preimages)) {
-    throw new Error("Invalid team plan");
-  }
-  const paths = /* @__PURE__ */ new Set();
-  for (const file2 of plan.files) {
-    if (!isCodsembleOwnedOutput(file2.relativePath)) {
-      throw new Error(
-        `Plan contains a non-Codsemble output path: ${file2.relativePath}`
-      );
-    }
-    if (paths.has(file2.relativePath)) {
-      throw new Error(`Duplicate planned path: ${file2.relativePath}`);
-    }
-    paths.add(file2.relativePath);
-  }
-  if (plan.preimages.length > 0) {
-    const preimages = new Map(
-      plan.preimages.map((preimage) => [preimage.relativePath, preimage])
-    );
-    if (preimages.size !== plan.preimages.length) {
-      throw new Error("Duplicate plan preimage path");
-    }
-    for (const file2 of plan.files) {
-      const preimage = preimages.get(file2.relativePath);
-      if (preimage === void 0 || preimage.sha256 !== file2.beforeSha256 || preimage.exists !== (file2.beforeSha256 !== null)) {
-        throw new Error(`Plan preimage metadata mismatch: ${file2.relativePath}`);
-      }
-    }
-  }
-}
-function validateTransaction(record2) {
-  if (record2.schemaVersion !== 1 || !/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/.test(record2.transactionId) || !Array.isArray(record2.files)) {
-    throw new Error("Invalid transaction record");
-  }
-  const paths = /* @__PURE__ */ new Set();
-  for (const file2 of record2.files) {
-    if (!file2.relativePath || !isCodsembleOwnedOutput(file2.relativePath) || !/^[a-f0-9]{64}$/.test(file2.afterSha256) || file2.beforeSha256 !== null && !/^[a-f0-9]{64}$/.test(file2.beforeSha256) || paths.has(file2.relativePath)) {
-      throw new Error("Invalid transaction file record");
-    }
-    const expectedBackup = file2.beforeSha256 === null ? null : `${transactionRoot}/${record2.transactionId}.backups/${file2.relativePath}`;
-    if (file2.backupRelativePath !== expectedBackup) {
-      throw new Error("Transaction backup path is outside its scoped directory");
-    }
-    paths.add(file2.relativePath);
-  }
-}
-function isCodsembleOwnedOutput(relativePath) {
-  return relativePath === "AGENTS.md" || relativePath === ".codex/config.toml" || relativePath === ".codex/codsemble/manifest.json" || /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(relativePath);
-}
-function decodeUtf8(content, label) {
-  const decoded = content.toString("utf8");
-  if (!Buffer.from(decoded, "utf8").equals(content)) {
-    throw new Error(`File is not valid UTF-8: ${label}`);
-  }
-  return decoded;
-}
-function isMissing(error51) {
-  return typeof error51 === "object" && error51 !== null && "code" in error51 && error51.code === "ENOENT";
-}
-function formatHash(value) {
-  return value ?? "<missing>";
-}
-
 // src/cli.ts
 var HELP = `Codsemble \u2014 repository-aware native Codex team generator
 
 Usage:
   codsemble audit [--workspace PATH]
+  codsemble capabilities [--workspace PATH]
   codsemble recommend --answers FILE [--workspace PATH] [--catalog FILE]
   codsemble plan --answers FILE --proposal lean|balanced|full [--workspace PATH]
-  codsemble apply --plan FILE --confirm PLAN_ID [--workspace PATH]
+  codsemble apply --plan FILE --confirm CONFIRMATION_ID [--workspace PATH]
   codsemble doctor [--workspace PATH]
-  codsemble rollback --transaction ID_OR_FILE --confirm TRANSACTION_ID [--workspace PATH]
+  codsemble rollback --transaction TRANSACTION_ID --confirm TRANSACTION_ID [--workspace PATH]
   codsemble catalog [--search TERM] [--catalog FILE]
 
-Audit, recommend, plan, catalog, and doctor are read-only. Apply requires the
+Audit, capabilities, recommend, plan, catalog, and doctor are read-only. Apply requires the
 exact plan ID printed by plan. Project configuration is never changed globally.
 `;
 function parseArguments(argv) {
@@ -18265,6 +18717,10 @@ async function run(arguments_) {
       allowOnly(arguments_, ["--workspace"]);
       return auditWorkspace(workspace);
     }
+    case "capabilities": {
+      allowOnly(arguments_, ["--workspace"]);
+      return detectCodexCapabilities(workspace);
+    }
     case "recommend": {
       allowOnly(arguments_, ["--workspace", "--answers", "--catalog"]);
       const answers = await readAnswers(
@@ -18309,9 +18765,9 @@ async function run(arguments_) {
       const confirmation = flag(arguments_, "--confirm", {
         required: true
       });
-      if (typeof plan.planId !== "string" || confirmation !== plan.planId) {
+      if (typeof plan.planId !== "string" || confirmation !== plan.confirmationId) {
         throw new Error(
-          "Confirmation refused: --confirm must exactly match plan.planId"
+          "Confirmation refused: --confirm must exactly match plan.confirmationId"
         );
       }
       if (plan.concurrency?.configMode === "preview") {
@@ -18337,17 +18793,13 @@ async function run(arguments_) {
       const transactionArgument = flag(arguments_, "--transaction", {
         required: true
       });
-      let transaction = transactionArgument;
-      if (transactionArgument.endsWith(".json")) {
-        transaction = await readJson(transactionArgument);
-      }
-      const transactionId = typeof transaction === "string" ? transaction : transaction.transactionId;
+      const transactionId = transactionArgument;
       if (flag(arguments_, "--confirm", { required: true }) !== transactionId) {
         throw new Error(
           "Rollback confirmation refused: --confirm must exactly match the transaction id"
         );
       }
-      await rollbackTransaction(workspace, transaction);
+      await rollbackTransaction(workspace, transactionId);
       return {
         rolledBack: true,
         transactionId,

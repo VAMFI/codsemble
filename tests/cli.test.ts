@@ -33,10 +33,13 @@ async function answers(
       maxConcurrentWorkers: 2,
       optimizeFor: "balanced",
       configMode,
+      configAdapter: "agents-v1",
       prohibitedActions: ["Do not publish."],
       requiredRoles: [],
       excludedRoles: [],
       customRoles: [],
+      availableTools: ["workspace-read"],
+      availableModelIds: [],
       verifiedModels: {},
       allowHighConcurrency: false,
     })}\n`,
@@ -85,7 +88,10 @@ describe("bundled CLI", () => {
       "balanced",
     ]);
     await writeFile(planFile, plan);
-    const parsed = JSON.parse(plan) as { planId: string };
+    const parsed = JSON.parse(plan) as {
+      planId: string;
+      confirmationId: string;
+    };
 
     await expect(
       run([
@@ -95,7 +101,7 @@ describe("bundled CLI", () => {
         "--plan",
         planFile,
         "--confirm",
-        parsed.planId,
+        parsed.confirmationId,
       ]),
     ).rejects.toMatchObject({
       stderr: expect.stringContaining("preview plans are read-only"),
@@ -119,7 +125,10 @@ describe("bundled CLI", () => {
       "balanced",
     ]);
     await writeFile(planFile, plan);
-    const parsed = JSON.parse(plan) as { planId: string };
+    const parsed = JSON.parse(plan) as {
+      planId: string;
+      confirmationId: string;
+    };
     const applied = JSON.parse(
       await run([
         "apply",
@@ -128,7 +137,7 @@ describe("bundled CLI", () => {
         "--plan",
         planFile,
         "--confirm",
-        parsed.planId,
+        parsed.confirmationId,
       ]),
     ) as { transaction: { planId: string; transactionId: string } };
 
@@ -168,7 +177,10 @@ describe("bundled CLI", () => {
       "balanced",
     ]);
     await writeFile(planFile, plan);
-    const parsed = JSON.parse(plan) as { planId: string };
+    const parsed = JSON.parse(plan) as {
+      planId: string;
+      confirmationId: string;
+    };
 
     await expect(
       run([
@@ -181,7 +193,7 @@ describe("bundled CLI", () => {
         "wrong-plan-id",
       ]),
     ).rejects.toMatchObject({
-      stderr: expect.stringContaining("must exactly match plan.planId"),
+      stderr: expect.stringContaining("must exactly match plan.confirmationId"),
     });
 
     const applied = JSON.parse(
@@ -192,7 +204,7 @@ describe("bundled CLI", () => {
         "--plan",
         planFile,
         "--confirm",
-        parsed.planId,
+        parsed.confirmationId,
       ]),
     ) as { transaction: { transactionId: string } };
     const config = await import("node:fs/promises").then(({ readFile }) =>

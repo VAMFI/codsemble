@@ -8,6 +8,7 @@
   "maxConcurrentWorkers": 2,
   "optimizeFor": "balanced",
   "configMode": "apply-project",
+  "configAdapter": "agents-v1",
   "prohibitedActions": [
     "Do not modify files or use external systems."
   ],
@@ -17,6 +18,10 @@
   ],
   "excludedRoles": [],
   "customRoles": [],
+  "availableTools": [
+    "workspace-read"
+  ],
+  "availableModelIds": [],
   "verifiedModels": {},
   "allowHighConcurrency": false
 }

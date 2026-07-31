@@ -43,13 +43,13 @@ run applicable Codex diagnostics after apply.
 ## Preview and apply
 
 `audit`, `recommend`, `plan`, `doctor`, `catalog`, and rollback preview are
-non-mutating. `plan` emits a plan id, exact intended files, content hashes, and
+non-mutating. `plan` emits a content-bound confirmation id, exact intended files, content hashes, and
 configuration changes.
 
 Apply requires:
 
 - the reviewed plan file;
-- exact confirmation of that plan id;
+- exact confirmation of that confirmation id;
 - unchanged preimage hashes;
 - paths confined to the selected workspace;
 - valid generated TOML and JSON.
@@ -62,7 +62,7 @@ user edits.
 ## Manual mode
 
 Choose `manual` or `unchanged` during intake when project config should not be
-edited. After exact plan-id confirmation, Codsemble may still apply the team
+edited. After exact confirmation-id approval, Codsemble may still apply the team
 agents, managed `AGENTS.md` section, and manifest while leaving
 `.codex/config.toml` untouched. `manual` also shows the exact project snippet
 for separate installation; `unchanged` preserves concurrency as-is. Global
@@ -75,6 +75,13 @@ Codsemble pins a concrete model only when it is verified for the active
 environment. A catalog reasoning-effort default is emitted only alongside that
 verified model; otherwise it inherits. Explicit custom-role choices remain
 user-owned inputs.
+
+Run `codsemble capabilities` before mapping profiles. The command probes only
+the installed local Codex executable and returns bounded model identifiers,
+supported reasoning efforts, native multi-agent feature state, and the
+compatible config adapter. It discards raw provider instructions and cannot
+grant permissions. If the probe cannot confirm multi-agent support, use
+`manual` or `unchanged` mode and do not claim that concurrency is active.
 
 ## Evidence after apply
 

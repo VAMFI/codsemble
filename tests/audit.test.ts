@@ -89,6 +89,8 @@ describe("auditWorkspace", () => {
 
   it("does not inspect ignored, secret-like, generated, binary, oversized, or symlinked files", async () => {
     const workspace = await copyFixture();
+    await writeFile(path.join(workspace, ".env"), "SYNTHETIC_SECRET=fixture");
+    await writeFile(path.join(workspace, "ignored.ts"), "export {};");
     await mkdir(path.join(workspace, "node_modules", "fake"), {
       recursive: true,
     });
@@ -130,7 +132,7 @@ describe("auditWorkspace", () => {
     });
   });
 
-  it("uses tracked files before safe untracked files and reports Git dirtiness", async () => {
+  it("excludes ordinary untracked files while reporting Git dirtiness", async () => {
     const workspace = await temporaryWorkspace();
     await execFileAsync("git", ["init", "-q"], { cwd: workspace });
     await writeFile(path.join(workspace, ".gitignore"), "ignored.ts\n");
@@ -161,12 +163,9 @@ describe("auditWorkspace", () => {
 
     expect(report.gitRepository).toBe(true);
     expect(report.dirtyWorktree).toBe(true);
-    expect(report.inspectedFiles).toEqual([
-      ".gitignore",
-      "package.json",
-      "src.ts",
-    ]);
+    expect(report.inspectedFiles).toEqual([".gitignore", "package.json"]);
     expect(report.inspectedFiles).not.toContain("ignored.ts");
+    expect(report.skipped).toContainEqual({ reason: "untracked", count: 1 });
     expect(signalValues(report, "testing")).toContain("jest");
   });
 

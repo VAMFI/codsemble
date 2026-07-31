@@ -28,6 +28,13 @@ export function assertSafeIdentifier(value: string, label: string): void {
   if (!/^[a-z][a-z0-9_-]{1,63}$/.test(value)) {
     throw new Error(`${label} must match ^[a-z][a-z0-9_-]{1,63}$`);
   }
+  const windowsStem = value.split(/[._-]/, 1)[0]?.toLowerCase();
+  if (
+    windowsStem !== undefined &&
+    /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/.test(windowsStem)
+  ) {
+    throw new Error(`${label} is reserved on Windows`);
+  }
 }
 
 export function toPosix(relativePath: string): string {
@@ -59,13 +66,43 @@ export async function assertContainedPath(
   return absolute;
 }
 
+export async function assertNoSymlinkAncestors(
+  workspaceRoot: string,
+  candidate: string,
+): Promise<void> {
+  const contained = await assertContainedPath(workspaceRoot, candidate);
+  const relativeDirectory = path.relative(
+    workspaceRoot,
+    path.dirname(contained),
+  );
+  let cursor = workspaceRoot;
+  for (const part of relativeDirectory === "" ? [] : relativeDirectory.split(path.sep)) {
+    cursor = path.join(cursor, part);
+    try {
+      const stats = await lstat(cursor);
+      if (stats.isSymbolicLink() || !stats.isDirectory()) {
+        throw new Error(`Unsafe path ancestor: ${cursor}`);
+      }
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
+        return;
+      }
+      throw error;
+    }
+  }
+}
+
 export function escapeTomlBasicString(value: string): string {
   return JSON.stringify(value);
 }
 
 export function escapeTomlMultiline(value: string): string {
-  const normalized = value.replace(/\r\n?/g, "\n").replace(/"""/g, '\\"\\"\\"');
-  return `"""${normalized.endsWith("\n") ? normalized : `${normalized}\n`}"""`;
+  return JSON.stringify(value.replace(/\r\n?/g, "\n"));
 }
 
 export function managedBlock(

@@ -3,7 +3,7 @@ import { parse } from "smol-toml";
 import type { ConcurrencyPlan } from "./types.js";
 
 export interface CodexConfigAdapter {
-  readonly id: ConcurrencyPlan["adapter"];
+  readonly id: NonNullable<ConcurrencyPlan["adapter"]>;
   readonly section: string;
   readonly key: string;
 }
@@ -19,17 +19,12 @@ export interface ConcurrencyPatch {
  * guesses that a future schema is active merely from an unfamiliar document.
  */
 export const CONFIG_ADAPTERS: Readonly<
-  Record<ConcurrencyPlan["adapter"], CodexConfigAdapter>
+  Record<NonNullable<ConcurrencyPlan["adapter"]>, CodexConfigAdapter>
 > = Object.freeze({
   "agents-v1": Object.freeze({
     id: "agents-v1",
     section: "agents",
     key: "max_concurrent_threads_per_session",
-  }),
-  "multi-agent-v2": Object.freeze({
-    id: "multi-agent-v2",
-    section: "multi_agent",
-    key: "max_concurrent_workers",
   }),
 });
 
@@ -52,7 +47,7 @@ export function validateToml(input: string): Record<string, unknown> {
 export function patchConcurrencyToml(
   input: string,
   workers: number,
-  adapter: CodexConfigAdapter | ConcurrencyPlan["adapter"],
+  adapter: CodexConfigAdapter | NonNullable<ConcurrencyPlan["adapter"]>,
 ): ConcurrencyPatch {
   if (!Number.isSafeInteger(workers) || workers < 1 || workers > 111) {
     throw new Error("Worker concurrency must be an integer from 1 through 111");

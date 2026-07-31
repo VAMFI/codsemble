@@ -6,6 +6,7 @@ Codsemble is a configuration compiler for Codex, not a second agent runtime.
 
 ```text
 workspace
+  -> local Codex capability probe and supported-version adapter
   -> bounded deterministic audit
   -> typed evidence report
   -> user intake
@@ -35,10 +36,12 @@ at runtime.
 ## Trust boundaries
 
 - Workspace content is untrusted input.
+- Ordinary Git-untracked files and fixture/example trees are excluded from
+  product inference by default.
 - Audit is read-only and secret-aware.
 - Recommendation consumes typed signals, not arbitrary repository prose.
 - Preview has no side effects.
-- Apply requires a matching plan id and unchanged preimage hashes.
+- Apply requires a content-bound confirmation id and unchanged preimage hashes.
 - Global Codex configuration, project trust, credentials, external systems, and
   publication are outside the automatic transaction boundary.
 

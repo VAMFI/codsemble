@@ -16,6 +16,7 @@ import {
   applyTeamPlan,
   rollbackTransaction,
 } from "../src/transaction.js";
+import { computeConfirmationId } from "../src/compiler.js";
 import { sha256 } from "../src/util.js";
 
 const temporaryWorkspaces: string[] = [];
@@ -44,14 +45,14 @@ describe("project transactions", () => {
 
     const plan = makePlan([
       planned(".codex/config.toml", "update", before, after),
-      planned(".codex/agents/reviewer.toml", "create", null, 'name = "Reviewer"\n'),
+      planned(".codex/agents/reviewer.toml", "create", null, agentToml("reviewer")),
     ]);
     const transaction = await applyTeamPlan(workspace, plan);
 
     expect(await readFile(configPath, "utf8")).toBe(after);
     expect(
       await readFile(path.join(workspace, ".codex/agents/reviewer.toml"), "utf8"),
-    ).toBe('name = "Reviewer"\n');
+    ).toBe(agentToml("reviewer"));
     expect(
       await readFile(
         path.join(
@@ -102,7 +103,14 @@ describe("project transactions", () => {
     await writeFile(owned, "old");
     const transaction = await applyTeamPlan(
       workspace,
-      makePlan([planned(".codex/agents/owned.toml", "update", "old", "generated")]),
+      makePlan([
+        planned(
+          ".codex/agents/owned.toml",
+          "update",
+          "old",
+          agentToml("owned"),
+        ),
+      ]),
     );
     await writeFile(owned, "user edit");
 
@@ -183,6 +191,40 @@ describe("project transactions", () => {
       ),
     ).rejects.toThrow("non-Codsemble output path");
   });
+
+  it("rejects a plan changed after its confirmation id was generated", async () => {
+    const workspace = await makeWorkspace();
+    const plan = makePlan([
+      planned(".codex/agents/reviewer.toml", "create", null, "reviewed"),
+    ]);
+    plan.files[0] = planned(
+      ".codex/agents/reviewer.toml",
+      "create",
+      null,
+      "tampered",
+    );
+
+    await expect(applyTeamPlan(workspace, plan)).rejects.toThrow(
+      "confirmation digest mismatch",
+    );
+  });
+
+  it("applies and rolls back deletion of a previously owned output", async () => {
+    const workspace = await makeWorkspace();
+    const target = path.join(workspace, ".codex/agents/stale.toml");
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, "stale");
+    const transaction = await applyTeamPlan(
+      workspace,
+      makePlan([
+        planned(".codex/agents/stale.toml", "delete", "stale", null),
+      ]),
+    );
+
+    await expect(readFile(target)).rejects.toMatchObject({ code: "ENOENT" });
+    await rollbackTransaction(workspace, transaction.transactionId);
+    expect(await readFile(target, "utf8")).toBe("stale");
+  });
 });
 
 async function makeWorkspace(): Promise<string> {
@@ -193,32 +235,51 @@ async function makeWorkspace(): Promise<string> {
 
 function planned(
   relativePath: string,
-  action: "create" | "update",
+  action: "create" | "update" | "delete",
   before: string | null,
-  content: string,
+  content: string | null,
 ) {
   return {
     relativePath,
     action,
     beforeSha256: before === null ? null : sha256(before),
-    afterSha256: sha256(content),
+    afterSha256: content === null ? null : sha256(content),
     content,
   };
 }
 
+function agentToml(name: string): string {
+  return [
+    `name = "${name}"`,
+    'description = "Bounded test agent"',
+    'developer_instructions = "Report evidence."',
+    'sandbox_mode = "read-only"',
+    "",
+  ].join("\n");
+}
+
 function makePlan(files: ReturnType<typeof planned>[]): TeamPlan {
-  return {
+  const unsigned: Omit<TeamPlan, "confirmationId"> = {
     schemaVersion: 1,
     planId: "test-plan",
     auditFingerprint: "test",
     roles: [],
     concurrency: {
       requestedWorkers: 2,
-      effectiveCurrentValue: null,
+      projectCurrentValue: null,
       adapter: "agents-v1",
       configMode: "apply-project",
+      willApply: true,
+      manualSnippet:
+        "[agents]\nmax_concurrent_threads_per_session = 2\n",
     },
-    preimages: [],
+    preimages: files.map((file) => ({
+      relativePath: file.relativePath,
+      exists: file.beforeSha256 !== null,
+      sha256: file.beforeSha256,
+      mode: null,
+    })),
     files,
   };
+  return { ...unsigned, confirmationId: computeConfirmationId(unsigned) };
 }

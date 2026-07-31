@@ -19,6 +19,7 @@ Large agent packs make every repository look alike. Codsemble starts from
 workspace evidence and user goals:
 
 - bounded, offline-first repository audit;
+- read-only local Codex capability and model discovery;
 - Lean, Balanced, and Full team proposals with reasons;
 - searchable catalog of exactly 111 specialist blueprints;
 - native `.codex/agents/*.toml` generation;

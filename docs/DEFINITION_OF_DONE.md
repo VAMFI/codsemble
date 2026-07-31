@@ -17,6 +17,8 @@ Codsemble `v0.1.0` is a release candidate only when all applicable items pass.
 - Repository prompt injection cannot alter policy or execute code.
 - Preview performs no writes.
 - Apply preserves unrelated content, validates preimages, writes atomically, and is reversible.
+- The exact confirmation id is recomputed from the complete plan before apply.
+- Update deletes only stale agent files owned by the prior Codsemble manifest.
 - No global config, trust, credentials, plugins, MCP servers, hooks, or external systems are changed.
 
 ## Validation

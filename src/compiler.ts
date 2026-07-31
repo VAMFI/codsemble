@@ -15,6 +15,7 @@ import type {
 } from "./types.js";
 import {
   assertContainedPath,
+  assertNoSymlinkAncestors,
   assertSafeIdentifier,
   assertWorkspaceRoot,
   escapeTomlBasicString,
@@ -38,17 +39,30 @@ export async function compileTeamPlan(
   existingFiles?: ExistingFiles,
 ): Promise<TeamPlan> {
   const root = await assertWorkspaceRoot(workspaceRoot);
+  validateModelMappings(answers);
   if (proposal.maxConcurrentWorkers !== answers.maxConcurrentWorkers) {
     throw new Error(
       "Proposal worker ceiling does not match the confirmed intake answer",
     );
   }
   const resolvedRoles = resolveRoles(proposal, answers, roles);
+  for (const role of resolvedRoles) {
+    assertSafeManagedLine(role.name, `Role ${role.id} name`);
+    assertSafeManagedLine(role.description, `Role ${role.id} description`);
+  }
   const auditFingerprint = sha256(stableStringify(audit));
   const desiredFiles = new Map<string, string>();
+  const priorOwnedAgents = await readPriorOwnedAgents(root, existingFiles);
 
   for (const role of resolvedRoles) {
-    desiredFiles.set(`.codex/agents/${role.id}.toml`, renderRoleToml(role));
+    const relativePath = `.codex/agents/${role.id}.toml`;
+    const existing = await getExistingContent(root, relativePath, existingFiles);
+    if (existing !== undefined && !priorOwnedAgents.has(relativePath)) {
+      throw new Error(
+        `Refusing to overwrite user-owned agent file: ${relativePath}`,
+      );
+    }
+    desiredFiles.set(relativePath, renderRoleToml(role));
   }
 
   const agentsPath = "AGENTS.md";
@@ -71,11 +85,23 @@ export async function compileTeamPlan(
     configPath,
     existingFiles,
   );
-  const concurrencyPatch = patchConcurrencyToml(
-    existingConfig ?? "",
-    answers.maxConcurrentWorkers,
-    "agents-v1",
-  );
+  if (
+    (answers.configMode === "preview" ||
+      answers.configMode === "apply-project") &&
+    answers.configAdapter === null
+  ) {
+    throw new Error(
+      "Cannot preview or apply project concurrency without a capability-confirmed config adapter",
+    );
+  }
+  const concurrencyPatch =
+    answers.configAdapter === null
+      ? { content: existingConfig ?? "", currentValue: null, changed: false }
+      : patchConcurrencyToml(
+          existingConfig ?? "",
+          answers.maxConcurrentWorkers,
+          answers.configAdapter,
+        );
   const shouldPlanConfig =
     answers.configMode === "preview" ||
     answers.configMode === "apply-project";
@@ -88,9 +114,15 @@ export async function compileTeamPlan(
 
   const concurrency = {
     requestedWorkers: answers.maxConcurrentWorkers,
-    effectiveCurrentValue: concurrencyPatch.currentValue,
-    adapter: "agents-v1" as const,
+    projectCurrentValue: concurrencyPatch.currentValue,
+    adapter: answers.configAdapter,
     configMode: answers.configMode,
+    willApply:
+      answers.configMode === "apply-project" && shouldRaiseConcurrency,
+    manualSnippet:
+      answers.configAdapter === null
+        ? null
+        : `[agents]\nmax_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}\n`,
     ...buildConcurrencyWarning(
       answers,
       resolvedRoles.length,
@@ -113,12 +145,22 @@ export async function compileTeamPlan(
 
   const manifest = {
     schemaVersion: 1,
-    generator: "codsemble",
+    generator: { name: "codsemble", version: "0.1.0" },
+    catalogVersion:
+      [...new Set(resolvedRoles.map((role) => {
+        const blueprint = roles.find(({ id }) => id === role.id);
+        return blueprint?.catalogVersion ?? "custom";
+      }))].sort().join(","),
     planId,
     auditFingerprint,
     proposal: {
       kind: proposal.kind,
       maxConcurrentWorkers: proposal.maxConcurrentWorkers,
+    },
+    capabilities: {
+      configAdapter: answers.configAdapter,
+      availableModelIds: answers.availableModelIds,
+      availableTools: answers.availableTools,
     },
     roles: resolvedRoles.map((role) => ({
       id: role.id,
@@ -152,14 +194,14 @@ export async function compileTeamPlan(
   )) {
     const before = await getExistingFile(root, relativePath, existingFiles);
     const afterSha256 = sha256(content);
-    preimages.push({
-      relativePath,
-      exists: before.content !== undefined,
-      sha256:
-        before.content === undefined ? null : sha256(Buffer.from(before.content)),
-      mode: before.mode,
-    });
     if (before.content !== content) {
+      preimages.push({
+        relativePath,
+        exists: before.content !== undefined,
+        sha256:
+          before.content === undefined ? null : sha256(Buffer.from(before.content)),
+        mode: before.mode,
+      });
       files.push({
         relativePath,
         action: before.content === undefined ? "create" : "update",
@@ -170,8 +212,27 @@ export async function compileTeamPlan(
       });
     }
   }
+  for (const relativePath of [...priorOwnedAgents].sort()) {
+    if (desiredFiles.has(relativePath)) continue;
+    const before = await getExistingFile(root, relativePath, existingFiles);
+    if (before.content === undefined) continue;
+    const beforeSha256 = sha256(Buffer.from(before.content));
+    preimages.push({
+      relativePath,
+      exists: true,
+      sha256: beforeSha256,
+      mode: before.mode,
+    });
+    files.push({
+      relativePath,
+      action: "delete",
+      beforeSha256,
+      afterSha256: null,
+      content: null,
+    });
+  }
 
-  return {
+  const unsignedPlan: Omit<TeamPlan, "confirmationId"> = {
     schemaVersion: 1,
     planId,
     auditFingerprint,
@@ -180,6 +241,83 @@ export async function compileTeamPlan(
     preimages,
     files,
   };
+  return {
+    ...unsignedPlan,
+    confirmationId: computeConfirmationId(unsignedPlan),
+  };
+}
+
+async function readPriorOwnedAgents(
+  root: string,
+  existingFiles?: ExistingFiles,
+): Promise<Set<string>> {
+  const source = await getExistingContent(
+    root,
+    ".codex/codsemble/manifest.json",
+    existingFiles,
+  );
+  if (source === undefined) return new Set();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch (error) {
+    throw new Error("Existing Codsemble manifest is not valid JSON", {
+      cause: error,
+    });
+  }
+  const owned =
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "ownership" in parsed &&
+    typeof parsed.ownership === "object" &&
+    parsed.ownership !== null &&
+    "agentFiles" in parsed.ownership &&
+    Array.isArray(parsed.ownership.agentFiles)
+      ? parsed.ownership.agentFiles
+      : null;
+  if (owned === null) {
+    throw new Error("Existing Codsemble manifest has invalid agent ownership");
+  }
+  const result = new Set<string>();
+  for (const entry of owned) {
+    if (
+      typeof entry !== "string" ||
+      !/^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(entry)
+    ) {
+      throw new Error("Existing Codsemble manifest contains an unsafe agent path");
+    }
+    result.add(entry);
+  }
+  return result;
+}
+
+export function computeConfirmationId(
+  plan: Omit<TeamPlan, "confirmationId"> | TeamPlan,
+): string {
+  const { confirmationId: _ignored, ...unsigned } =
+    plan as TeamPlan;
+  return sha256(stableStringify(unsigned)).slice(0, 32);
+}
+
+function validateModelMappings(answers: IntakeAnswers): void {
+  const available = new Set(answers.availableModelIds);
+  for (const [profile, model] of Object.entries(answers.verifiedModels)) {
+    if (model !== undefined && !available.has(model)) {
+      throw new Error(
+        `Model mapping ${profile}=${model} was not present in the local capability probe`,
+      );
+    }
+  }
+}
+
+function assertSafeManagedLine(value: string, label: string): void {
+  if (
+    /[\r\n\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value) ||
+    value.includes(AGENTS_START) ||
+    value.includes(AGENTS_END)
+  ) {
+    throw new Error(`${label} must be a single safe managed-block line`);
+  }
 }
 
 function buildConcurrencyWarning(
@@ -413,6 +551,7 @@ async function getExistingFile(
     };
   }
   const absolute = await assertContainedPath(root, relativePath);
+  await assertNoSymlinkAncestors(root, absolute);
   try {
     const stats = await lstat(absolute);
     if (!stats.isFile() || stats.isSymbolicLink()) {

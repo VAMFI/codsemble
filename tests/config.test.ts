@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  CONFIG_ADAPTERS,
-  patchConcurrencyToml,
-} from "../src/config.js";
+import { patchConcurrencyToml } from "../src/config.js";
 
 describe("patchConcurrencyToml", () => {
   it("preserves BOM, CRLF, comments, and unrelated fields", () => {
@@ -34,13 +31,6 @@ describe("patchConcurrencyToml", () => {
     );
     expect(result.content).toBe(
       "[agents]\n# retained\nmax_concurrent_threads_per_session = 3\n\n[other]\nvalue = 1",
-    );
-  });
-
-  it("supports the explicit v2 adapter", () => {
-    const result = patchConcurrencyToml("", 5, CONFIG_ADAPTERS["multi-agent-v2"]);
-    expect(result.content).toBe(
-      "[multi_agent]\nmax_concurrent_workers = 5\n",
     );
   });
 

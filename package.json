@@ -10,6 +10,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "npm run typecheck && npm run test && npm run build && node scripts/validate-catalog.mjs",
+    "checksums": "node scripts/checksums.mjs",
+    "checksums:verify": "node scripts/checksums.mjs --check",
     "pretest": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",

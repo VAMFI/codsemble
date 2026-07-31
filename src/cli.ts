@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { auditWorkspace } from "./audit.js";
+import { detectCodexCapabilities } from "./capabilities.js";
 import { loadCatalog } from "./catalog.js";
 import { compileTeamPlan } from "./compiler.js";
 import { doctorWorkspace } from "./doctor.js";
@@ -10,7 +11,6 @@ import { applyTeamPlan, rollbackTransaction } from "./transaction.js";
 import type {
   IntakeAnswers,
   TeamPlan,
-  TransactionRecord,
 } from "./types.js";
 import { stableStringify } from "./util.js";
 
@@ -18,14 +18,15 @@ const HELP = `Codsemble — repository-aware native Codex team generator
 
 Usage:
   codsemble audit [--workspace PATH]
+  codsemble capabilities [--workspace PATH]
   codsemble recommend --answers FILE [--workspace PATH] [--catalog FILE]
   codsemble plan --answers FILE --proposal lean|balanced|full [--workspace PATH]
-  codsemble apply --plan FILE --confirm PLAN_ID [--workspace PATH]
+  codsemble apply --plan FILE --confirm CONFIRMATION_ID [--workspace PATH]
   codsemble doctor [--workspace PATH]
-  codsemble rollback --transaction ID_OR_FILE --confirm TRANSACTION_ID [--workspace PATH]
+  codsemble rollback --transaction TRANSACTION_ID --confirm TRANSACTION_ID [--workspace PATH]
   codsemble catalog [--search TERM] [--catalog FILE]
 
-Audit, recommend, plan, catalog, and doctor are read-only. Apply requires the
+Audit, capabilities, recommend, plan, catalog, and doctor are read-only. Apply requires the
 exact plan ID printed by plan. Project configuration is never changed globally.
 `;
 
@@ -111,6 +112,10 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       allowOnly(arguments_, ["--workspace"]);
       return auditWorkspace(workspace);
     }
+    case "capabilities": {
+      allowOnly(arguments_, ["--workspace"]);
+      return detectCodexCapabilities(workspace);
+    }
     case "recommend": {
       allowOnly(arguments_, ["--workspace", "--answers", "--catalog"]);
       const answers = await readAnswers(
@@ -157,10 +162,10 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       });
       if (
         typeof plan.planId !== "string" ||
-        confirmation !== plan.planId
+        confirmation !== plan.confirmationId
       ) {
         throw new Error(
-          "Confirmation refused: --confirm must exactly match plan.planId",
+          "Confirmation refused: --confirm must exactly match plan.confirmationId",
         );
       }
       if (plan.concurrency?.configMode === "preview") {
@@ -186,14 +191,7 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       const transactionArgument = flag(arguments_, "--transaction", {
         required: true,
       }) as string;
-      let transaction: string | TransactionRecord = transactionArgument;
-      if (transactionArgument.endsWith(".json")) {
-        transaction = await readJson<TransactionRecord>(transactionArgument);
-      }
-      const transactionId =
-        typeof transaction === "string"
-          ? transaction
-          : transaction.transactionId;
+      const transactionId = transactionArgument;
       if (
         flag(arguments_, "--confirm", { required: true }) !== transactionId
       ) {
@@ -201,7 +199,7 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
           "Rollback confirmation refused: --confirm must exactly match the transaction id",
         );
       }
-      await rollbackTransaction(workspace, transaction);
+      await rollbackTransaction(workspace, transactionId);
       return {
         rolledBack: true,
         transactionId,

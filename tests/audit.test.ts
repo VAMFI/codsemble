@@ -229,6 +229,40 @@ describe("auditWorkspace", () => {
     expect((await auditWorkspace(workspace)).dirtyWorktree).toBe(true);
   });
 
+  it("ignores a transaction-only fully untracked .codex tree", async () => {
+    const workspace = await temporaryWorkspace();
+    await execFileAsync("git", ["init", "-q"], { cwd: workspace });
+    await writeFile(path.join(workspace, "package.json"), '{"name":"fixture"}');
+    await execFileAsync("git", ["add", "package.json"], { cwd: workspace });
+    await execFileAsync(
+      "git",
+      [
+        "-c",
+        "user.name=Codsemble Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-qm",
+        "fixture",
+      ],
+      { cwd: workspace },
+    );
+    const transactionDirectory = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
+    );
+    await mkdir(transactionDirectory, { recursive: true });
+    await writeFile(
+      path.join(transactionDirectory, "untracked.json"),
+      '{"state":"new"}',
+    );
+
+    const report = await auditWorkspace(workspace);
+    expect(report.dirtyWorktree).toBe(false);
+    expect(report.inspectedFiles).toEqual(["package.json"]);
+    expect(report.skipped).toEqual([]);
+  });
+
   it("enforces file and depth bounds", async () => {
     const workspace = await temporaryWorkspace();
     await writeFile(path.join(workspace, "a.ts"), "export {};");

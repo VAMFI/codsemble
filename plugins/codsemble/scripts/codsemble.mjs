@@ -945,7 +945,7 @@ async function enumerateGitCandidates(root, git, skips) {
         "status",
         "--porcelain=v1",
         "-z",
-        "--untracked-files=normal",
+        "--untracked-files=all",
         "--",
         pathspec
       ])

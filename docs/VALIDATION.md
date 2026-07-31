@@ -20,7 +20,7 @@ npm audit --audit-level=high
 The current candidate passes:
 
 - strict TypeScript checking;
-- 86 unit, golden, property, security, fixture, transaction, capability,
+- 87 unit, golden, property, security, fixture, transaction, capability,
   doctor, compiler, and bundled-CLI tests;
 - deterministic bundle generation;
 - full source-payload checksum verification;

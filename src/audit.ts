@@ -447,7 +447,7 @@ async function enumerateGitCandidates(
         "status",
         "--porcelain=v1",
         "-z",
-        "--untracked-files=normal",
+        "--untracked-files=all",
         "--",
         pathspec,
       ]),

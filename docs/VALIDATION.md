@@ -46,9 +46,10 @@ The runtime proof used Codex CLI 0.145.0 on macOS arm64, an isolated Codex home,
 and a disposable trusted Git project. Existing authentication was referenced
 without copying or recording credential contents.
 
-The refreshed run is bound to source commit `d2781f9c69b68b3a2acd485fc23cd73b0684d203`
-and the 12-file plugin payload digest recorded in
-`artifacts/runtime-evidence.json`.
+The refreshed run is bound to source commit
+`9bdd2381cac00015eaa0698edde36d589e542859` and the reproducible 12-file plugin
+payload digest recorded in `artifacts/runtime-evidence.json`. The digest
+algorithm is implemented by `scripts/plugin-payload-digest.mjs`.
 
 The following boundaries passed:
 
@@ -66,8 +67,10 @@ The following boundaries passed:
 7. A three-spawn capacity test admitted two children and rejected the third
    with `agent thread limit reached`; no retry storm occurred.
 8. A trivial turn produced no subagent activity.
-9. Two project transactions were rolled back in reverse order, leaving no
-   generated project files.
+9. The project transaction rolled back, leaving no generated project files
+   outside receipt-owned transaction history. Five rollback source
+   quarantines remained under transaction history as the documented
+   open-inode recovery boundary.
 
 The sanitized machine-readable record is
 `artifacts/runtime-evidence.json`. Raw session files are not included because

@@ -104,8 +104,11 @@ manifest. Codsemble refuses to overwrite overlapping user edits.
 Apply and rollback are serialized by a project lock. Each file is moved to a
 private same-filesystem quarantine and the replacement is published with an
 exclusive link, so a racing writer is preserved instead of silently
-overwritten. The operation is not an atomic multi-file snapshot. Process or
-power interruption can leave a lock, pending record, backup, or quarantine;
+overwritten. Successful updates retain the original inode as a
+receipt-recorded recovery quarantine so writes through an already-open editor
+handle still have a pathname. The operation is not an atomic multi-file
+snapshot. Process or power interruption can additionally leave a lock or
+pending record;
 `doctor` reports that state and further writes fail closed pending manual
 recovery. See [Configuration safety](docs/CONFIG_SAFETY.md).
 

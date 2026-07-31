@@ -52,3 +52,9 @@ jobs:
 
       - name: Verify source payload checksums
         run: npm run checksums:verify
+
+      - name: Verify deterministic SBOM
+        run: npm run sbom:verify
+
+      - name: Audit locked dependencies
+        run: npm audit --audit-level=high

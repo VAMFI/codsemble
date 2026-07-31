@@ -142,6 +142,7 @@ describe("detectCodexCapabilities", () => {
         model: "live-model",
         reasoningEffort: "high",
         sandbox: "read-only",
+        source: "catalog",
       }],
       concurrency: {
         requestedWorkers: 2,

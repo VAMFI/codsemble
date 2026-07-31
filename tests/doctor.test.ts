@@ -138,6 +138,7 @@ describe("doctorWorkspace", () => {
         developerInstructions: "Report evidence.",
         modelProfile: "inherit",
         sandbox: "read-only",
+        source: "catalog",
       }],
       concurrency: {
         requestedWorkers: 2,
@@ -184,6 +185,9 @@ describe("doctorWorkspace", () => {
       `${files[".codex/agents/reviewer.toml"]}# user edit\n`,
     );
     const drifted = await doctorWorkspace(workspace);
+    expect(
+      drifted.checks.find((check) => check.id === "manifest-ownership")?.status,
+    ).toBe("fail");
     expect(
       drifted.checks.find((check) => check.id === "transactions")?.status,
     ).toBe("warn");

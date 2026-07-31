@@ -61,14 +61,21 @@ cannot be silently deleted. A file recreated before publication causes a
 no-clobber conflict; both the competing target and quarantined bytes are
 retained. Rollback applies the same checks to confirmed postimages.
 
+For every successful update or delete, the transaction receipt records and
+retains the source quarantine. Codsemble does not automatically unlink it:
+an editor may still hold the original inode open and write after pathname
+replacement. `doctor` verifies the retained quarantine against its recorded
+preimage hash. Pruning recovery artifacts is a separate, explicit future
+workflow.
+
 This is not an atomic multi-file snapshot, and portable Node filesystems do not
 offer compare-and-swap replacement of an existing pathname. A process or power
-interruption may leave
+interruption may additionally leave
 `.codex/codsemble/transactions/mutation.lock`, a `*.pending.json` record,
-backups, or adjacent `*.quarantine` files. `doctor` reports incomplete mutation
+or partially staged files. `doctor` reports incomplete mutation
 state and later writes refuse to proceed. Do not delete or merge those files
 blindly: preserve the project, inspect the pending record and hashes, copy both
-target and quarantine to a safe location, and restore the confirmed preimage
+target and any receipt-recorded quarantine to a safe location, and restore the confirmed preimage
 from the transaction backup only after resolving any competing bytes. Automatic
 crash recovery is deferred beyond v0.1.
 

@@ -17176,6 +17176,7 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
   for (const role of resolvedRoles) {
     const relativePath = `.codex/agents/${role.id}.toml`;
     const existing = await getExistingContent(root, relativePath, existingFiles);
+    const desired = renderRoleToml(role);
     if (existing !== void 0) {
       const ownedHash = priorOwnedAgents.get(relativePath);
       if (ownedHash === void 0) {
@@ -17183,13 +17184,18 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
           `Refusing to overwrite user-owned agent file: ${relativePath}`
         );
       }
-      if (sha256(existing) !== ownedHash) {
+      if (ownedHash === null && existing !== desired) {
+        throw new Error(
+          `Refusing to overwrite legacy Codsemble agent without an ownership hash: ${relativePath}`
+        );
+      }
+      if (ownedHash !== null && sha256(existing) !== ownedHash) {
         throw new Error(
           `Refusing to overwrite edited Codsemble agent file: ${relativePath}`
         );
       }
     }
-    desiredFiles.set(relativePath, renderRoleToml(role));
+    desiredFiles.set(relativePath, desired);
   }
   const agentsPath = "AGENTS.md";
   const existingAgents = await getExistingContent(
@@ -17276,7 +17282,7 @@ max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
       ...role.model ? { model: role.model } : {},
       ...role.reasoningEffort ? { reasoningEffort: role.reasoningEffort } : {},
       sandbox: role.sandbox,
-      source: answers.customRoles.some(({ id }) => id === role.id) ? "custom" : "catalog"
+      source: role.source
     })),
     ownership: {
       agentsBlock: { path: "AGENTS.md", start: AGENTS_START, end: AGENTS_END },
@@ -17320,6 +17326,9 @@ max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
   }
   for (const relativePath of [...priorOwnedAgents.keys()].sort()) {
     if (desiredFiles.has(relativePath)) continue;
+    if (priorOwnedAgents.get(relativePath) === null) {
+      continue;
+    }
     const before = await getExistingFile(root, relativePath, existingFiles);
     if (before.content === void 0) continue;
     const beforeSha256 = sha256(Buffer.from(before.content));
@@ -17373,8 +17382,8 @@ async function readPriorOwnedAgents(root, existingFiles) {
   }
   const ownership = typeof parsed === "object" && parsed !== null && "ownership" in parsed && typeof parsed.ownership === "object" && parsed.ownership !== null ? parsed.ownership : null;
   const owned = ownership !== null && "agentFiles" in ownership && Array.isArray(ownership.agentFiles) ? ownership.agentFiles : null;
-  const hashes = ownership !== null && "agentSha256" in ownership && typeof ownership.agentSha256 === "object" && ownership.agentSha256 !== null && !Array.isArray(ownership.agentSha256) ? ownership.agentSha256 : null;
-  if (owned === null || hashes === null) {
+  const hashes = ownership !== null && (!("agentSha256" in ownership) || ownership.agentSha256 === void 0) ? null : ownership !== null && "agentSha256" in ownership && typeof ownership.agentSha256 === "object" && ownership.agentSha256 !== null && !Array.isArray(ownership.agentSha256) ? ownership.agentSha256 : void 0;
+  if (owned === null || hashes === void 0) {
     throw new Error("Existing Codsemble manifest has invalid agent ownership");
   }
   const result = /* @__PURE__ */ new Map();
@@ -17382,13 +17391,15 @@ async function readPriorOwnedAgents(root, existingFiles) {
     if (typeof entry !== "string" || !/^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(entry)) {
       throw new Error("Existing Codsemble manifest contains an unsafe agent path");
     }
-    const digest = hashes[entry];
-    if (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest)) {
-      throw new Error("Existing Codsemble manifest has invalid agent ownership hash");
+    const digest = hashes?.[entry] ?? null;
+    if (digest !== null && (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest))) {
+      throw new Error(
+        "Existing Codsemble manifest has invalid agent ownership hash"
+      );
     }
     result.set(entry, digest);
   }
-  if (Object.keys(hashes).length !== result.size) {
+  if (hashes !== null && Object.keys(hashes).length !== result.size) {
     throw new Error("Existing Codsemble manifest has unexpected agent ownership hashes");
   }
   return result;
@@ -17487,7 +17498,8 @@ function resolveCatalogRole(role, answers) {
     modelProfile: role.defaultModelProfile,
     ...model ? { model } : {},
     ...model && role.defaultReasoningEffort !== "inherit" ? { reasoningEffort: role.defaultReasoningEffort } : {},
-    sandbox: role.defaultSandbox
+    sandbox: role.defaultSandbox,
+    source: "catalog"
   };
 }
 function resolveCustomRole(role, answers) {
@@ -17517,7 +17529,8 @@ function resolveCustomRole(role, answers) {
     modelProfile: role.modelProfile,
     ...model ? { model } : {},
     ...model && role.reasoningEffort !== "inherit" ? { reasoningEffort: role.reasoningEffort } : {},
-    sandbox: role.sandbox
+    sandbox: role.sandbox,
+    source: "custom"
   };
 }
 function resolveModel(profile, answers) {
@@ -17616,7 +17629,7 @@ async function getExistingFile(root, relativePath, existingFiles) {
 
 // src/doctor.ts
 import { execFile as execFile3 } from "node:child_process";
-import { access, lstat as lstat5, readFile as readFile4, readdir as readdir2 } from "node:fs/promises";
+import { access, lstat as lstat5, readFile as readFile4, readdir as readdir3 } from "node:fs/promises";
 import path5 from "node:path";
 import { promisify as promisify3 } from "node:util";
 
@@ -17629,6 +17642,7 @@ import {
   mkdir,
   open as open2,
   readFile as readFile3,
+  readdir as readdir2,
   rename,
   rmdir,
   unlink
@@ -17654,7 +17668,7 @@ var generatedAgentSchema = external_exports.object({
     });
   }
 });
-var manifestSchema = external_exports.object({
+var generatedManifestSchema = external_exports.object({
   schemaVersion: external_exports.literal(1),
   generator: external_exports.object({ name: external_exports.literal("codsemble"), version: external_exports.string().min(1) }).strict(),
   catalogVersion: external_exports.string().min(1),
@@ -17695,7 +17709,9 @@ var manifestSchema = external_exports.object({
       start: external_exports.literal("<!-- codsemble:start -->"),
       end: external_exports.literal("<!-- codsemble:end -->")
     }).strict(),
-    agentFiles: external_exports.array(external_exports.string().regex(agentPathPattern)),
+    agentFiles: external_exports.array(external_exports.string().regex(agentPathPattern)).refine((paths) => new Set(paths).size === paths.length, {
+      message: "agentFiles must be unique"
+    }),
     agentSha256: external_exports.record(external_exports.string().regex(agentPathPattern), digestSchema)
   }).strict()
 }).strict();
@@ -17735,7 +17751,14 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
       if (state.content !== null) {
         validateToml(decodeUtf8(state.content, planned.relativePath));
       }
-      if (planned.content !== null) validateToml(planned.content);
+      if (planned.content !== null) {
+        validateToml(planned.content);
+        validateProjectConfigOutput(
+          plan,
+          state.content === null ? "" : decodeUtf8(state.content, planned.relativePath),
+          planned.content
+        );
+      }
     }
     if (planned.content !== null) {
       validatePlannedOutput(planned.relativePath, planned.content, plan);
@@ -17749,6 +17772,7 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
       quarantinePath: `${absolutePath}.codsemble-${transactionId}.quarantine`
     });
   }
+  await validateUnchangedManifestOwnership(root, plan);
   const transaction = {
     schemaVersion: 1,
     transactionId,
@@ -17759,7 +17783,8 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
       beforeSha256: file2.before === null ? null : sha256(file2.before),
       afterSha256: file2.planned.afterSha256,
       backupRelativePath: file2.backupRelativePath,
-      mode: file2.mode
+      mode: file2.mode,
+      quarantineRelativePath: file2.before === null ? null : path4.relative(root, file2.quarantinePath)
     }))
   };
   const staged = /* @__PURE__ */ new Map();
@@ -17832,11 +17857,8 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
   } catch (error51) {
     await cleanupStaged(staged);
     const restoreErrors = await restoreMutationsLosslessly(installed);
-    if (restoreErrors.length === 0 && !(error51 instanceof PreservedConflictError) && pendingPath !== void 0) {
-      await unlink(pendingPath).catch(() => void 0);
-      await syncDirectory(path4.dirname(pendingPath)).catch(() => void 0);
-    }
-    if (!(error51 instanceof PreservedConflictError)) {
+    const pendingCleared = restoreErrors.length === 0 && !(error51 instanceof PreservedConflictError) ? await clearPendingMutation(pendingPath) : pendingPath === void 0;
+    if (!(error51 instanceof PreservedConflictError) && pendingCleared) {
       await releaseLock?.().catch(() => void 0);
     }
     if (restoreErrors.length > 0) {
@@ -17965,11 +17987,8 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
   } catch (error51) {
     await cleanupStaged(staged);
     const restoreErrors = await restoreMutationsLosslessly(completed);
-    if (restoreErrors.length === 0 && !(error51 instanceof PreservedConflictError) && pendingPath !== void 0) {
-      await unlink(pendingPath).catch(() => void 0);
-      await syncDirectory(path4.dirname(pendingPath)).catch(() => void 0);
-    }
-    if (!(error51 instanceof PreservedConflictError)) {
+    const pendingCleared = restoreErrors.length === 0 && !(error51 instanceof PreservedConflictError) ? await clearPendingMutation(pendingPath) : pendingPath === void 0;
+    if (!(error51 instanceof PreservedConflictError) && pendingCleared) {
       await releaseLock?.().catch(() => void 0);
     }
     if (restoreErrors.length > 0) {
@@ -18132,6 +18151,13 @@ async function acquireMutationLock(root, operation, transactionId) {
     `${transactionRoot}/mutation.lock`
   );
   await ensureSafeParentDirectories(root, lockPath);
+  const transactionDirectory = path4.dirname(lockPath);
+  const beforePending = await listPendingMutations(transactionDirectory);
+  if (beforePending.length > 0) {
+    throw new Error(
+      `Incomplete Codsemble mutation record(s) block new writes: ${beforePending.join(", ")}`
+    );
+  }
   try {
     await mkdir(lockPath, { mode: 448 });
     await syncDirectory(path4.dirname(lockPath));
@@ -18141,10 +18167,35 @@ async function acquireMutationLock(root, operation, transactionId) {
       { cause: error51 }
     );
   }
+  const afterPending = await listPendingMutations(transactionDirectory);
+  if (afterPending.length > 0) {
+    await rmdir(lockPath).catch(() => void 0);
+    await syncDirectory(transactionDirectory).catch(() => void 0);
+    throw new Error(
+      `Incomplete Codsemble mutation record(s) appeared while locking: ${afterPending.join(", ")}`
+    );
+  }
   return async () => {
     await rmdir(lockPath);
     await syncDirectory(path4.dirname(lockPath));
   };
+}
+async function listPendingMutations(directory) {
+  const stats = await lstat4(directory);
+  if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    throw new Error("Transaction directory must be a real directory");
+  }
+  return (await readdir2(directory)).filter((entry) => entry.endsWith(".pending.json")).sort();
+}
+async function clearPendingMutation(pendingPath) {
+  if (pendingPath === void 0) return true;
+  try {
+    await unlink(pendingPath);
+    await syncDirectory(path4.dirname(pendingPath));
+    return true;
+  } catch {
+    return false;
+  }
 }
 async function writePendingMutation(root, relativePath, journal) {
   const target = await safeTarget(root, relativePath);
@@ -18156,13 +18207,7 @@ async function writePendingMutation(root, relativePath, journal) {
   await atomicWrite(target, stableStringify(journal), 384);
   return target;
 }
-async function finishPendingMutation(pendingPath, mutations) {
-  for (const mutation of mutations) {
-    if (mutation.quarantinePath !== null) {
-      await unlink(mutation.quarantinePath);
-      await syncDirectory(path4.dirname(mutation.quarantinePath));
-    }
-  }
+async function finishPendingMutation(pendingPath, _mutations) {
   if (pendingPath !== void 0) {
     await unlink(pendingPath);
     await syncDirectory(path4.dirname(pendingPath));
@@ -18393,7 +18438,7 @@ function validatePlannedOutput(relativePath, content, plan) {
       throw new Error(`Generated agent is not bound to plan role: ${roleId}`);
     }
   } else if (relativePath === ".codex/codsemble/manifest.json") {
-    const parsed = manifestSchema.safeParse(JSON.parse(content));
+    const parsed = generatedManifestSchema.safeParse(JSON.parse(content));
     if (!parsed.success) {
       throw new Error(
         `Generated Codsemble manifest has an invalid schema: ${parsed.error.message}`
@@ -18401,14 +18446,23 @@ function validatePlannedOutput(relativePath, content, plan) {
     }
     const expectedAgentFiles = plan.roles.map(({ id }) => `.codex/agents/${id}.toml`).sort();
     const ownedAgentFiles = [...parsed.data.ownership.agentFiles].sort();
-    if (parsed.data.planId !== plan.planId || parsed.data.auditFingerprint !== plan.auditFingerprint || parsed.data.proposal.maxConcurrentWorkers !== plan.concurrency.requestedWorkers || stableStringify(ownedAgentFiles) !== stableStringify(expectedAgentFiles) || Object.keys(parsed.data.ownership.agentSha256).sort().join("\n") !== expectedAgentFiles.join("\n")) {
+    const expectedRoles = plan.roles.map((role) => ({
+      id: role.id,
+      name: role.name,
+      modelProfile: role.modelProfile,
+      ...role.model ? { model: role.model } : {},
+      ...role.reasoningEffort ? { reasoningEffort: role.reasoningEffort } : {},
+      sandbox: role.sandbox,
+      source: role.source
+    }));
+    if (parsed.data.planId !== plan.planId || parsed.data.auditFingerprint !== plan.auditFingerprint || parsed.data.proposal.maxConcurrentWorkers !== plan.concurrency.requestedWorkers || stableStringify(parsed.data.roles) !== stableStringify(expectedRoles) || stableStringify(ownedAgentFiles) !== stableStringify(expectedAgentFiles) || Object.keys(parsed.data.ownership.agentSha256).sort().join("\n") !== expectedAgentFiles.join("\n")) {
       throw new Error("Generated Codsemble manifest is not bound to the plan");
     }
     for (const relativeAgentPath of expectedAgentFiles) {
       const plannedAgent = plan.files.find(
         ({ relativePath: candidate, action }) => candidate === relativeAgentPath && action !== "delete"
       );
-      if (plannedAgent?.afterSha256 !== void 0 && plannedAgent.afterSha256 !== parsed.data.ownership.agentSha256[relativeAgentPath]) {
+      if (plannedAgent !== void 0 && plannedAgent.afterSha256 !== parsed.data.ownership.agentSha256[relativeAgentPath]) {
         throw new Error(
           `Generated Codsemble manifest ownership hash mismatch: ${relativeAgentPath}`
         );
@@ -18419,6 +18473,45 @@ function validatePlannedOutput(relativePath, content, plan) {
     const ends = content.split("<!-- codsemble:end -->").length - 1;
     if (starts !== 1 || ends !== 1) {
       throw new Error("Generated AGENTS.md must contain exactly one managed block");
+    }
+  }
+}
+function validateProjectConfigOutput(plan, before, after) {
+  if (plan.concurrency.configMode !== "apply-project" || plan.concurrency.willApply !== true || plan.concurrency.adapter !== "agents-v1") {
+    throw new Error(
+      "Generated project config is forbidden unless an apply-project agents-v1 change is confirmed"
+    );
+  }
+  const expected = patchConcurrencyToml(
+    before,
+    plan.concurrency.requestedWorkers,
+    "agents-v1"
+  );
+  if (!expected.changed || expected.content !== after) {
+    throw new Error(
+      "Generated project config is not the exact supported concurrency patch"
+    );
+  }
+}
+async function validateUnchangedManifestOwnership(root, plan) {
+  const manifestFile = plan.files.find(
+    ({ relativePath, action }) => relativePath === ".codex/codsemble/manifest.json" && action !== "delete"
+  );
+  if (manifestFile?.content === null || manifestFile?.content === void 0) {
+    return;
+  }
+  const manifest = generatedManifestSchema.parse(JSON.parse(manifestFile.content));
+  for (const relativePath of manifest.ownership.agentFiles) {
+    const planned = plan.files.find(
+      ({ relativePath: candidate, action }) => candidate === relativePath && action !== "delete"
+    );
+    if (planned !== void 0) continue;
+    const target = await safeTarget(root, relativePath);
+    const current = await readSafeRegularFile(target);
+    if (current.content === null || sha256(current.content) !== manifest.ownership.agentSha256[relativePath]) {
+      throw new Error(
+        `Generated manifest ownership hash does not match unchanged agent: ${relativePath}`
+      );
     }
   }
 }
@@ -18434,6 +18527,10 @@ function validateTransaction(record2) {
     const expectedBackup = file2.beforeSha256 === null ? null : `${transactionRoot}/${record2.transactionId}.backups/${file2.relativePath}`;
     if (file2.backupRelativePath !== expectedBackup) {
       throw new Error("Transaction backup path is outside its scoped directory");
+    }
+    const expectedQuarantine = file2.beforeSha256 === null ? null : `${file2.relativePath}.codsemble-${record2.transactionId}.quarantine`;
+    if (file2.quarantineRelativePath !== expectedQuarantine) {
+      throw new Error("Transaction quarantine path is outside its scoped location");
     }
     paths.add(file2.relativePath);
   }
@@ -18484,7 +18581,7 @@ async function readSafeDirectory(candidate, root) {
   if (!stats.isDirectory() || stats.isSymbolicLink()) {
     throw new Error("Expected a real directory");
   }
-  return readdir2(candidate);
+  return readdir3(candidate);
 }
 async function doctorWorkspace(workspace) {
   const root = await assertWorkspaceRoot(workspace);
@@ -18575,37 +18672,52 @@ async function doctorWorkspace(workspace) {
   let manifest;
   if (manifestPath) {
     try {
-      manifest = JSON.parse(
-        (await readRegularFile(manifestPath, root)).toString("utf8")
+      const parsed = generatedManifestSchema.safeParse(
+        JSON.parse(
+          (await readRegularFile(manifestPath, root)).toString("utf8")
+        )
       );
-      const valid = manifest.schemaVersion === 1 && typeof manifest.planId === "string" && manifest.generator?.name === "codsemble" && typeof manifest.generator.version === "string" && typeof manifest.catalogVersion === "string";
+      if (!parsed.success) {
+        throw new Error(`invalid manifest schema: ${parsed.error.message}`);
+      }
+      manifest = parsed.data;
       checks.push({
         id: "codsemble-manifest",
-        status: valid ? "pass" : "fail",
-        summary: valid ? `Codsemble manifest loaded from ${path5.relative(root, manifestPath)}` : "Codsemble manifest is missing required schema, generator, catalog, or plan metadata"
+        status: "pass",
+        summary: `Codsemble manifest loaded from ${path5.relative(root, manifestPath)}`
       });
-      if (valid) {
-        const ownedAgents = Array.isArray(manifest.ownership?.agentFiles) ? manifest.ownership.agentFiles.filter(
-          (entry) => typeof entry === "string"
-        ) : [];
+      {
+        const ownedAgents = manifest.ownership.agentFiles;
         const missing = ownedAgents.filter(
           (entry) => !agentEntries.includes(entry)
         );
         const unexpected = agentEntries.filter(
           (entry) => !ownedAgents.includes(entry)
         );
+        const changed = [];
+        for (const entry of ownedAgents) {
+          try {
+            const content = await readRegularFile(path5.join(root, entry), root);
+            if (sha256(content) !== manifest.ownership.agentSha256[entry]) {
+              changed.push(entry);
+            }
+          } catch {
+            if (!missing.includes(entry)) changed.push(entry);
+          }
+        }
         checks.push({
           id: "manifest-ownership",
-          status: missing.length > 0 ? "fail" : unexpected.length > 0 ? "warn" : "pass",
-          summary: missing.length === 0 && unexpected.length === 0 ? "Manifest agent ownership matches installed native agent files" : "Installed agent files differ from manifest ownership",
-          ...missing.length > 0 || unexpected.length > 0 ? {
+          status: missing.length > 0 || changed.length > 0 ? "fail" : unexpected.length > 0 ? "warn" : "pass",
+          summary: missing.length === 0 && unexpected.length === 0 && changed.length === 0 ? "Manifest agent ownership and hashes match installed native agent files" : "Installed agent files differ from manifest ownership",
+          ...missing.length > 0 || unexpected.length > 0 || changed.length > 0 ? {
             details: [
               ...missing.map((entry) => `missing: ${entry}`),
+              ...changed.map((entry) => `hash mismatch: ${entry}`),
               ...unexpected.map((entry) => `user-owned or unexpected: ${entry}`)
             ]
           } : {}
         });
-        const block = manifest.ownership?.agentsBlock;
+        const block = manifest.ownership.agentsBlock;
         if (block && block.path === "AGENTS.md" && typeof block.start === "string" && typeof block.end === "string") {
           try {
             const agentsText = (await readRegularFile(path5.join(root, "AGENTS.md"), root)).toString("utf8");
@@ -18735,6 +18847,24 @@ async function inspectTransactions(root) {
             throw new Error("path is not a Codsemble-owned output");
           }
           const currentPath = await assertContainedPath(root, file2.relativePath);
+          if (file2.beforeSha256 !== null) {
+            if (typeof file2.quarantineRelativePath !== "string") {
+              drift.push(
+                `${file2.relativePath}: recovery quarantine metadata is missing`
+              );
+            } else {
+              const quarantinePath = await assertContainedPath(
+                root,
+                file2.quarantineRelativePath
+              );
+              const quarantine = await readRegularFile(quarantinePath, root);
+              if (sha256(quarantine) !== file2.beforeSha256) {
+                drift.push(
+                  `${file2.relativePath}: recovery quarantine changed after apply`
+                );
+              }
+            }
+          }
           if (file2.afterSha256 === null) {
             if (await exists(currentPath)) {
               drift.push(`${file2.relativePath}: deleted output was recreated`);

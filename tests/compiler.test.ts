@@ -401,6 +401,67 @@ describe("compileTeamPlan", () => {
     );
   });
 
+  it("safely upgrades legacy ownership by hashing unchanged agents and preserving stale ones", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codsemble-legacy-agent-"));
+    const initial = await compileTeamPlan(
+      root,
+      audit,
+      answers(),
+      proposal,
+      [blueprint],
+      {},
+    );
+    const currentAgent = initial.files.find(
+      ({ relativePath }) =>
+        relativePath === ".codex/agents/planner.toml",
+    )?.content;
+    if (currentAgent === null || currentAgent === undefined) {
+      throw new Error("missing initial agent fixture");
+    }
+    const legacyManifest = JSON.stringify({
+      schemaVersion: 1,
+      planId: "legacy",
+      ownership: {
+        agentFiles: [
+          ".codex/agents/planner.toml",
+          ".codex/agents/stale-role.toml",
+        ],
+      },
+    });
+    const migrated = await compileTeamPlan(
+      root,
+      audit,
+      answers(),
+      proposal,
+      [blueprint],
+      {
+        ".codex/codsemble/manifest.json": legacyManifest,
+        ".codex/agents/planner.toml": currentAgent,
+        ".codex/agents/stale-role.toml": 'name = "stale_role"\n',
+      },
+    );
+
+    expect(
+      migrated.files.some(
+        ({ relativePath, action }) =>
+          relativePath === ".codex/agents/stale-role.toml" &&
+          action === "delete",
+      ),
+    ).toBe(false);
+    const manifestContent = migrated.files.find(
+      ({ relativePath }) =>
+        relativePath === ".codex/codsemble/manifest.json",
+    )?.content;
+    const manifest = JSON.parse(manifestContent as string) as {
+      ownership: { agentSha256: Record<string, string> };
+    };
+    expect(
+      manifest.ownership.agentSha256[
+        ".codex/agents/planner.toml"
+      ],
+    ).toBe(sha256(currentAgent));
+  });
+
   it("refuses to overwrite an agent not owned by the prior manifest", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "codsemble-owned-agent-"));
     await expect(

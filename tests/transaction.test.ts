@@ -48,6 +48,10 @@ describe("project transactions", () => {
       planned(".codex/config.toml", "update", before, after),
       planned(".codex/agents/reviewer.toml", "create", null, agentToml("reviewer")),
     ]);
+    plan.concurrency.requestedWorkers = 4;
+    plan.concurrency.manualSnippet =
+      "[agents]\nmax_concurrent_threads_per_session = 4\n";
+    plan.confirmationId = computeConfirmationId(plan);
     const transaction = await applyTeamPlan(workspace, plan);
 
     expect(await readFile(configPath, "utf8")).toBe(after);
@@ -164,6 +168,25 @@ describe("project transactions", () => {
     expect(await readFile(configPath, "utf8")).toBe("[agents]\n");
   });
 
+  it("rejects dangerous config keys outside the exact concurrency patch", async () => {
+    const workspace = await makeWorkspace();
+    const configPath = path.join(workspace, ".codex/config.toml");
+    await mkdir(path.dirname(configPath), { recursive: true });
+    const before = "[agents]\nmax_concurrent_threads_per_session = 1\n";
+    const dangerous = `${before}approval_policy = "never"\nsandbox_mode = "danger-full-access"\n`;
+    await writeFile(configPath, before);
+
+    await expect(
+      applyTeamPlan(
+        workspace,
+        makePlan([
+          planned(".codex/config.toml", "update", before, dangerous),
+        ]),
+      ),
+    ).rejects.toThrow("exact supported concurrency patch");
+    expect(await readFile(configPath, "utf8")).toBe(before);
+  });
+
   it("rejects symlinked parent directories without following them", async () => {
     const workspace = await makeWorkspace();
     const outside = await mkdtemp(path.join(os.tmpdir(), "codsemble-parent-"));
@@ -277,6 +300,158 @@ describe("project transactions", () => {
     ).toBe(true);
   });
 
+  it("retains late writes made through an already-open source inode", async () => {
+    const workspace = await makeWorkspace();
+    const target = path.join(workspace, ".codex/agents/reviewer.toml");
+    await mkdir(path.dirname(target), { recursive: true });
+    const before = agentToml("reviewer");
+    const after = before.replace(
+      "Report evidence.",
+      "Report verified evidence.",
+    );
+    await writeFile(target, before);
+    const handle = await import("node:fs/promises").then(({ open }) =>
+      open(target, "r+"),
+    );
+    const plan = makePlan([
+      planned(".codex/agents/reviewer.toml", "update", before, after),
+    ]);
+    const role = plan.roles[0];
+    if (role === undefined) throw new Error("missing test role");
+    role.developerInstructions = "Report verified evidence.";
+    plan.confirmationId = computeConfirmationId(plan);
+
+    const transaction = await applyTeamPlan(workspace, plan, {
+      beforeExclusivePublish: async () => {
+        await handle.truncate(0);
+        await handle.writeFile("late editor bytes");
+        await handle.sync();
+      },
+    });
+    await handle.close();
+
+    expect(await readFile(target, "utf8")).toBe(after);
+    const recoveryPath = transaction.files[0]?.quarantineRelativePath;
+    expect(recoveryPath).toBeTruthy();
+    expect(
+      await readFile(path.join(workspace, recoveryPath as string), "utf8"),
+    ).toBe("late editor bytes");
+  });
+
+  it("refuses new writes when a pending record remains without its lock", async () => {
+    const workspace = await makeWorkspace();
+    const transactions = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
+    );
+    await mkdir(transactions, { recursive: true });
+    await writeFile(
+      path.join(transactions, "stale.apply.pending.json"),
+      '{"schemaVersion":1}\n',
+    );
+
+    await expect(
+      applyTeamPlan(
+        workspace,
+        makePlan([
+          planned(
+            ".codex/agents/reviewer.toml",
+            "create",
+            null,
+            agentToml("reviewer"),
+          ),
+        ]),
+      ),
+    ).rejects.toThrow("Incomplete Codsemble mutation record");
+    await expect(
+      readFile(path.join(workspace, ".codex/agents/reviewer.toml")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("binds unchanged manifest ownership hashes and role metadata", async () => {
+    const workspace = await makeWorkspace();
+    const agentPath = path.join(workspace, ".codex/agents/reviewer.toml");
+    const agent = agentToml("reviewer");
+    await mkdir(path.dirname(agentPath), { recursive: true });
+    await writeFile(agentPath, agent);
+    const role = {
+      id: "reviewer",
+      name: "reviewer",
+      description: "Bounded test agent",
+      developerInstructions: "Report evidence.",
+      modelProfile: "inherit" as const,
+      sandbox: "read-only" as const,
+      source: "catalog" as const,
+    };
+    const manifest = `${JSON.stringify({
+      schemaVersion: 1,
+      generator: { name: "codsemble", version: "0.1.0" },
+      catalogVersion: "0.1.0",
+      planId: "test-plan",
+      auditFingerprint: "a".repeat(64),
+      proposal: { kind: "balanced", maxConcurrentWorkers: 2 },
+      capabilities: {
+        configAdapter: "agents-v1",
+        modelCapabilities: [],
+        availableTools: ["workspace-read"],
+      },
+      roles: [{
+        id: role.id,
+        name: role.name,
+        modelProfile: role.modelProfile,
+        sandbox: "workspace-write",
+        source: role.source,
+      }],
+      ownership: {
+        agentsBlock: {
+          path: "AGENTS.md",
+          start: "<!-- codsemble:start -->",
+          end: "<!-- codsemble:end -->",
+        },
+        agentFiles: [".codex/agents/reviewer.toml"],
+        agentSha256: {
+          ".codex/agents/reviewer.toml": "0".repeat(64),
+        },
+      },
+    })}\n`;
+    const file = planned(
+      ".codex/codsemble/manifest.json",
+      "create",
+      null,
+      manifest,
+    );
+    const unsigned: Omit<TeamPlan, "confirmationId"> = {
+      schemaVersion: 1,
+      planId: "test-plan",
+      auditFingerprint: "a".repeat(64),
+      roles: [role],
+      concurrency: {
+        requestedWorkers: 2,
+        projectCurrentValue: null,
+        adapter: "agents-v1",
+        configMode: "manual",
+        willApply: false,
+        manualSnippet:
+          "[agents]\nmax_concurrent_threads_per_session = 2\n",
+      },
+      preimages: [{
+        relativePath: file.relativePath,
+        exists: false,
+        sha256: null,
+        mode: null,
+      }],
+      files: [file],
+    };
+    const plan: TeamPlan = {
+      ...unsigned,
+      confirmationId: computeConfirmationId(unsigned),
+    };
+
+    await expect(applyTeamPlan(workspace, plan)).rejects.toThrow(
+      "manifest is not bound to the plan",
+    );
+  });
+
   it("applies and rolls back deletion of a previously owned output", async () => {
     const workspace = await makeWorkspace();
     const target = path.join(workspace, ".codex/agents/stale.toml");
@@ -342,6 +517,7 @@ function makePlan(files: ReturnType<typeof planned>[]): TeamPlan {
         developerInstructions: "Report evidence.",
         modelProfile: "inherit" as const,
         sandbox: "read-only" as const,
+        source: "catalog" as const,
       };
     });
   const unsigned: Omit<TeamPlan, "confirmationId"> = {

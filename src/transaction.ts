@@ -6,6 +6,7 @@ import {
   mkdir,
   open,
   readFile,
+  readdir,
   rename,
   rmdir,
   unlink,
@@ -13,7 +14,7 @@ import {
 import path from "node:path";
 import { z } from "zod";
 
-import { validateToml } from "./config.js";
+import { patchConcurrencyToml, validateToml } from "./config.js";
 import { computeConfirmationId } from "./compiler.js";
 import type {
   PlannedFile,
@@ -47,7 +48,7 @@ const generatedAgentSchema = z
       });
     }
   });
-const manifestSchema = z
+export const generatedManifestSchema = z
   .object({
     schemaVersion: z.literal(1),
     generator: z
@@ -104,7 +105,11 @@ const manifestSchema = z
             end: z.literal("<!-- codsemble:end -->"),
           })
           .strict(),
-        agentFiles: z.array(z.string().regex(agentPathPattern)),
+        agentFiles: z
+          .array(z.string().regex(agentPathPattern))
+          .refine((paths) => new Set(paths).size === paths.length, {
+            message: "agentFiles must be unique",
+          }),
         agentSha256: z.record(z.string().regex(agentPathPattern), digestSchema),
       })
       .strict(),
@@ -178,7 +183,16 @@ export async function applyTeamPlan(
       if (state.content !== null) {
         validateToml(decodeUtf8(state.content, planned.relativePath));
       }
-      if (planned.content !== null) validateToml(planned.content);
+      if (planned.content !== null) {
+        validateToml(planned.content);
+        validateProjectConfigOutput(
+          plan,
+          state.content === null
+            ? ""
+            : decodeUtf8(state.content, planned.relativePath),
+          planned.content,
+        );
+      }
     }
     if (planned.content !== null) {
       validatePlannedOutput(planned.relativePath, planned.content, plan);
@@ -195,6 +209,7 @@ export async function applyTeamPlan(
       quarantinePath: `${absolutePath}.codsemble-${transactionId}.quarantine`,
     });
   }
+  await validateUnchangedManifestOwnership(root, plan);
 
   const transaction: TransactionRecord = {
     schemaVersion: 1,
@@ -208,6 +223,10 @@ export async function applyTeamPlan(
       afterSha256: file.planned.afterSha256,
       backupRelativePath: file.backupRelativePath,
       mode: file.mode,
+      quarantineRelativePath:
+        file.before === null
+          ? null
+          : path.relative(root, file.quarantinePath),
     })),
   };
 
@@ -286,15 +305,12 @@ export async function applyTeamPlan(
   } catch (error) {
     await cleanupStaged(staged);
     const restoreErrors = await restoreMutationsLosslessly(installed);
-    if (
+    const pendingCleared =
       restoreErrors.length === 0 &&
-      !(error instanceof PreservedConflictError) &&
-      pendingPath !== undefined
-    ) {
-      await unlink(pendingPath).catch(() => undefined);
-      await syncDirectory(path.dirname(pendingPath)).catch(() => undefined);
-    }
-    if (!(error instanceof PreservedConflictError)) {
+      !(error instanceof PreservedConflictError)
+        ? await clearPendingMutation(pendingPath)
+        : pendingPath === undefined;
+    if (!(error instanceof PreservedConflictError) && pendingCleared) {
       await releaseLock?.().catch(() => undefined);
     }
     if (restoreErrors.length > 0) {
@@ -445,15 +461,12 @@ export async function rollbackTransaction(
   } catch (error) {
     await cleanupStaged(staged);
     const restoreErrors = await restoreMutationsLosslessly(completed);
-    if (
+    const pendingCleared =
       restoreErrors.length === 0 &&
-      !(error instanceof PreservedConflictError) &&
-      pendingPath !== undefined
-    ) {
-      await unlink(pendingPath).catch(() => undefined);
-      await syncDirectory(path.dirname(pendingPath)).catch(() => undefined);
-    }
-    if (!(error instanceof PreservedConflictError)) {
+      !(error instanceof PreservedConflictError)
+        ? await clearPendingMutation(pendingPath)
+        : pendingPath === undefined;
+    if (!(error instanceof PreservedConflictError) && pendingCleared) {
       await releaseLock?.().catch(() => undefined);
     }
     if (restoreErrors.length > 0) {
@@ -648,6 +661,13 @@ async function acquireMutationLock(
     `${transactionRoot}/mutation.lock`,
   );
   await ensureSafeParentDirectories(root, lockPath);
+  const transactionDirectory = path.dirname(lockPath);
+  const beforePending = await listPendingMutations(transactionDirectory);
+  if (beforePending.length > 0) {
+    throw new Error(
+      `Incomplete Codsemble mutation record(s) block new writes: ${beforePending.join(", ")}`,
+    );
+  }
   try {
     await mkdir(lockPath, { mode: 0o700 });
     await syncDirectory(path.dirname(lockPath));
@@ -657,10 +677,41 @@ async function acquireMutationLock(
       { cause: error },
     );
   }
+  const afterPending = await listPendingMutations(transactionDirectory);
+  if (afterPending.length > 0) {
+    await rmdir(lockPath).catch(() => undefined);
+    await syncDirectory(transactionDirectory).catch(() => undefined);
+    throw new Error(
+      `Incomplete Codsemble mutation record(s) appeared while locking: ${afterPending.join(", ")}`,
+    );
+  }
   return async () => {
     await rmdir(lockPath);
     await syncDirectory(path.dirname(lockPath));
   };
+}
+
+async function listPendingMutations(directory: string): Promise<string[]> {
+  const stats = await lstat(directory);
+  if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    throw new Error("Transaction directory must be a real directory");
+  }
+  return (await readdir(directory))
+    .filter((entry) => entry.endsWith(".pending.json"))
+    .sort();
+}
+
+async function clearPendingMutation(
+  pendingPath: string | undefined,
+): Promise<boolean> {
+  if (pendingPath === undefined) return true;
+  try {
+    await unlink(pendingPath);
+    await syncDirectory(path.dirname(pendingPath));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function writePendingMutation(
@@ -680,14 +731,8 @@ async function writePendingMutation(
 
 async function finishPendingMutation(
   pendingPath: string | undefined,
-  mutations: CompletedMutation[],
+  _mutations: CompletedMutation[],
 ): Promise<void> {
-  for (const mutation of mutations) {
-    if (mutation.quarantinePath !== null) {
-      await unlink(mutation.quarantinePath);
-      await syncDirectory(path.dirname(mutation.quarantinePath));
-    }
-  }
   if (pendingPath !== undefined) {
     await unlink(pendingPath);
     await syncDirectory(path.dirname(pendingPath));
@@ -994,7 +1039,7 @@ function validatePlannedOutput(
       throw new Error(`Generated agent is not bound to plan role: ${roleId}`);
     }
   } else if (relativePath === ".codex/codsemble/manifest.json") {
-    const parsed = manifestSchema.safeParse(JSON.parse(content));
+    const parsed = generatedManifestSchema.safeParse(JSON.parse(content));
     if (!parsed.success) {
       throw new Error(
         `Generated Codsemble manifest has an invalid schema: ${parsed.error.message}`,
@@ -1004,11 +1049,23 @@ function validatePlannedOutput(
       .map(({ id }) => `.codex/agents/${id}.toml`)
       .sort();
     const ownedAgentFiles = [...parsed.data.ownership.agentFiles].sort();
+    const expectedRoles = plan.roles.map((role) => ({
+      id: role.id,
+      name: role.name,
+      modelProfile: role.modelProfile,
+      ...(role.model ? { model: role.model } : {}),
+      ...(role.reasoningEffort
+        ? { reasoningEffort: role.reasoningEffort }
+        : {}),
+      sandbox: role.sandbox,
+      source: role.source,
+    }));
     if (
       parsed.data.planId !== plan.planId ||
       parsed.data.auditFingerprint !== plan.auditFingerprint ||
       parsed.data.proposal.maxConcurrentWorkers !==
         plan.concurrency.requestedWorkers ||
+      stableStringify(parsed.data.roles) !== stableStringify(expectedRoles) ||
       stableStringify(ownedAgentFiles) !== stableStringify(expectedAgentFiles) ||
       Object.keys(parsed.data.ownership.agentSha256).sort().join("\n") !==
         expectedAgentFiles.join("\n")
@@ -1021,7 +1078,7 @@ function validatePlannedOutput(
           candidate === relativeAgentPath && action !== "delete",
       );
       if (
-        plannedAgent?.afterSha256 !== undefined &&
+        plannedAgent !== undefined &&
         plannedAgent.afterSha256 !==
           parsed.data.ownership.agentSha256[relativeAgentPath]
       ) {
@@ -1035,6 +1092,64 @@ function validatePlannedOutput(
     const ends = content.split("<!-- codsemble:end -->").length - 1;
     if (starts !== 1 || ends !== 1) {
       throw new Error("Generated AGENTS.md must contain exactly one managed block");
+    }
+  }
+}
+
+function validateProjectConfigOutput(
+  plan: TeamPlan,
+  before: string,
+  after: string,
+): void {
+  if (
+    plan.concurrency.configMode !== "apply-project" ||
+    plan.concurrency.willApply !== true ||
+    plan.concurrency.adapter !== "agents-v1"
+  ) {
+    throw new Error(
+      "Generated project config is forbidden unless an apply-project agents-v1 change is confirmed",
+    );
+  }
+  const expected = patchConcurrencyToml(
+    before,
+    plan.concurrency.requestedWorkers,
+    "agents-v1",
+  );
+  if (!expected.changed || expected.content !== after) {
+    throw new Error(
+      "Generated project config is not the exact supported concurrency patch",
+    );
+  }
+}
+
+async function validateUnchangedManifestOwnership(
+  root: string,
+  plan: TeamPlan,
+): Promise<void> {
+  const manifestFile = plan.files.find(
+    ({ relativePath, action }) =>
+      relativePath === ".codex/codsemble/manifest.json" &&
+      action !== "delete",
+  );
+  if (manifestFile?.content === null || manifestFile?.content === undefined) {
+    return;
+  }
+  const manifest = generatedManifestSchema.parse(JSON.parse(manifestFile.content));
+  for (const relativePath of manifest.ownership.agentFiles) {
+    const planned = plan.files.find(
+      ({ relativePath: candidate, action }) =>
+        candidate === relativePath && action !== "delete",
+    );
+    if (planned !== undefined) continue;
+    const target = await safeTarget(root, relativePath);
+    const current = await readSafeRegularFile(target);
+    if (
+      current.content === null ||
+      sha256(current.content) !== manifest.ownership.agentSha256[relativePath]
+    ) {
+      throw new Error(
+        `Generated manifest ownership hash does not match unchanged agent: ${relativePath}`,
+      );
     }
   }
 }
@@ -1066,6 +1181,13 @@ function validateTransaction(record: TransactionRecord): void {
         : `${transactionRoot}/${record.transactionId}.backups/${file.relativePath}`;
     if (file.backupRelativePath !== expectedBackup) {
       throw new Error("Transaction backup path is outside its scoped directory");
+    }
+    const expectedQuarantine =
+      file.beforeSha256 === null
+        ? null
+        : `${file.relativePath}.codsemble-${record.transactionId}.quarantine`;
+    if (file.quarantineRelativePath !== expectedQuarantine) {
+      throw new Error("Transaction quarantine path is outside its scoped location");
     }
     paths.add(file.relativePath);
   }

@@ -133,6 +133,7 @@ export interface ResolvedRole {
   model?: string;
   reasoningEffort?: Exclude<ReasoningEffort, "inherit">;
   sandbox: SandboxProfile;
+  source: "catalog" | "custom";
 }
 
 export interface FilePreimage {
@@ -181,6 +182,7 @@ export interface TransactionRecord {
     beforeSha256: string | null;
     afterSha256: string | null;
     backupRelativePath: string | null;
+    quarantineRelativePath: string | null;
     mode: number | null;
   }>;
 }

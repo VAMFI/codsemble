@@ -58,6 +58,7 @@ export async function compileTeamPlan(
   for (const role of resolvedRoles) {
     const relativePath = `.codex/agents/${role.id}.toml`;
     const existing = await getExistingContent(root, relativePath, existingFiles);
+    const desired = renderRoleToml(role);
     if (existing !== undefined) {
       const ownedHash = priorOwnedAgents.get(relativePath);
       if (ownedHash === undefined) {
@@ -65,13 +66,18 @@ export async function compileTeamPlan(
           `Refusing to overwrite user-owned agent file: ${relativePath}`,
         );
       }
-      if (sha256(existing) !== ownedHash) {
+      if (ownedHash === null && existing !== desired) {
+        throw new Error(
+          `Refusing to overwrite legacy Codsemble agent without an ownership hash: ${relativePath}`,
+        );
+      }
+      if (ownedHash !== null && sha256(existing) !== ownedHash) {
         throw new Error(
           `Refusing to overwrite edited Codsemble agent file: ${relativePath}`,
         );
       }
     }
-    desiredFiles.set(relativePath, renderRoleToml(role));
+    desiredFiles.set(relativePath, desired);
   }
 
   const agentsPath = "AGENTS.md";
@@ -180,9 +186,7 @@ export async function compileTeamPlan(
         ? { reasoningEffort: role.reasoningEffort }
         : {}),
       sandbox: role.sandbox,
-      source: answers.customRoles.some(({ id }) => id === role.id)
-        ? "custom"
-        : "catalog",
+      source: role.source,
     })),
     ownership: {
       agentsBlock: { path: "AGENTS.md", start: AGENTS_START, end: AGENTS_END },
@@ -229,6 +233,9 @@ export async function compileTeamPlan(
   }
   for (const relativePath of [...priorOwnedAgents.keys()].sort()) {
     if (desiredFiles.has(relativePath)) continue;
+    if (priorOwnedAgents.get(relativePath) === null) {
+      continue;
+    }
     const before = await getExistingFile(root, relativePath, existingFiles);
     if (before.content === undefined) continue;
     const beforeSha256 = sha256(Buffer.from(before.content));
@@ -270,7 +277,7 @@ export async function compileTeamPlan(
 async function readPriorOwnedAgents(
   root: string,
   existingFiles?: ExistingFiles,
-): Promise<Map<string, string>> {
+): Promise<Map<string, string | null>> {
   const source = await getExistingContent(
     root,
     ".codex/codsemble/manifest.json",
@@ -301,16 +308,20 @@ async function readPriorOwnedAgents(
       : null;
   const hashes =
     ownership !== null &&
-    "agentSha256" in ownership &&
+    (!("agentSha256" in ownership) ||
+      ownership.agentSha256 === undefined)
+      ? null
+      : ownership !== null &&
+        "agentSha256" in ownership &&
     typeof ownership.agentSha256 === "object" &&
     ownership.agentSha256 !== null &&
     !Array.isArray(ownership.agentSha256)
       ? ownership.agentSha256 as Record<string, unknown>
-      : null;
-  if (owned === null || hashes === null) {
+      : undefined;
+  if (owned === null || hashes === undefined) {
     throw new Error("Existing Codsemble manifest has invalid agent ownership");
   }
-  const result = new Map<string, string>();
+  const result = new Map<string, string | null>();
   for (const entry of owned) {
     if (
       typeof entry !== "string" ||
@@ -318,13 +329,18 @@ async function readPriorOwnedAgents(
     ) {
       throw new Error("Existing Codsemble manifest contains an unsafe agent path");
     }
-    const digest = hashes[entry];
-    if (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest)) {
-      throw new Error("Existing Codsemble manifest has invalid agent ownership hash");
+    const digest = hashes?.[entry] ?? null;
+    if (
+      digest !== null &&
+      (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest))
+    ) {
+      throw new Error(
+        "Existing Codsemble manifest has invalid agent ownership hash",
+      );
     }
     result.set(entry, digest);
   }
-  if (Object.keys(hashes).length !== result.size) {
+  if (hashes !== null && Object.keys(hashes).length !== result.size) {
     throw new Error("Existing Codsemble manifest has unexpected agent ownership hashes");
   }
   return result;
@@ -467,6 +483,7 @@ function resolveCatalogRole(
       ? { reasoningEffort: role.defaultReasoningEffort }
       : {}),
     sandbox: role.defaultSandbox,
+    source: "catalog",
   };
 }
 
@@ -505,6 +522,7 @@ function resolveCustomRole(
       ? { reasoningEffort: role.reasoningEffort }
       : {}),
     sandbox: role.sandbox,
+    source: "custom",
   };
 }
 

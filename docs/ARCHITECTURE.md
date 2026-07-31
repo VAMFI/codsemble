@@ -31,7 +31,8 @@ at runtime.
 - `AGENTS.md`: one bounded managed orchestration section.
 - `.codex/config.toml`: optional project concurrency default.
 - `.codex/codsemble/manifest.json`: selected roles, evidence, ownership, and schema versions.
-- `.codex/codsemble/transactions/*.json`: content-free hashes and rollback metadata.
+- `.codex/codsemble/transactions/*.json`: content-free hashes, backup and
+  retained-quarantine paths, and rollback metadata.
 
 ## Trust boundaries
 
@@ -47,6 +48,8 @@ at runtime.
 - Mutations use a cooperative lock, durable pending record, quarantine, and
   exclusive per-file publication. They do not claim atomic multi-file
   visibility or automatic crash recovery.
+- Source quarantines from successful updates/deletes remain receipt-owned so
+  late writes through an already-open inode are preserved and diagnosable.
 - Global Codex configuration, project trust, credentials, external systems, and
   publication are outside the automatic transaction boundary.
 

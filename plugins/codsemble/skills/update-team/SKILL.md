@@ -31,7 +31,8 @@ reconstruct ownership from guesses or download replacement tooling.
 
 1. Run `doctor --workspace <absolute-workspace>` and surface drift or prior
    transaction problems before planning. Stop if it reports a mutation lock,
-   pending record, or retained quarantine; preserve all recovery artifacts.
+   pending record, or missing/hash-mismatched recovery quarantine; preserve all
+   recovery artifacts. A healthy receipt-recorded quarantine is expected.
 
 2. Run:
 

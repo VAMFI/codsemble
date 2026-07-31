@@ -14,7 +14,10 @@ import {
   assertWorkspaceRoot,
   sha256,
 } from "./util.js";
-import { isCodsembleOwnedOutput } from "./transaction.js";
+import {
+  generatedManifestSchema,
+  isCodsembleOwnedOutput,
+} from "./transaction.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -33,17 +36,7 @@ function overallStatus(checks: DoctorCheck[]): DoctorReport["overallStatus"] {
   return "pass";
 }
 
-interface TeamManifest {
-  schemaVersion?: unknown;
-  generator?: { name?: unknown; version?: unknown };
-  catalogVersion?: unknown;
-  planId?: unknown;
-  proposal?: { maxConcurrentWorkers?: unknown };
-  ownership?: {
-    agentsBlock?: { path?: unknown; start?: unknown; end?: unknown };
-    agentFiles?: unknown;
-  };
-}
+type TeamManifest = ReturnType<typeof generatedManifestSchema.parse>;
 
 async function readRegularFile(
   candidate: string,
@@ -174,52 +167,67 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
   let manifest: TeamManifest | undefined;
   if (manifestPath) {
     try {
-      manifest = JSON.parse(
-        (await readRegularFile(manifestPath, root)).toString("utf8"),
-      ) as TeamManifest;
-      const valid =
-        manifest.schemaVersion === 1 &&
-        typeof manifest.planId === "string" &&
-        manifest.generator?.name === "codsemble" &&
-        typeof manifest.generator.version === "string" &&
-        typeof manifest.catalogVersion === "string";
+      const parsed = generatedManifestSchema.safeParse(
+        JSON.parse(
+          (await readRegularFile(manifestPath, root)).toString("utf8"),
+        ),
+      );
+      if (!parsed.success) {
+        throw new Error(`invalid manifest schema: ${parsed.error.message}`);
+      }
+      manifest = parsed.data;
       checks.push({
         id: "codsemble-manifest",
-        status: valid ? "pass" : "fail",
-        summary: valid
-          ? `Codsemble manifest loaded from ${path.relative(root, manifestPath)}`
-          : "Codsemble manifest is missing required schema, generator, catalog, or plan metadata",
+        status: "pass",
+        summary: `Codsemble manifest loaded from ${path.relative(root, manifestPath)}`,
       });
-      if (valid) {
-        const ownedAgents = Array.isArray(manifest.ownership?.agentFiles)
-          ? manifest.ownership.agentFiles.filter(
-              (entry): entry is string => typeof entry === "string",
-            )
-          : [];
+      {
+        const ownedAgents = manifest.ownership.agentFiles;
         const missing = ownedAgents.filter(
           (entry) => !agentEntries.includes(entry),
         );
         const unexpected = agentEntries.filter(
           (entry) => !ownedAgents.includes(entry),
         );
+        const changed: string[] = [];
+        for (const entry of ownedAgents) {
+          try {
+            const content = await readRegularFile(path.join(root, entry), root);
+            if (sha256(content) !== manifest.ownership.agentSha256[entry]) {
+              changed.push(entry);
+            }
+          } catch {
+            if (!missing.includes(entry)) changed.push(entry);
+          }
+        }
         checks.push({
           id: "manifest-ownership",
-          status: missing.length > 0 ? "fail" : unexpected.length > 0 ? "warn" : "pass",
+          status:
+            missing.length > 0 || changed.length > 0
+              ? "fail"
+              : unexpected.length > 0
+                ? "warn"
+                : "pass",
           summary:
-            missing.length === 0 && unexpected.length === 0
-              ? "Manifest agent ownership matches installed native agent files"
+            missing.length === 0 &&
+            unexpected.length === 0 &&
+            changed.length === 0
+              ? "Manifest agent ownership and hashes match installed native agent files"
               : "Installed agent files differ from manifest ownership",
-          ...((missing.length > 0 || unexpected.length > 0)
+          ...((missing.length > 0 ||
+            unexpected.length > 0 ||
+            changed.length > 0)
             ? {
                 details: [
                   ...missing.map((entry) => `missing: ${entry}`),
+                  ...changed.map((entry) => `hash mismatch: ${entry}`),
                   ...unexpected.map((entry) => `user-owned or unexpected: ${entry}`),
                 ],
               }
             : {}),
         });
 
-        const block = manifest.ownership?.agentsBlock;
+        const block = manifest.ownership.agentsBlock;
         if (
           block &&
           block.path === "AGENTS.md" &&
@@ -398,6 +406,24 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
             throw new Error("path is not a Codsemble-owned output");
           }
           const currentPath = await assertContainedPath(root, file.relativePath);
+          if (file.beforeSha256 !== null) {
+            if (typeof file.quarantineRelativePath !== "string") {
+              drift.push(
+                `${file.relativePath}: recovery quarantine metadata is missing`,
+              );
+            } else {
+              const quarantinePath = await assertContainedPath(
+                root,
+                file.quarantineRelativePath,
+              );
+              const quarantine = await readRegularFile(quarantinePath, root);
+              if (sha256(quarantine) !== file.beforeSha256) {
+                drift.push(
+                  `${file.relativePath}: recovery quarantine changed after apply`,
+                );
+              }
+            }
+          }
           if (file.afterSha256 === null) {
             if (await exists(currentPath)) {
               drift.push(`${file.relativePath}: deleted output was recreated`);

@@ -1,5 +1,13 @@
 import { execFile } from "node:child_process";
-import { access, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  mkdir,
+  mkdtemp,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -16,6 +24,35 @@ async function workspace(): Promise<string> {
     path.join(result, "package.json"),
     '{"name":"fixture","devDependencies":{"typescript":"1.0.0"}}\n',
   );
+  const fakeBin = path.join(result, "fake-bin");
+  await mkdir(fakeBin);
+  if (process.platform === "win32") {
+    await writeFile(
+      path.join(fakeBin, "codex.cmd"),
+      [
+        "@echo off",
+        'if "%1"=="--version" echo codex-cli 0.145.0& exit /b 0',
+        'if "%1 %2"=="features list" echo multi_agent stable true& exit /b 0',
+        'if "%1 %2"=="debug models" echo {\"models\":[]}& exit /b 0',
+        "exit /b 1",
+        "",
+      ].join("\r\n"),
+    );
+  } else {
+    const executable = path.join(fakeBin, "codex");
+    await writeFile(
+      executable,
+      [
+        "#!/bin/sh",
+        'if [ "$1" = "--version" ]; then echo "codex-cli 0.145.0"; exit 0; fi',
+        'if [ "$1 $2" = "features list" ]; then echo "multi_agent stable true"; exit 0; fi',
+        'if [ "$1 $2" = "debug models" ]; then echo \'{"models":[]}\'; exit 0; fi',
+        "exit 1",
+        "",
+      ].join("\n"),
+    );
+    await chmod(executable, 0o755);
+  }
   return result;
 }
 
@@ -51,11 +88,23 @@ async function run(
   args: string[],
   environment: NodeJS.ProcessEnv = process.env,
 ): Promise<string> {
+  const workspaceIndex = args.indexOf("--workspace");
+  const workspaceRoot =
+    workspaceIndex >= 0 ? args[workspaceIndex + 1] : undefined;
+  const selectedEnvironment =
+    environment === process.env && workspaceRoot !== undefined
+      ? {
+          ...process.env,
+          PATH: `${path.join(workspaceRoot, "fake-bin")}${path.delimiter}${
+            process.env.PATH ?? ""
+          }`,
+        }
+      : environment;
   return (
     await execFileAsync(process.execPath, [cli, ...args], {
       timeout: 20_000,
       maxBuffer: 8 * 1024 * 1024,
-      env: environment,
+      env: selectedEnvironment,
     })
   ).stdout;
 }
@@ -189,6 +238,45 @@ describe("bundled CLI", () => {
       applied.transaction.transactionId,
     ]);
     await expect(access(path.join(root, "AGENTS.md"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("re-probes and refuses apply when Codex disappears after planning", async () => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const planFile = path.join(root, "plan.json");
+    const planText = await run([
+      "plan",
+      "--workspace",
+      root,
+      "--answers",
+      answerFile,
+      "--proposal",
+      "balanced",
+    ]);
+    await writeFile(planFile, planText);
+    const plan = JSON.parse(planText) as { confirmationId: string };
+
+    await expect(
+      run(
+        [
+          "apply",
+          "--workspace",
+          root,
+          "--plan",
+          planFile,
+          "--confirm",
+          plan.confirmationId,
+        ],
+        { ...process.env, PATH: "/nonexistent" },
+      ),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "Apply capability check failed: the local Codex runtime is unavailable",
+      ),
+    });
+    await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
       code: "ENOENT",
     });
   });

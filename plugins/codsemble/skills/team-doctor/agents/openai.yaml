@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codsemble Team Doctor"
+  short_description: "Diagnose generated team and config drift"
+  default_prompt: "Use $team-doctor to inspect this workspace's generated team without changing it."

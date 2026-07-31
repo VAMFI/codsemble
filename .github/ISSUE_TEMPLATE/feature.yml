@@ -1,0 +1,36 @@
+name: Feature request
+description: Propose a focused improvement to Codsemble.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What repository or team-setup problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and privacy impact
+      description: Cover writes, permissions, network, credentials, dependencies, and rollback.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Proposed scope
+      options:
+        - v0.1 local and offline-first boundary
+        - Later feature requiring a new threat model
+        - Unsure
+    validations:
+      required: true

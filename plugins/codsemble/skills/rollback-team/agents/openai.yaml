@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rollback Codex Team"
+  short_description: "Safely revert an owned team transaction"
+  default_prompt: "Use $rollback-team to preview a conflict-safe rollback for this workspace."

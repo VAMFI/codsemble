@@ -1,0 +1,22 @@
+{
+  "goals": [
+    "planning",
+    "testing"
+  ],
+  "projectStage": "prototype",
+  "desiredRoleCount": 2,
+  "maxConcurrentWorkers": 2,
+  "optimizeFor": "balanced",
+  "configMode": "apply-project",
+  "prohibitedActions": [
+    "Do not modify files or use external systems."
+  ],
+  "requiredRoles": [
+    "delivery-planner",
+    "integration-test-engineer"
+  ],
+  "excludedRoles": [],
+  "customRoles": [],
+  "verifiedModels": {},
+  "allowHighConcurrency": false
+}

@@ -1,0 +1,4 @@
+023edce5a74997a30eb834e66f9ad5ef477cb9241266a2980355fe2303d5af08  plugins/codsemble/scripts/codsemble.mjs
+edd6d03447adb073a2aebd71e0e0b94b5c3a6fa31f4492cd6035623076b672b6  plugins/codsemble/catalog/roles.json
+962c5951810f1ac3eae49ebfd991e1526abd6c468970017cb3223947f5957e78  artifacts/codsemble-0.1.0-rc.sbom.cdx.json
+ffa54b1e6b8812e66f7a44e5f833341c86f12d144a5862ea01dc9c5715c846c9  artifacts/runtime-evidence.json

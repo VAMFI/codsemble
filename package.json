@@ -1,0 +1,29 @@
+{
+  "name": "codsemble",
+  "version": "0.1.0",
+  "description": "Repository-aware multi-agent team generation for Codex.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "npm run typecheck && npm run test && npm run build && node scripts/validate-catalog.mjs",
+    "pretest": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ignore": "^7.0.5",
+    "smol-toml": "^1.4.2",
+    "zod": "^4.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.15",
+    "esbuild": "^0.25.8",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

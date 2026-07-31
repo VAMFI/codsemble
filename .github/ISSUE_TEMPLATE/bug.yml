@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible Codsemble defect using non-sensitive data.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials, private source, personal Codex configuration,
+        or vulnerability details. Use the private process in SECURITY.md for
+        security reports.
+  - type: input
+    id: version
+    attributes:
+      label: Codsemble version or commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Codex version, Node.js version, operating system, and shell.
+    validations:
+      required: true
+  - type: dropdown
+    id: evidence
+    attributes:
+      label: Evidence boundary
+      options:
+        - Structural validation
+        - Fixture or simulated integration
+        - Fresh Codex runtime
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Minimal reproduction
+      description: Use a synthetic or public fixture.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets, private code, and absolute personal paths.
+          required: true

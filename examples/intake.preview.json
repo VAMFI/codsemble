@@ -1,0 +1,20 @@
+{
+  "goals": [
+    "planning",
+    "engineering",
+    "testing"
+  ],
+  "projectStage": "active",
+  "desiredRoleCount": 4,
+  "maxConcurrentWorkers": 3,
+  "optimizeFor": "balanced",
+  "configMode": "preview",
+  "prohibitedActions": [
+    "Do not push, publish, deploy, or change credentials."
+  ],
+  "requiredRoles": [],
+  "excludedRoles": [],
+  "customRoles": [],
+  "verifiedModels": {},
+  "allowHighConcurrency": false
+}

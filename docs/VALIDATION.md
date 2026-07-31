@@ -1,0 +1,64 @@
+# Validation evidence
+
+Codsemble separates structural, simulated, and real-runtime evidence. A result
+at one level is not promoted to a broader claim.
+
+## Structural and simulated checks
+
+The local release-candidate command is:
+
+```bash
+npm ci
+npm run check
+node .github/scripts/validate-repository.mjs
+```
+
+The current candidate passes:
+
+- strict TypeScript checking;
+- 44 unit, security, fixture, transaction, doctor, compiler, and bundled-CLI
+  tests;
+- deterministic bundle generation;
+- exactly 111 schema-valid, uniquely identified role blueprints;
+- the official plugin validator;
+- the official skill validator for all four skills;
+- repository metadata and absolute-path leak checks;
+- CycloneDX 1.5 SBOM generation for 133 components;
+- `npm audit` with zero reported vulnerabilities.
+
+The checked-in SBOM is
+`artifacts/codsemble-0.1.0-rc.sbom.cdx.json`.
+
+## Real Codex runtime
+
+The runtime proof used Codex CLI 0.145.0 on macOS arm64, an isolated Codex home,
+and a disposable trusted Git project. Existing authentication was referenced
+without copying or recording credential contents.
+
+The following boundaries passed:
+
+1. The local marketplace exposed `codsemble@codsemble`.
+2. The plugin installed and appeared enabled in the isolated home.
+3. A Codsemble plan generated two project-native custom agents and set a
+   spawned-worker ceiling of two.
+4. A fresh ordinary Codex session spawned both generated roles concurrently:
+   `delivery_planner` and `integration_test_engineer`.
+5. Child session metadata identified the expected custom role and included its
+   generated developer instructions.
+6. The root integrated the two attributable child results.
+7. A three-spawn capacity test admitted two children and rejected the third
+   with `agent thread limit reached`; no retry storm occurred.
+8. A trivial turn produced no subagent activity.
+9. Two project transactions were rolled back in reverse order, leaving no
+   generated project files.
+
+The sanitized machine-readable record is
+`artifacts/runtime-evidence.json`. Raw session files are not included because
+they referenced local authentication state.
+
+## Honest remaining boundaries
+
+- Cross-platform CI is configured but has not run on a public CI provider.
+- Real-runtime proof currently covers one macOS arm64 host and Codex 0.145.0.
+- The repository has not been pushed, tagged, or released.
+- OpenAI plugin-directory submission is a separate external review boundary.

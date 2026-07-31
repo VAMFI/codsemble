@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-07-31T07:37:20Z",
+  "boundary": {
+    "codexVersion": "0.145.0",
+    "operatingSystem": "macOS arm64",
+    "pluginVersion": "0.1.0",
+    "marketplace": "codsemble",
+    "isolatedCodexHome": true,
+    "disposableTrustedProject": true
+  },
+  "pluginDiscovery": {
+    "pluginId": "codsemble@codsemble",
+    "availableBeforeInstall": true,
+    "installed": true,
+    "enabled": true,
+    "configLoad": "ok"
+  },
+  "nativeAgentRun": {
+    "parentThreadId": "019fb718-14ca-7e50-8d02-0c8b8eb12a3b",
+    "children": [
+      {
+        "threadId": "019fb718-2b74-71c1-8b22-cef468faa647",
+        "agentRole": "delivery_planner",
+        "generatedDeveloperInstructionsObserved": true,
+        "result": "PLAN-OK"
+      },
+      {
+        "threadId": "019fb718-3a9c-7370-851e-1e02bd1f8299",
+        "agentRole": "integration_test_engineer",
+        "generatedDeveloperInstructionsObserved": true,
+        "result": "TEST-OK"
+      }
+    ],
+    "rootIntegratedResult": "ROOT-OK PLAN-OK TEST-OK"
+  },
+  "capacityRun": {
+    "parentThreadId": "019fb71a-4fcd-7243-817c-c294e3485d4d",
+    "configuredSpawnedWorkerCeiling": 2,
+    "successfulChildren": 2,
+    "thirdSpawn": "collab spawn failed: agent thread limit reached",
+    "unboundedRetryObserved": false
+  },
+  "trivialRun": {
+    "parentThreadId": "019fb71a-f6d2-70f2-9afc-229f4846b9bc",
+    "result": "TRIVIAL-OK",
+    "subagentActivityEvents": 0
+  },
+  "rollback": {
+    "twoTransactionsRevertedInReverseOrder": true,
+    "generatedProjectFilesRemaining": 0
+  },
+  "evidencePolicy": {
+    "rawSessionFilesIncluded": false,
+    "credentialsIncluded": false,
+    "absolutePersonalPathsIncluded": false
+  },
+  "knownGaps": [
+    "Real-runtime proof was run on one macOS arm64 host and Codex 0.145.0.",
+    "GitHub publication and OpenAI directory submission were not performed.",
+    "The raw isolated session directory was intentionally excluded because it referenced local authentication state."
+  ]
+}

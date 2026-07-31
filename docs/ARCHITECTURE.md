@@ -1,0 +1,56 @@
+# Architecture
+
+Codsemble is a configuration compiler for Codex, not a second agent runtime.
+
+## Flow
+
+```text
+workspace
+  -> bounded deterministic audit
+  -> typed evidence report
+  -> user intake
+  -> deterministic role ranking
+  -> Lean / Balanced / Full proposals
+  -> exact generated-file and configuration preview
+  -> confirmed atomic transaction
+  -> doctor and fresh-session validation
+```
+
+## Plugin shape
+
+The distributable plugin is skills-only and offline-first. Skills guide Codex
+through initialization, updates, diagnostics, and rollback. A bundled Node.js
+CLI performs deterministic filesystem inspection and configuration generation.
+The CLI is built into one ESM file and does not download or execute dependencies
+at runtime.
+
+## Native Codex outputs
+
+- `.codex/agents/<role>.toml`: specialist agent definitions.
+- `AGENTS.md`: one bounded managed orchestration section.
+- `.codex/config.toml`: optional project concurrency default.
+- `.codex/codsemble/manifest.json`: selected roles, evidence, ownership, and schema versions.
+- `.codex/codsemble/transactions/*.json`: content-free hashes and rollback metadata.
+
+## Trust boundaries
+
+- Workspace content is untrusted input.
+- Audit is read-only and secret-aware.
+- Recommendation consumes typed signals, not arbitrary repository prose.
+- Preview has no side effects.
+- Apply requires a matching plan id and unchanged preimage hashes.
+- Global Codex configuration, project trust, credentials, external systems, and
+  publication are outside the automatic transaction boundary.
+
+## Model routing
+
+Catalog entries use capability profiles such as `deep`, `balanced`, `fast`, and
+`inherit`. Concrete model ids are written only when verified in the active
+Codex environment. Otherwise the generated agent inherits Codex's active model.
+
+## Concurrency
+
+Installed roles and live workers are separate. Codsemble recommends a spawned
+worker ceiling from the peak independent workflow width, user budget, and
+detected runtime support. The primary thread is excluded from
+`max_concurrent_threads_per_session`.

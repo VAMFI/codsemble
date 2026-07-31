@@ -1,0 +1,4 @@
+interface:
+  display_name: "Initialize Codex Team"
+  short_description: "Audit and set up a project agent team"
+  default_prompt: "Use $initialize-team to audit this workspace and preview a right-sized Codex team."

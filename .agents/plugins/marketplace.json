@@ -1,0 +1,20 @@
+{
+  "name": "codsemble",
+  "interface": {
+    "displayName": "Codsemble"
+  },
+  "plugins": [
+    {
+      "name": "codsemble",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codsemble"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

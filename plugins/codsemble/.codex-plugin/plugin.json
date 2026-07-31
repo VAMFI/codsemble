@@ -1,0 +1,37 @@
+{
+  "name": "codsemble",
+  "version": "0.1.0",
+  "description": "Audit a workspace and generate the smallest useful native multi-agent team for Codex.",
+  "author": {
+    "name": "VAMFI",
+    "url": "https://github.com/VAMFI"
+  },
+  "repository": "https://github.com/VAMFI/codsemble",
+  "license": "Apache-2.0",
+  "keywords": [
+    "codex",
+    "multi-agent",
+    "agent-teams",
+    "orchestration",
+    "developer-tools"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codsemble",
+    "shortDescription": "Build the right Codex agent team for any workspace.",
+    "longDescription": "Codsemble audits a workspace, recommends an evidence-backed specialist team, previews native Codex configuration, and applies only the changes you confirm.",
+    "developerName": "VAMFI",
+    "category": "Productivity",
+    "capabilities": [
+      "Workspace audit",
+      "Agent team recommendations",
+      "Native Codex configuration",
+      "Rollback"
+    ],
+    "defaultPrompt": [
+      "Design a Codex agent team for this workspace.",
+      "Audit and improve my current Codex team.",
+      "Check whether my Codex team setup is healthy."
+    ]
+  }
+}

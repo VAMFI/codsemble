@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Codex Team"
+  short_description: "Re-audit and safely update a project team"
+  default_prompt: "Use $update-team to re-audit this workspace and preview safe team changes."

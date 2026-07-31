@@ -38,13 +38,13 @@
 
 ## Filesystem limitation
 
-Codsemble does not claim atomic multi-file visibility or power-loss-safe
+Codesemble does not claim atomic multi-file visibility or power-loss-safe
 automatic recovery. Portable Node APIs do not provide an atomic
 compare-and-swap replacement for an existing path, and directory durability is
 weaker on some Windows filesystems. v0.1 therefore preserves conflicting bytes,
 fails closed on an incomplete lock or pending record, and requires manual
 recovery after interruption. A malicious same-user process that deliberately
-races inside Codsemble's private quarantine namespace remains outside the
+races inside Codesemble's private quarantine namespace remains outside the
 portable guarantee.
 
 ## Evidence levels

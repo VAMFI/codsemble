@@ -1,166 +1,149 @@
-# Codsemble
+<p align="center">
+  <img src="assets/brand/codsemble-github-hero.png" alt="Codesemble — repository evidence transformed into a small native Codex team" width="100%">
+</p>
 
-**Repository-aware multi-agent team setup for Codex.**
+<p align="center">
+  <strong>Audit your repository. Assemble the smallest capable Codex team. Apply it safely.</strong>
+</p>
 
-Codsemble audits a workspace, asks a short set of questions, and recommends the
-smallest useful team from 111 specialist role blueprints. It then previews
-native Codex project configuration and applies only the transaction the user
-confirms.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="docs/USAGE.md">Usage</a> ·
+  <a href="docs/ARCHITECTURE.md">How it works</a> ·
+  <a href="docs/CONFIG_SAFETY.md">Safety</a> ·
+  <a href="docs/ROLE_CATALOG.md">111-role catalog</a>
+</p>
 
-> Audit the work. Build the smallest useful Codex team. Keep every change
-> reviewable.
+---
 
-Codsemble is an independent open-source project. It configures Codex's native
-agent runtime; it does not replace it.
+## What is Codesemble?
 
-## Why Codsemble
+Codesemble is an open-source, repository-aware team builder for Codex.
 
-Large agent packs make every repository look alike. Codsemble starts from
-workspace evidence and user goals:
+It reads bounded project signals, asks what you are trying to accomplish, and
+selects a small set of specialists from 111 role blueprints. It then compiles
+that team into native, project-scoped Codex configuration you can review before
+anything changes.
 
-- bounded, offline-first repository audit;
-- read-only local Codex capability and model discovery;
-- Lean, Balanced, and Full team proposals with reasons;
-- searchable catalog of exactly 111 specialist blueprints;
-- native `.codex/agents/*.toml` generation;
-- a bounded managed section in `AGENTS.md`;
-- optional, project-scoped concurrency configuration;
-- exact preview, confirmed no-clobber apply, doctor, update, and rollback.
+Codesemble configures Codex. It does not replace the Codex runtime.
 
-Codsemble keeps two numbers separate:
+## Who is it for?
 
-- **Installed roles** are specialists available to the project.
-- **Concurrent workers** are spawned agent threads allowed to run at once,
-  excluding the primary/orchestrator thread.
+Codesemble is for people working in real repositories who want specialized help
+without installing a generic army of agents.
 
-A project can define 15 roles and run only 4 workers concurrently. The catalog
-size of 111 never implies 111 live workers.
+- **Solo builders** who want the right specialists without designing a team by hand.
+- **Maintainers** who need reviewable, reversible project configuration.
+- **Product teams** whose work spans engineering, testing, design, docs, growth, or operations.
+- **Organizations** that want project-local defaults without silently changing personal Codex settings.
 
-## Status
+## How does it work?
 
-Codsemble v0.1.0 is the initial public release. A passing build is structural evidence, not
-proof that every Codex version, policy, model, or operating system will accept a
-generated team. Real runtime claims require a fresh isolated Codex session.
+```text
+Repository evidence  →  Small team recommendation  →  Exact preview  →  Confirmed apply
+```
 
-## Requirements
+1. **Audit** — reads bounded, typed project signals offline.
+2. **Recommend** — proposes Lean, Balanced, and Full teams with reasons.
+3. **Preview** — shows every agent, instruction, and configuration change.
+4. **Apply** — writes only the exact plan you confirm, with doctor and rollback support.
 
-- Node.js 20 or newer for local development.
-- A Codex version that supports plugins and project-scoped custom agents.
-- A trusted project if you want Codex to load `.codex/config.toml`.
+[Read the complete workflow →](docs/USAGE.md)
 
-Codsemble never marks a project trusted.
+## Why is it different?
 
-## Install
+Most agent packs start with a fixed roster. Codesemble starts with your work.
 
-Install the v0.1.0 plugin from its public marketplace source:
+The 111 roles are a search space—not a team size. A typical project receives a
+small, non-overlapping group whose responsibilities match the repository and the
+goal. Installed roles and live concurrency stay separate, so 12 available roles
+might still mean only 4 workers can run at once.
+
+> **Evidence in. Native team out.**
+
+[Explore the role catalog →](docs/ROLE_CATALOG.md)
+
+[See the architecture →](docs/ARCHITECTURE.md)
+
+## Quick start
+
+### Install
 
 ```bash
 codex plugin marketplace add VAMFI/codsemble --ref v0.1.0
 codex plugin add codsemble@codsemble
 ```
 
-Start a fresh Codex session after installation so project agents and skills are
-reloaded.
+Start a fresh Codex session so the plugin and project agents are reloaded.
 
-## Install from a local checkout
-
-```bash
-npm ci
-npm run build
-```
-
-Add the checkout as a local marketplace in an isolated Codex development
-environment, install `codsemble@codsemble`, and start a fresh Codex session.
-Use `codex plugin marketplace add --help` to confirm the local-path syntax for
-your installed Codex release.
-
-Do not test development builds against a personal Codex home containing
-important configuration.
-
-## Use
-
-Invoke the skills from Codex:
+### Build your team
 
 ```text
 $initialize-team Set up a balanced Codex team for this workspace.
-$update-team Re-audit this workspace and preview team changes.
-$team-doctor Check this project's generated team and configuration.
-$rollback-team Preview rollback of the latest Codsemble transaction.
 ```
 
-Initialization is two-phase:
+Codesemble audits and prepares a side-effect-free plan first. It applies project
+files only after showing the exact diff and receiving the plan's confirmation ID.
 
-1. Codsemble audits, interviews, recommends, and writes a side-effect-free plan.
-2. Codsemble shows the exact diff and applies it only after confirmation.
-
-See [Usage](docs/USAGE.md) for the complete flow and direct CLI examples.
-See [Validation evidence](docs/VALIDATION.md) for the exact structural,
-simulated, and real-runtime boundaries proven by this release candidate.
-
-## What Codsemble may generate
+### Keep it healthy
 
 ```text
-AGENTS.md
-.codex/
-├── agents/
-│   └── <role>.toml
-├── config.toml
-└── codsemble/
-    ├── manifest.json
-    └── transactions/
+$update-team Re-audit this workspace and preview team changes.
+$team-doctor Check this project's generated team and configuration.
+$rollback-team Preview rollback of the latest Codesemble transaction.
 ```
 
-The managed `AGENTS.md` section and generated agent files remain bounded by a
-manifest. Codsemble refuses to overwrite overlapping user edits.
+[Open the step-by-step guide →](docs/USAGE.md)
 
-Apply and rollback are serialized by a project lock. Each file is moved to a
-private same-filesystem quarantine and the replacement is published with an
-exclusive link, so a racing writer is preserved instead of silently
-overwritten. Successful updates retain the original inode as a
-receipt-recorded recovery quarantine so writes through an already-open editor
-handle still have a pathname. The operation is not an atomic multi-file
-snapshot. Process or power interruption can additionally leave a lock or
-pending record;
-`doctor` reports that state and further writes fail closed pending manual
-recovery. See [Configuration safety](docs/CONFIG_SAFETY.md).
+## What can it create?
 
-## Safety boundary
-
-During v0.1.0 initialization Codsemble does not:
-
-- edit `~/.codex/config.toml`;
-- mark a project trusted;
-- install third-party plugins, skills, hooks, or MCP servers;
-- collect credentials or change provider configuration;
-- execute scripts discovered in the audited repository;
-- use telemetry or upload repository data;
-- push, publish, deploy, release, or change external systems.
-
-Read [Privacy](docs/PRIVACY.md), [Configuration safety](docs/CONFIG_SAFETY.md),
-and the [Threat model](docs/THREAT_MODEL.md) before using Codsemble on a
-sensitive repository.
-
-## Development
-
-```bash
-npm ci
-npm run typecheck
-npm test
-npm run build
-npm run check
+```text
+AGENTS.md                         bounded orchestration guidance
+.codex/agents/<role>.toml         native specialist definitions
+.codex/config.toml                optional project concurrency default
+.codex/codsemble/manifest.json    ownership and selected-team record
+.codex/codsemble/transactions/    reversible transaction history
 ```
 
-The release boundary additionally requires official plugin and skill
-validation, fixture/security tests, reproducibility checks, and fresh-session
-runtime evidence. See the [Definition of Done](docs/DEFINITION_OF_DONE.md).
+Codesemble does not edit `~/.codex/config.toml`, mark a project trusted, collect
+credentials, broaden permissions, or publish anything for you.
 
-## Contributing and support
+[Understand configuration safety →](docs/CONFIG_SAFETY.md)
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md). Use the public issue tracker for
-non-sensitive bugs and feature requests, and follow [SECURITY.md](SECURITY.md)
-for vulnerabilities. Governance and decision rules are in
-[GOVERNANCE.md](GOVERNANCE.md).
+[Read the privacy boundary →](docs/PRIVACY.md)
 
-## License
+[Review the threat model →](docs/THREAT_MODEL.md)
 
-Licensed under the [Apache License 2.0](LICENSE).
+## Documentation
+
+| I want to… | Read… |
+| --- | --- |
+| Install, initialize, update, diagnose, or roll back | [Usage](docs/USAGE.md) |
+| Understand the compiler and native Codex outputs | [Architecture](docs/ARCHITECTURE.md) |
+| Review concurrency, no-clobber apply, and recovery behavior | [Configuration safety](docs/CONFIG_SAFETY.md) |
+| Browse the 111 specialist blueprints | [Role catalog](docs/ROLE_CATALOG.md) |
+| Understand local data handling | [Privacy](docs/PRIVACY.md) |
+| Review trust boundaries and abuse cases | [Threat model](docs/THREAT_MODEL.md) |
+| See what has actually been tested | [Validation evidence](docs/VALIDATION.md) |
+| Understand the project promise and release gate | [Definition of Done](docs/DEFINITION_OF_DONE.md) |
+| Reuse the visual identity correctly | [Brand guide](docs/BRAND.md) |
+
+## Project status
+
+Codesemble v0.1.0 is the initial public release. Structural and simulated checks
+do not prove that every Codex version, policy, model, or operating system will
+accept a generated team. Runtime claims are documented separately and tied to
+the environment that produced them.
+
+[See validation evidence →](docs/VALIDATION.md)
+
+[View the roadmap →](ROADMAP.md)
+
+## Contributing
+
+Contributions are welcome. Start with the [contribution guide](CONTRIBUTING.md),
+use [support guidance](SUPPORT.md) for reproducible questions, and report
+vulnerabilities through the private process in [SECURITY.md](SECURITY.md).
+
+Codesemble is an independent open-source project, licensed under
+[Apache License 2.0](LICENSE).

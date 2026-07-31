@@ -138,7 +138,7 @@ describe("detectCodexCapabilities", () => {
       enabled: true,
       configAdapter: null,
     });
-    expect(report.warnings.join(" ")).toContain("outside Codsemble's tested");
+    expect(report.warnings.join(" ")).toContain("outside Codesemble's tested");
   });
 
   it("replaces untrusted intake capability claims with the live probe", () => {

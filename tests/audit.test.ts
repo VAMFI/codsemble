@@ -148,7 +148,7 @@ describe("auditWorkspace", () => {
       "git",
       [
         "-c",
-        "user.name=Codsemble Test",
+        "user.name=Codesemble Test",
         "-c",
         "user.email=test@example.invalid",
         "commit",
@@ -198,7 +198,7 @@ describe("auditWorkspace", () => {
       "git",
       [
         "-c",
-        "user.name=Codsemble Test",
+        "user.name=Codesemble Test",
         "-c",
         "user.email=test@example.invalid",
         "commit",
@@ -238,7 +238,7 @@ describe("auditWorkspace", () => {
       "git",
       [
         "-c",
-        "user.name=Codsemble Test",
+        "user.name=Codesemble Test",
         "-c",
         "user.email=test@example.invalid",
         "commit",

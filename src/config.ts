@@ -15,7 +15,7 @@ export interface ConcurrencyPatch {
 }
 
 /**
- * Adapters are deliberately explicit. Callers must select v2; Codsemble never
+ * Adapters are deliberately explicit. Callers must select v2; Codesemble never
  * guesses that a future schema is active merely from an unfamiliar document.
  */
 export const CONFIG_ADAPTERS: Readonly<

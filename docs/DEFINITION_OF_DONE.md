@@ -1,6 +1,6 @@
 # Definition of Done
 
-Codsemble `v0.1.0` is a release candidate only when all applicable items pass.
+Codesemble `v0.1.0` is a release candidate only when all applicable items pass.
 
 ## Product
 
@@ -20,7 +20,7 @@ Codsemble `v0.1.0` is a release candidate only when all applicable items pass.
   without clobbering a racing writer, and is reversible during an uninterrupted
   cooperative transaction.
 - The exact confirmation id is recomputed from the complete plan before apply.
-- Update deletes only stale agent files owned by the prior Codsemble manifest.
+- Update deletes only stale agent files owned by the prior Codesemble manifest.
 - No global config, trust, credentials, plugins, MCP servers, hooks, or external systems are changed.
 
 ## Validation

@@ -183,7 +183,7 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
       checks.push({
         id: "codsemble-manifest",
         status: "pass",
-        summary: `Codsemble manifest loaded from ${path.relative(root, manifestPath)}`,
+        summary: `Codesemble manifest loaded from ${path.relative(root, manifestPath)}`,
       });
       {
         const ownedAgents = manifest.ownership.agentFiles;
@@ -249,7 +249,7 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
               status: starts === 1 && ends === 1 ? "pass" : "fail",
               summary:
                 starts === 1 && ends === 1
-                  ? "AGENTS.md contains exactly one Codsemble managed block"
+                  ? "AGENTS.md contains exactly one Codesemble managed block"
                   : "AGENTS.md managed block markers are missing or ambiguous",
             });
           } catch (error) {
@@ -268,8 +268,8 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
         status: error instanceof LegacyManifestError ? "warn" : "fail",
         summary:
           error instanceof LegacyManifestError
-            ? "Legacy Codsemble manifest requires migration"
-            : "Codsemble manifest is invalid",
+            ? "Legacy Codesemble manifest requires migration"
+            : "Codesemble manifest is invalid",
         details: [error instanceof Error ? error.message : String(error)],
       });
     }
@@ -277,7 +277,7 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
     checks.push({
       id: "codsemble-manifest",
       status: "warn",
-      summary: "No Codsemble manifest is present; the workspace may be uninitialized",
+      summary: "No Codesemble manifest is present; the workspace may be uninitialized",
     });
   }
 
@@ -318,7 +318,7 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
     return {
       id: "transactions",
       status: "warn",
-      summary: "No Codsemble transaction history is present",
+      summary: "No Codesemble transaction history is present",
     };
   }
   try {
@@ -451,7 +451,7 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
         invalid.length > 0 ? "fail" : drift.length > 0 ? "warn" : receipts.length > 0 ? "pass" : "warn",
       summary:
         pendingNames.length > 0 || lockPresent
-          ? "Incomplete Codsemble mutation state was detected"
+          ? "Incomplete Codesemble mutation state was detected"
           : receipts.length > 0
           ? activeReceipts.length === 0
             ? `${receipts.length} transaction receipt(s) found; all are recorded as rolled back`

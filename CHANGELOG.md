@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Codsemble will be documented here.
+All notable changes to Codesemble will be documented here.
 
 The project follows Semantic Versioning and keeps changes under `Unreleased`
 until a release is explicitly published.

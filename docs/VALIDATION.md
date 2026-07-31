@@ -1,6 +1,6 @@
 # Validation evidence
 
-Codsemble separates structural, simulated, and real-runtime evidence. A result
+Codesemble separates structural, simulated, and real-runtime evidence. A result
 at one level is not promoted to a broader claim.
 
 ## Structural and simulated checks
@@ -57,7 +57,7 @@ The following boundaries passed:
 
 1. The local marketplace exposed `codsemble@codsemble`.
 2. The plugin installed and appeared enabled in the isolated home.
-3. A Codsemble plan generated two project-native custom agents and set a
+3. A Codesemble plan generated two project-native custom agents and set a
    spawned-worker ceiling of two.
 4. A fresh ordinary Codex session spawned both generated roles concurrently:
    `delivery_planner` and `integration_test_engineer`.

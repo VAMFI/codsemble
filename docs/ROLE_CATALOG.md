@@ -1,8 +1,8 @@
-# Codsemble Role Catalog
+# Codesemble Role Catalog
 
 Catalog version: `0.1.0`
 
-Codsemble contains exactly 111 specialist blueprints. The catalog is a search
+Codesemble contains exactly 111 specialist blueprints. The catalog is a search
 space, not a recommended team size: initialization ranks repository evidence
 and user goals, then proposes the smallest team that has distinct ownership.
 

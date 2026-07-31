@@ -1,4 +1,4 @@
-# Contributing to Codsemble
+# Contributing to Codesemble
 
 Thank you for helping make repository-aware Codex teams safer and more useful.
 

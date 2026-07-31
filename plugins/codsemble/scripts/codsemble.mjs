@@ -954,11 +954,11 @@ async function enumerateGitCandidates(root, git, skips) {
         pathspec
       ])
     ]);
-    const tracked = parseGitPaths(trackedOutput, git.workspacePrefix).filter((relativePath) => !isCodsembleTransactionPath(relativePath)).sort(compareText).map((relativePath) => ({ relativePath, source: "tracked" }));
+    const tracked = parseGitPaths(trackedOutput, git.workspacePrefix).filter((relativePath) => !isCodesembleTransactionPath(relativePath)).sort(compareText).map((relativePath) => ({ relativePath, source: "tracked" }));
     const trackedSet = new Set(tracked.map(({ relativePath }) => relativePath));
     const untracked = parseGitPaths(untrackedOutput, git.workspacePrefix).filter((relativePath) => !trackedSet.has(relativePath)).sort(compareText);
     const workspaceUntracked = untracked.filter(
-      (relativePath) => !isCodsembleTransactionPath(relativePath)
+      (relativePath) => !isCodesembleTransactionPath(relativePath)
     );
     const managedUntracked = workspaceUntracked.filter(isCodexStateCandidate).map((relativePath) => ({ relativePath, source: "untracked" }));
     const excludedUntracked = workspaceUntracked.length - managedUntracked.length;
@@ -1002,7 +1002,7 @@ function hasRelevantGitStatus(output, workspacePrefix) {
       return normalized.startsWith(prefix) ? [normalized.slice(prefix.length)] : [];
     });
     if (workspacePaths.some(
-      (relativePath) => !isCodsembleTransactionPath(relativePath)
+      (relativePath) => !isCodesembleTransactionPath(relativePath)
     )) {
       return true;
     }
@@ -1065,7 +1065,7 @@ async function enumerateNonGitCandidates(root, limits, matcher, skips) {
     entries.sort((left, right) => compareText(left.name, right.name));
     for (const entry of entries) {
       const relativePath = toPosix(path2.join(relativeDirectory, entry.name));
-      if (isCodsembleTransactionPath(relativePath)) {
+      if (isCodesembleTransactionPath(relativePath)) {
         continue;
       }
       if (entry.isSymbolicLink()) {
@@ -1095,7 +1095,7 @@ async function enumerateNonGitCandidates(root, limits, matcher, skips) {
   await visit("", 0);
   return candidates;
 }
-function isCodsembleTransactionPath(relativePath) {
+function isCodesembleTransactionPath(relativePath) {
   return relativePath === ".codex/codsemble/transactions" || relativePath.startsWith(".codex/codsemble/transactions/");
 }
 function normalizeRelativePath(value) {
@@ -1488,7 +1488,7 @@ async function detectCodexCapabilities(workspace, runner = defaultRunner) {
     );
   } else if (!adapterSupported) {
     warnings.push(
-      `Codex ${version2 ?? "unknown"} is outside Codsemble's tested config-adapter range; use manual or unchanged config mode.`
+      `Codex ${version2 ?? "unknown"} is outside Codesemble's tested config-adapter range; use manual or unchanged config mode.`
     );
   }
   return {
@@ -17310,12 +17310,12 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
       }
       if (ownedHash === null && existing !== desired) {
         throw new Error(
-          `Refusing to overwrite legacy Codsemble agent without an ownership hash: ${relativePath}`
+          `Refusing to overwrite legacy Codesemble agent without an ownership hash: ${relativePath}`
         );
       }
       if (ownedHash !== null && sha256(existing) !== ownedHash) {
         throw new Error(
-          `Refusing to overwrite edited Codsemble agent file: ${relativePath}`
+          `Refusing to overwrite edited Codesemble agent file: ${relativePath}`
         );
       }
     }
@@ -17460,7 +17460,7 @@ max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
     const beforeSha256 = sha256(Buffer.from(before.content));
     if (beforeSha256 !== priorOwnedAgents.get(relativePath)) {
       throw new Error(
-        `Refusing to delete edited Codsemble agent file: ${relativePath}`
+        `Refusing to delete edited Codesemble agent file: ${relativePath}`
       );
     }
     preimages.push({
@@ -17502,7 +17502,7 @@ async function readPriorOwnedAgents(root, existingFiles) {
   try {
     parsed = JSON.parse(source);
   } catch (error51) {
-    throw new Error("Existing Codsemble manifest is not valid JSON", {
+    throw new Error("Existing Codesemble manifest is not valid JSON", {
       cause: error51
     });
   }
@@ -17510,23 +17510,23 @@ async function readPriorOwnedAgents(root, existingFiles) {
   const owned = ownership !== null && "agentFiles" in ownership && Array.isArray(ownership.agentFiles) ? ownership.agentFiles : null;
   const hashes = ownership !== null && (!("agentSha256" in ownership) || ownership.agentSha256 === void 0) ? null : ownership !== null && "agentSha256" in ownership && typeof ownership.agentSha256 === "object" && ownership.agentSha256 !== null && !Array.isArray(ownership.agentSha256) ? ownership.agentSha256 : void 0;
   if (owned === null || hashes === void 0) {
-    throw new Error("Existing Codsemble manifest has invalid agent ownership");
+    throw new Error("Existing Codesemble manifest has invalid agent ownership");
   }
   const result = /* @__PURE__ */ new Map();
   for (const entry of owned) {
     if (typeof entry !== "string" || !/^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(entry)) {
-      throw new Error("Existing Codsemble manifest contains an unsafe agent path");
+      throw new Error("Existing Codesemble manifest contains an unsafe agent path");
     }
     const digest = hashes?.[entry] ?? null;
     if (digest !== null && (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest))) {
       throw new Error(
-        "Existing Codsemble manifest has invalid agent ownership hash"
+        "Existing Codesemble manifest has invalid agent ownership hash"
       );
     }
     result.set(entry, digest);
   }
   if (hashes !== null && Object.keys(hashes).length !== result.size) {
-    throw new Error("Existing Codsemble manifest has unexpected agent ownership hashes");
+    throw new Error("Existing Codesemble manifest has unexpected agent ownership hashes");
   }
   return result;
 }
@@ -17684,7 +17684,7 @@ function renderRoleToml(role) {
 }
 function renderManagedAgentsBody(roles, kind) {
   return [
-    "## Codsemble team",
+    "## Codesemble team",
     "",
     `Selected profile: ${kind}. Installed roles: ${roles.length}.`,
     "",
@@ -17715,7 +17715,7 @@ function mergeManagedAgentsBlock(existing, body) {
   const start = existing.indexOf(AGENTS_START);
   const end = existing.indexOf(AGENTS_END);
   if (start === -1 !== (end === -1) || end < start) {
-    throw new Error("AGENTS.md contains malformed Codsemble managed markers");
+    throw new Error("AGENTS.md contains malformed Codesemble managed markers");
   }
   if (start === -1) {
     return `${existing.replace(/\s*$/, "")}
@@ -17724,7 +17724,7 @@ ${block}
 `;
   }
   if (existing.indexOf(AGENTS_START, start + AGENTS_START.length) !== -1 || existing.indexOf(AGENTS_END, end + AGENTS_END.length) !== -1) {
-    throw new Error("AGENTS.md contains multiple Codsemble managed blocks");
+    throw new Error("AGENTS.md contains multiple Codesemble managed blocks");
   }
   return `${existing.slice(0, start)}${block}${existing.slice(
     end + AGENTS_END.length
@@ -18461,7 +18461,7 @@ async function acquireMutationLock(root, operation, transactionId) {
   const beforePending = await listPendingMutations(transactionDirectory);
   if (beforePending.length > 0) {
     throw new Error(
-      `Incomplete Codsemble mutation record(s) block new writes: ${beforePending.join(", ")}`
+      `Incomplete Codesemble mutation record(s) block new writes: ${beforePending.join(", ")}`
     );
   }
   try {
@@ -18469,7 +18469,7 @@ async function acquireMutationLock(root, operation, transactionId) {
     await syncDirectory(path5.dirname(lockPath));
   } catch (error51) {
     throw new Error(
-      `A Codsemble mutation lock already exists; ${operation} ${transactionId} cannot proceed until the prior operation is recovered`,
+      `A Codesemble mutation lock already exists; ${operation} ${transactionId} cannot proceed until the prior operation is recovered`,
       { cause: error51 }
     );
   }
@@ -18478,7 +18478,7 @@ async function acquireMutationLock(root, operation, transactionId) {
     await rmdir(lockPath).catch(() => void 0);
     await syncDirectory(transactionDirectory).catch(() => void 0);
     throw new Error(
-      `Incomplete Codsemble mutation record(s) appeared while locking: ${afterPending.join(", ")}`
+      `Incomplete Codesemble mutation record(s) appeared while locking: ${afterPending.join(", ")}`
     );
   }
   return async () => {
@@ -18721,9 +18721,9 @@ function assertValidTeamPlan(plan) {
   const paths = /* @__PURE__ */ new Set();
   let totalContentBytes = 0;
   for (const file2 of plan.files) {
-    if (!isCodsembleOwnedOutput(file2.relativePath)) {
+    if (!isCodesembleOwnedOutput(file2.relativePath)) {
       throw new Error(
-        `Plan contains a non-Codsemble output path: ${file2.relativePath}`
+        `Plan contains a non-Codesemble output path: ${file2.relativePath}`
       );
     }
     if (paths.has(file2.relativePath)) {
@@ -18738,7 +18738,7 @@ function assertValidTeamPlan(plan) {
       ".codex/codsemble/manifest.json"
     ].includes(file2.relativePath)) {
       throw new Error(
-        `Codsemble never deletes protected project metadata: ${file2.relativePath}`
+        `Codesemble never deletes protected project metadata: ${file2.relativePath}`
       );
     }
     if (file2.action === "delete" ? file2.content !== null || file2.afterSha256 !== null : typeof file2.content !== "string" || file2.afterSha256 === null || !/^[a-f0-9]{64}$/.test(file2.afterSha256)) {
@@ -18790,7 +18790,7 @@ function validatePlannedOutput(relativePath, content, plan) {
     const parsed = generatedManifestSchema.safeParse(JSON.parse(content));
     if (!parsed.success) {
       throw new Error(
-        `Generated Codsemble manifest has an invalid schema: ${parsed.error.message}`
+        `Generated Codesemble manifest has an invalid schema: ${parsed.error.message}`
       );
     }
     const expectedAgentFiles = plan.roles.map(({ id }) => `.codex/agents/${id}.toml`).sort();
@@ -18805,7 +18805,7 @@ function validatePlannedOutput(relativePath, content, plan) {
       source: role.source
     }));
     if (parsed.data.planId !== plan.planId || parsed.data.auditFingerprint !== plan.auditFingerprint || parsed.data.proposal.maxConcurrentWorkers !== plan.concurrency.requestedWorkers || stableStringify(parsed.data.roles) !== stableStringify(expectedRoles) || stableStringify(ownedAgentFiles) !== stableStringify(expectedAgentFiles) || Object.keys(parsed.data.ownership.agentSha256).sort().join("\n") !== expectedAgentFiles.join("\n")) {
-      throw new Error("Generated Codsemble manifest is not bound to the plan");
+      throw new Error("Generated Codesemble manifest is not bound to the plan");
     }
     for (const relativeAgentPath of expectedAgentFiles) {
       const plannedAgent = plan.files.find(
@@ -18813,7 +18813,7 @@ function validatePlannedOutput(relativePath, content, plan) {
       );
       if (plannedAgent !== void 0 && plannedAgent.afterSha256 !== parsed.data.ownership.agentSha256[relativeAgentPath]) {
         throw new Error(
-          `Generated Codsemble manifest ownership hash mismatch: ${relativeAgentPath}`
+          `Generated Codesemble manifest ownership hash mismatch: ${relativeAgentPath}`
         );
       }
     }
@@ -18942,7 +18942,7 @@ function assertValidTransactionRecord(record2) {
   }
   const paths = /* @__PURE__ */ new Set();
   for (const file2 of parsed.data.files) {
-    if (!isCodsembleOwnedOutput(file2.relativePath) || paths.has(file2.relativePath)) {
+    if (!isCodesembleOwnedOutput(file2.relativePath) || paths.has(file2.relativePath)) {
       throw new Error("Invalid transaction file record");
     }
     const expectedBackup = file2.beforeSha256 === null ? null : `${transactionRoot}/${parsed.data.transactionId}.backups/${file2.relativePath}`;
@@ -18964,7 +18964,7 @@ function assertValidRollbackMarker(marker) {
   const expectedPrefix = `${transactionRoot}/${parsed.data.transactionId}.rollback.quarantines/`;
   const paths = /* @__PURE__ */ new Set();
   for (const quarantineRelativePath of parsed.data.quarantineRelativePaths) {
-    if (!quarantineRelativePath.startsWith(expectedPrefix) || !isCodsembleOwnedOutput(
+    if (!quarantineRelativePath.startsWith(expectedPrefix) || !isCodesembleOwnedOutput(
       quarantineRelativePath.slice(expectedPrefix.length)
     ) || paths.has(quarantineRelativePath)) {
       throw new Error("Invalid rollback quarantine path");
@@ -18972,7 +18972,7 @@ function assertValidRollbackMarker(marker) {
     paths.add(quarantineRelativePath);
   }
 }
-function isCodsembleOwnedOutput(relativePath) {
+function isCodesembleOwnedOutput(relativePath) {
   return relativePath === "AGENTS.md" || relativePath === ".codex/config.toml" || relativePath === ".codex/codsemble/manifest.json" || /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(relativePath);
 }
 function decodeUtf8(content, label) {
@@ -19126,7 +19126,7 @@ async function doctorWorkspace(workspace) {
       checks.push({
         id: "codsemble-manifest",
         status: "pass",
-        summary: `Codsemble manifest loaded from ${path6.relative(root, manifestPath)}`
+        summary: `Codesemble manifest loaded from ${path6.relative(root, manifestPath)}`
       });
       {
         const ownedAgents = manifest.ownership.agentFiles;
@@ -19168,7 +19168,7 @@ async function doctorWorkspace(workspace) {
             checks.push({
               id: "managed-agents-block",
               status: starts === 1 && ends === 1 ? "pass" : "fail",
-              summary: starts === 1 && ends === 1 ? "AGENTS.md contains exactly one Codsemble managed block" : "AGENTS.md managed block markers are missing or ambiguous"
+              summary: starts === 1 && ends === 1 ? "AGENTS.md contains exactly one Codesemble managed block" : "AGENTS.md managed block markers are missing or ambiguous"
             });
           } catch (error51) {
             checks.push({
@@ -19184,7 +19184,7 @@ async function doctorWorkspace(workspace) {
       checks.push({
         id: "codsemble-manifest",
         status: error51 instanceof LegacyManifestError ? "warn" : "fail",
-        summary: error51 instanceof LegacyManifestError ? "Legacy Codsemble manifest requires migration" : "Codsemble manifest is invalid",
+        summary: error51 instanceof LegacyManifestError ? "Legacy Codesemble manifest requires migration" : "Codesemble manifest is invalid",
         details: [error51 instanceof Error ? error51.message : String(error51)]
       });
     }
@@ -19192,7 +19192,7 @@ async function doctorWorkspace(workspace) {
     checks.push({
       id: "codsemble-manifest",
       status: "warn",
-      summary: "No Codsemble manifest is present; the workspace may be uninitialized"
+      summary: "No Codesemble manifest is present; the workspace may be uninitialized"
     });
   }
   checks.push(await inspectTransactions(root));
@@ -19224,7 +19224,7 @@ async function inspectTransactions(root) {
     return {
       id: "transactions",
       status: "warn",
-      summary: "No Codsemble transaction history is present"
+      summary: "No Codesemble transaction history is present"
     };
   }
   try {
@@ -19332,7 +19332,7 @@ async function inspectTransactions(root) {
     return {
       id: "transactions",
       status: invalid.length > 0 ? "fail" : drift.length > 0 ? "warn" : receipts.length > 0 ? "pass" : "warn",
-      summary: pendingNames.length > 0 || lockPresent ? "Incomplete Codsemble mutation state was detected" : receipts.length > 0 ? activeReceipts.length === 0 ? `${receipts.length} transaction receipt(s) found; all are recorded as rolled back` : `${receipts.length} transaction receipt(s) found; latest active rollback ${drift.length === 0 ? "has matching postimages" : "is blocked by drift"}` : "No transaction receipts were found",
+      summary: pendingNames.length > 0 || lockPresent ? "Incomplete Codesemble mutation state was detected" : receipts.length > 0 ? activeReceipts.length === 0 ? `${receipts.length} transaction receipt(s) found; all are recorded as rolled back` : `${receipts.length} transaction receipt(s) found; latest active rollback ${drift.length === 0 ? "has matching postimages" : "is blocked by drift"}` : "No transaction receipts were found",
       ...details.length > 0 ? { details } : {}
     };
   } catch (error51) {
@@ -19680,7 +19680,7 @@ function capitalize(value) {
 }
 
 // src/cli.ts
-var HELP = `Codsemble \u2014 repository-aware native Codex team generator
+var HELP = `Codesemble \u2014 repository-aware native Codex team generator
 
 Usage:
   codsemble audit [--workspace PATH]

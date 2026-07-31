@@ -1,11 +1,11 @@
 # Configuration safety
 
-Codsemble compiles project configuration. It does not control Codex's runtime
+Codesemble compiles project configuration. It does not control Codex's runtime
 permission system and must not claim that a prompt can grant or enforce access.
 
 ## Roles and concurrency are different
 
-Codsemble asks two separate questions:
+Codesemble asks two separate questions:
 
 1. How many specialist roles should exist in this project?
 2. How many spawned workers may be open simultaneously?
@@ -23,11 +23,11 @@ max_concurrent_threads_per_session = 4
 
 The setting is a ceiling, not a target. Runtime policy, command-line overrides,
 capacity, model limits, cost, and the actual task can reduce live parallelism.
-Codsemble does not silently lower an existing sufficient ceiling.
+Codesemble does not silently lower an existing sufficient ceiling.
 
 ## Project scope only
 
-Codsemble may propose changes to `<workspace>/.codex/config.toml`. It never:
+Codesemble may propose changes to `<workspace>/.codex/config.toml`. It never:
 
 - edits `~/.codex/config.toml`;
 - marks the workspace trusted;
@@ -62,7 +62,7 @@ no-clobber conflict; both the competing target and quarantined bytes are
 retained. Rollback applies the same checks to confirmed postimages.
 
 For every successful update or delete, the transaction receipt records and
-retains the source quarantine. Codsemble does not automatically unlink it:
+retains the source quarantine. Codesemble does not automatically unlink it:
 an editor may still hold the original inode open and write after pathname
 replacement. `doctor` verifies the retained quarantine against its recorded
 preimage hash. Pruning recovery artifacts is a separate, explicit future
@@ -82,16 +82,16 @@ crash recovery is deferred beyond v0.1.
 ## Manual mode
 
 Choose `manual` or `unchanged` during intake when project config should not be
-edited. After exact confirmation-id approval, Codsemble may still apply the team
+edited. After exact confirmation-id approval, Codesemble may still apply the team
 agents, managed `AGENTS.md` section, and manifest while leaving
 `.codex/config.toml` untouched. `manual` also shows the exact project snippet
 for separate installation; `unchanged` preserves concurrency as-is. Global
-configuration remains outside Codsemble's automatic transaction boundary.
+configuration remains outside Codesemble's automatic transaction boundary.
 
 ## Model and effort routing
 
 Catalog roles use capability profiles (`deep`, `balanced`, `fast`, `inherit`).
-Codsemble pins a concrete model only when it is verified for the active
+Codesemble pins a concrete model only when it is verified for the active
 environment. A catalog reasoning-effort default is emitted only alongside that
 verified model; otherwise it inherits. Explicit custom-role choices remain
 user-owned inputs.

@@ -23,7 +23,7 @@ import type {
 } from "./types.js";
 import { stableStringify } from "./util.js";
 
-const HELP = `Codsemble — repository-aware native Codex team generator
+const HELP = `Codesemble — repository-aware native Codex team generator
 
 Usage:
   codsemble audit [--workspace PATH]

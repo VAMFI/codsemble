@@ -218,7 +218,7 @@ export async function detectCodexCapabilities(
     );
   } else if (!adapterSupported) {
     warnings.push(
-      `Codex ${version ?? "unknown"} is outside Codsemble's tested config-adapter range; use manual or unchanged config mode.`,
+      `Codex ${version ?? "unknown"} is outside Codesemble's tested config-adapter range; use manual or unchanged config mode.`,
     );
   }
 

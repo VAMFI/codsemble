@@ -916,7 +916,7 @@ async function acquireMutationLock(
   const beforePending = await listPendingMutations(transactionDirectory);
   if (beforePending.length > 0) {
     throw new Error(
-      `Incomplete Codsemble mutation record(s) block new writes: ${beforePending.join(", ")}`,
+      `Incomplete Codesemble mutation record(s) block new writes: ${beforePending.join(", ")}`,
     );
   }
   try {
@@ -924,7 +924,7 @@ async function acquireMutationLock(
     await syncDirectory(path.dirname(lockPath));
   } catch (error) {
     throw new Error(
-      `A Codsemble mutation lock already exists; ${operation} ${transactionId} cannot proceed until the prior operation is recovered`,
+      `A Codesemble mutation lock already exists; ${operation} ${transactionId} cannot proceed until the prior operation is recovered`,
       { cause: error },
     );
   }
@@ -933,7 +933,7 @@ async function acquireMutationLock(
     await rmdir(lockPath).catch(() => undefined);
     await syncDirectory(transactionDirectory).catch(() => undefined);
     throw new Error(
-      `Incomplete Codsemble mutation record(s) appeared while locking: ${afterPending.join(", ")}`,
+      `Incomplete Codesemble mutation record(s) appeared while locking: ${afterPending.join(", ")}`,
     );
   }
   return async () => {
@@ -1245,9 +1245,9 @@ export function assertValidTeamPlan(plan: TeamPlan): void {
   const paths = new Set<string>();
   let totalContentBytes = 0;
   for (const file of plan.files) {
-    if (!isCodsembleOwnedOutput(file.relativePath)) {
+    if (!isCodesembleOwnedOutput(file.relativePath)) {
       throw new Error(
-        `Plan contains a non-Codsemble output path: ${file.relativePath}`,
+        `Plan contains a non-Codesemble output path: ${file.relativePath}`,
       );
     }
     if (paths.has(file.relativePath)) {
@@ -1265,7 +1265,7 @@ export function assertValidTeamPlan(plan: TeamPlan): void {
       ].includes(file.relativePath)
     ) {
       throw new Error(
-        `Codsemble never deletes protected project metadata: ${file.relativePath}`,
+        `Codesemble never deletes protected project metadata: ${file.relativePath}`,
       );
     }
     if (
@@ -1349,7 +1349,7 @@ function validatePlannedOutput(
     const parsed = generatedManifestSchema.safeParse(JSON.parse(content));
     if (!parsed.success) {
       throw new Error(
-        `Generated Codsemble manifest has an invalid schema: ${parsed.error.message}`,
+        `Generated Codesemble manifest has an invalid schema: ${parsed.error.message}`,
       );
     }
     const expectedAgentFiles = plan.roles
@@ -1377,7 +1377,7 @@ function validatePlannedOutput(
       Object.keys(parsed.data.ownership.agentSha256).sort().join("\n") !==
         expectedAgentFiles.join("\n")
     ) {
-      throw new Error("Generated Codsemble manifest is not bound to the plan");
+      throw new Error("Generated Codesemble manifest is not bound to the plan");
     }
     for (const relativeAgentPath of expectedAgentFiles) {
       const plannedAgent = plan.files.find(
@@ -1390,7 +1390,7 @@ function validatePlannedOutput(
           parsed.data.ownership.agentSha256[relativeAgentPath]
       ) {
         throw new Error(
-          `Generated Codsemble manifest ownership hash mismatch: ${relativeAgentPath}`,
+          `Generated Codesemble manifest ownership hash mismatch: ${relativeAgentPath}`,
         );
       }
     }
@@ -1567,7 +1567,7 @@ export function assertValidTransactionRecord(
   const paths = new Set<string>();
   for (const file of parsed.data.files) {
     if (
-      !isCodsembleOwnedOutput(file.relativePath) ||
+      !isCodesembleOwnedOutput(file.relativePath) ||
       paths.has(file.relativePath)
     ) {
       throw new Error("Invalid transaction file record");
@@ -1603,7 +1603,7 @@ export function assertValidRollbackMarker(
   for (const quarantineRelativePath of parsed.data.quarantineRelativePaths) {
     if (
       !quarantineRelativePath.startsWith(expectedPrefix) ||
-      !isCodsembleOwnedOutput(
+      !isCodesembleOwnedOutput(
         quarantineRelativePath.slice(expectedPrefix.length),
       ) ||
       paths.has(quarantineRelativePath)
@@ -1614,7 +1614,7 @@ export function assertValidRollbackMarker(
   }
 }
 
-export function isCodsembleOwnedOutput(relativePath: string): boolean {
+export function isCodesembleOwnedOutput(relativePath: string): boolean {
   return (
     relativePath === "AGENTS.md" ||
     relativePath === ".codex/config.toml" ||

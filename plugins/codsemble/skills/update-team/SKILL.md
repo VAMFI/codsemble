@@ -1,6 +1,6 @@
 ---
 name: update-team
-description: Re-audit a workspace with an existing Codsemble team, recommend role or concurrency changes, and preview or explicitly apply a locked no-clobber project update. Use when a user asks to refresh, regenerate, resize, customize, upgrade, or change an existing Codex multi-agent team.
+description: Re-audit a workspace with an existing Codesemble team, recommend role or concurrency changes, and preview or explicitly apply a locked no-clobber project update. Use when a user asks to refresh, regenerate, resize, customize, upgrade, or change an existing Codex multi-agent team.
 ---
 
 # Update a Codex team

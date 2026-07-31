@@ -1,4 +1,4 @@
-# Codsemble Goal
+# Codesemble Goal
 
 Build a clean Apache-2.0, offline-first, open-source Codex plugin that:
 

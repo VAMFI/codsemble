@@ -1,6 +1,6 @@
 ---
 name: rollback-team
-description: Inspect and safely revert a selected Codsemble project transaction while refusing to overwrite later user changes. Use when a user asks to undo, revert, uninstall, or roll back a generated Codex team or project concurrency change.
+description: Inspect and safely revert a selected Codesemble project transaction while refusing to overwrite later user changes. Use when a user asks to undo, revert, uninstall, or roll back a generated Codex team or project concurrency change.
 ---
 
 # Roll back a Codex team transaction
@@ -17,7 +17,7 @@ rollback ownership from filenames.
 
 ## Guardrails
 
-- Roll back only Codsemble-owned paths and managed sections listed in the
+- Roll back only Codesemble-owned paths and managed sections listed in the
   selected transaction.
 - Never edit global `~/.codex/config.toml`, project trust, managed policy,
   credentials, providers, third-party components, or external systems.
@@ -55,7 +55,7 @@ rollback ownership from filenames.
    - what remains untouched.
 
    Never accept a transaction JSON supplied from outside the workspace. The
-   canonical transaction id must resolve inside Codsemble's transaction
+   canonical transaction id must resolve inside Codesemble's transaction
    directory.
 
 4. Ask for explicit confirmation of the exact transaction id and displayed

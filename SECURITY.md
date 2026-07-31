@@ -28,12 +28,12 @@ fix is available. These are targets, not a paid support guarantee.
 
 ## Security boundary
 
-Codsemble treats repository content as untrusted data. It must remain bounded to
+Codesemble treats repository content as untrusted data. It must remain bounded to
 the selected workspace, exclude sensitive path classes, avoid executing
 discovered scripts, preview all writes, and preserve Codex permission and
 approval policies.
 
-Codsemble does not promise that prompts alone enforce permissions. The active
+Codesemble does not promise that prompts alone enforce permissions. The active
 Codex runtime, enterprise policy, sandbox, and user approvals remain
 authoritative.
 

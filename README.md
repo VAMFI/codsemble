@@ -25,7 +25,7 @@ workspace evidence and user goals:
 - native `.codex/agents/*.toml` generation;
 - a bounded managed section in `AGENTS.md`;
 - optional, project-scoped concurrency configuration;
-- exact preview, atomic apply, doctor, update, and conflict-safe rollback.
+- exact preview, confirmed no-clobber apply, doctor, update, and rollback.
 
 Codsemble keeps two numbers separate:
 
@@ -100,6 +100,14 @@ AGENTS.md
 
 The managed `AGENTS.md` section and generated agent files remain bounded by a
 manifest. Codsemble refuses to overwrite overlapping user edits.
+
+Apply and rollback are serialized by a project lock. Each file is moved to a
+private same-filesystem quarantine and the replacement is published with an
+exclusive link, so a racing writer is preserved instead of silently
+overwritten. The operation is not an atomic multi-file snapshot. Process or
+power interruption can leave a lock, pending record, backup, or quarantine;
+`doctor` reports that state and further writes fail closed pending manual
+recovery. See [Configuration safety](docs/CONFIG_SAFETY.md).
 
 ## Safety boundary
 

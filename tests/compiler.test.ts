@@ -6,6 +6,7 @@ import { parse as parseToml } from "smol-toml";
 import { describe, expect, it } from "vitest";
 
 import { compileTeamPlan } from "../src/compiler.js";
+import { sha256 } from "../src/util.js";
 import type {
   AuditReport,
   IntakeAnswers,
@@ -367,11 +368,15 @@ describe("compileTeamPlan", () => {
 
   it("deletes only stale agents owned by the prior manifest", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "codsemble-stale-agent-"));
+    const staleAgent = 'name = "stale_role"\n';
     const manifest = JSON.stringify({
       schemaVersion: 1,
       planId: "prior",
       ownership: {
         agentFiles: [".codex/agents/stale-role.toml"],
+        agentSha256: {
+          ".codex/agents/stale-role.toml": sha256(staleAgent),
+        },
       },
     });
     const plan = await compileTeamPlan(
@@ -382,7 +387,7 @@ describe("compileTeamPlan", () => {
       [blueprint],
       {
         ".codex/codsemble/manifest.json": manifest,
-        ".codex/agents/stale-role.toml": 'name = "stale_role"\n',
+        ".codex/agents/stale-role.toml": staleAgent,
       },
     );
 

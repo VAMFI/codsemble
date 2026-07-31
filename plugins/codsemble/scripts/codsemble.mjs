@@ -1391,6 +1391,82 @@ async function detectCodexCapabilities(workspace, runner = defaultRunner) {
     warnings
   };
 }
+function bindIntakeCapabilities(answers, report) {
+  assertNativeRuntime(report, "Plan");
+  const liveAdapter = report.multiAgent.configAdapter;
+  if (answers.configAdapter !== null && answers.configAdapter !== liveAdapter) {
+    throw new Error(
+      `Plan capability check failed: answers claim ${answers.configAdapter}, but the local runtime did not confirm it`
+    );
+  }
+  if ((answers.configMode === "preview" || answers.configMode === "apply-project") && liveAdapter !== "agents-v1") {
+    throw new Error(
+      "Plan capability check failed: project concurrency requires a live agents-v1 adapter"
+    );
+  }
+  const liveModels = report.models.entries.map(
+    ({ id, supportedReasoningEfforts }) => ({
+      id,
+      supportedReasoningEfforts: [...supportedReasoningEfforts]
+    })
+  );
+  const liveById = new Map(liveModels.map((model) => [model.id, model]));
+  for (const [profile, model] of Object.entries(answers.verifiedModels)) {
+    if (model !== void 0 && !liveById.has(model)) {
+      throw new Error(
+        `Plan capability check failed: ${profile} model ${model} is absent from the live local model catalog`
+      );
+    }
+  }
+  return {
+    ...answers,
+    configAdapter: liveAdapter,
+    modelCapabilities: liveModels
+  };
+}
+function assertPlanCapabilities(plan, report, phase) {
+  const label = phase === "plan" ? "Plan" : "Apply";
+  assertNativeRuntime(report, label);
+  if (plan.concurrency.adapter !== null && plan.concurrency.adapter !== report.multiAgent.configAdapter) {
+    throw new Error(
+      `${label} capability check failed: required adapter ${plan.concurrency.adapter} is not live`
+    );
+  }
+  if (plan.concurrency.configMode === "apply-project" && report.multiAgent.configAdapter !== "agents-v1") {
+    throw new Error(
+      `${label} capability check failed: project concurrency requires a live agents-v1 adapter`
+    );
+  }
+  const models = new Map(
+    report.models.entries.map((model) => [model.id, model])
+  );
+  for (const role of plan.roles) {
+    if (role.model === void 0) continue;
+    const live = models.get(role.model);
+    if (live === void 0) {
+      throw new Error(
+        `${label} capability check failed: role ${role.id} requires unavailable model ${role.model}`
+      );
+    }
+    if (role.reasoningEffort !== void 0 && !live.supportedReasoningEfforts.includes(role.reasoningEffort)) {
+      throw new Error(
+        `${label} capability check failed: model ${role.model} does not support ${role.reasoningEffort}`
+      );
+    }
+  }
+}
+function assertNativeRuntime(report, label) {
+  if (!report.codex.available) {
+    throw new Error(
+      `${label} capability check failed: the local Codex runtime is unavailable`
+    );
+  }
+  if (report.multiAgent.enabled !== true) {
+    throw new Error(
+      `${label} capability check failed: native multi-agent support is not enabled`
+    );
+  }
+}
 function supportsAgentsV1(version2) {
   const match = version2.match(/^(\d+)\.(\d+)\.(\d+)/);
   if (!match) return false;
@@ -17100,10 +17176,18 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
   for (const role of resolvedRoles) {
     const relativePath = `.codex/agents/${role.id}.toml`;
     const existing = await getExistingContent(root, relativePath, existingFiles);
-    if (existing !== void 0 && !priorOwnedAgents.has(relativePath)) {
-      throw new Error(
-        `Refusing to overwrite user-owned agent file: ${relativePath}`
-      );
+    if (existing !== void 0) {
+      const ownedHash = priorOwnedAgents.get(relativePath);
+      if (ownedHash === void 0) {
+        throw new Error(
+          `Refusing to overwrite user-owned agent file: ${relativePath}`
+        );
+      }
+      if (sha256(existing) !== ownedHash) {
+        throw new Error(
+          `Refusing to overwrite edited Codsemble agent file: ${relativePath}`
+        );
+      }
     }
     desiredFiles.set(relativePath, renderRoleToml(role));
   }
@@ -17198,6 +17282,12 @@ max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
       agentsBlock: { path: "AGENTS.md", start: AGENTS_START, end: AGENTS_END },
       agentFiles: resolvedRoles.map(
         ({ id }) => `.codex/agents/${id}.toml`
+      ),
+      agentSha256: Object.fromEntries(
+        resolvedRoles.map(({ id }) => {
+          const relativePath = `.codex/agents/${id}.toml`;
+          return [relativePath, sha256(desiredFiles.get(relativePath))];
+        })
       )
     }
   };
@@ -17228,11 +17318,16 @@ max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
       });
     }
   }
-  for (const relativePath of [...priorOwnedAgents].sort()) {
+  for (const relativePath of [...priorOwnedAgents.keys()].sort()) {
     if (desiredFiles.has(relativePath)) continue;
     const before = await getExistingFile(root, relativePath, existingFiles);
     if (before.content === void 0) continue;
     const beforeSha256 = sha256(Buffer.from(before.content));
+    if (beforeSha256 !== priorOwnedAgents.get(relativePath)) {
+      throw new Error(
+        `Refusing to delete edited Codsemble agent file: ${relativePath}`
+      );
+    }
     preimages.push({
       relativePath,
       exists: true,
@@ -17267,7 +17362,7 @@ async function readPriorOwnedAgents(root, existingFiles) {
     ".codex/codsemble/manifest.json",
     existingFiles
   );
-  if (source === void 0) return /* @__PURE__ */ new Set();
+  if (source === void 0) return /* @__PURE__ */ new Map();
   let parsed;
   try {
     parsed = JSON.parse(source);
@@ -17276,16 +17371,25 @@ async function readPriorOwnedAgents(root, existingFiles) {
       cause: error51
     });
   }
-  const owned = typeof parsed === "object" && parsed !== null && "ownership" in parsed && typeof parsed.ownership === "object" && parsed.ownership !== null && "agentFiles" in parsed.ownership && Array.isArray(parsed.ownership.agentFiles) ? parsed.ownership.agentFiles : null;
-  if (owned === null) {
+  const ownership = typeof parsed === "object" && parsed !== null && "ownership" in parsed && typeof parsed.ownership === "object" && parsed.ownership !== null ? parsed.ownership : null;
+  const owned = ownership !== null && "agentFiles" in ownership && Array.isArray(ownership.agentFiles) ? ownership.agentFiles : null;
+  const hashes = ownership !== null && "agentSha256" in ownership && typeof ownership.agentSha256 === "object" && ownership.agentSha256 !== null && !Array.isArray(ownership.agentSha256) ? ownership.agentSha256 : null;
+  if (owned === null || hashes === null) {
     throw new Error("Existing Codsemble manifest has invalid agent ownership");
   }
-  const result = /* @__PURE__ */ new Set();
+  const result = /* @__PURE__ */ new Map();
   for (const entry of owned) {
     if (typeof entry !== "string" || !/^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(entry)) {
       throw new Error("Existing Codsemble manifest contains an unsafe agent path");
     }
-    result.add(entry);
+    const digest = hashes[entry];
+    if (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest)) {
+      throw new Error("Existing Codsemble manifest has invalid agent ownership hash");
+    }
+    result.set(entry, digest);
+  }
+  if (Object.keys(hashes).length !== result.size) {
+    throw new Error("Existing Codsemble manifest has unexpected agent ownership hashes");
   }
   return result;
 }
@@ -17520,18 +17624,85 @@ import { promisify as promisify3 } from "node:util";
 import { randomUUID } from "node:crypto";
 import {
   chmod,
+  link,
   lstat as lstat4,
   mkdir,
   open as open2,
   readFile as readFile3,
   rename,
+  rmdir,
   unlink
 } from "node:fs/promises";
 import path4 from "node:path";
 var transactionRoot = ".codex/codsemble/transactions";
 var projectConfig = ".codex/config.toml";
-async function applyTeamPlan(workspace, plan) {
-  validatePlan(plan);
+var agentPathPattern = /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/;
+var digestSchema = external_exports.string().regex(/^[a-f0-9]{64}$/);
+var generatedAgentSchema = external_exports.object({
+  name: external_exports.string().min(1).max(128),
+  description: external_exports.string().min(1).max(1e3),
+  developer_instructions: external_exports.string().min(1).max(64 * 1024),
+  model: external_exports.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
+  model_reasoning_effort: external_exports.enum(["low", "medium", "high", "xhigh"]).optional(),
+  sandbox_mode: external_exports.enum(["read-only", "workspace-write"])
+}).strict().superRefine((agent, context) => {
+  if (agent.model_reasoning_effort !== void 0 && agent.model === void 0) {
+    context.addIssue({
+      code: "custom",
+      message: "model_reasoning_effort requires model",
+      path: ["model_reasoning_effort"]
+    });
+  }
+});
+var manifestSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  generator: external_exports.object({ name: external_exports.literal("codsemble"), version: external_exports.string().min(1) }).strict(),
+  catalogVersion: external_exports.string().min(1),
+  planId: external_exports.string().min(1),
+  auditFingerprint: digestSchema,
+  proposal: external_exports.object({
+    kind: external_exports.enum(["lean", "balanced", "full"]),
+    maxConcurrentWorkers: external_exports.number().int().min(1).max(111)
+  }).strict(),
+  capabilities: external_exports.object({
+    configAdapter: external_exports.literal("agents-v1").nullable(),
+    modelCapabilities: external_exports.array(
+      external_exports.object({
+        id: external_exports.string().min(1).max(200).regex(/^[^\s]+$/),
+        supportedReasoningEfforts: external_exports.array(
+          external_exports.string().min(1).max(40).regex(/^[a-z0-9_-]+$/)
+        )
+      }).strict()
+    ),
+    availableTools: external_exports.array(
+      external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/)
+    )
+  }).strict(),
+  roles: external_exports.array(
+    external_exports.object({
+      id: external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/),
+      name: external_exports.string().min(1),
+      modelProfile: external_exports.enum(["inherit", "deep", "balanced", "fast"]),
+      model: external_exports.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
+      reasoningEffort: external_exports.enum(["low", "medium", "high", "xhigh"]).optional(),
+      sandbox: external_exports.enum(["read-only", "workspace-write"]),
+      source: external_exports.enum(["custom", "catalog"])
+    }).strict()
+  ),
+  ownership: external_exports.object({
+    agentsBlock: external_exports.object({
+      path: external_exports.literal("AGENTS.md"),
+      start: external_exports.literal("<!-- codsemble:start -->"),
+      end: external_exports.literal("<!-- codsemble:end -->")
+    }).strict(),
+    agentFiles: external_exports.array(external_exports.string().regex(agentPathPattern)),
+    agentSha256: external_exports.record(external_exports.string().regex(agentPathPattern), digestSchema)
+  }).strict()
+}).strict();
+var PreservedConflictError = class extends Error {
+};
+async function applyTeamPlan(workspace, plan, hooks = {}) {
+  assertValidTeamPlan(plan);
   const root = await resolveSafeWorkspace(workspace);
   const transactionId = randomUUID();
   const prepared = [];
@@ -17567,14 +17738,15 @@ async function applyTeamPlan(workspace, plan) {
       if (planned.content !== null) validateToml(planned.content);
     }
     if (planned.content !== null) {
-      validatePlannedOutput(planned.relativePath, planned.content);
+      validatePlannedOutput(planned.relativePath, planned.content, plan);
     }
     prepared.push({
       planned,
       absolutePath,
       before: state.content,
       mode: state.mode,
-      backupRelativePath: state.content === null ? null : `${transactionRoot}/${transactionId}.backups/${planned.relativePath}`
+      backupRelativePath: state.content === null ? null : `${transactionRoot}/${transactionId}.backups/${planned.relativePath}`,
+      quarantinePath: `${absolutePath}.codsemble-${transactionId}.quarantine`
     });
   }
   const transaction = {
@@ -17592,7 +17764,10 @@ async function applyTeamPlan(workspace, plan) {
   };
   const staged = /* @__PURE__ */ new Map();
   const installed = [];
+  let releaseLock;
+  let pendingPath;
   try {
+    releaseLock = await acquireMutationLock(root, "apply", transactionId);
     for (const file2 of prepared) {
       if (file2.before !== null && file2.backupRelativePath !== null) {
         const backup = await safeTarget(root, file2.backupRelativePath);
@@ -17609,45 +17784,71 @@ async function applyTeamPlan(workspace, plan) {
         staged.set(file2.absolutePath, temporary);
       }
     }
-    for (const file2 of prepared) {
-      const current = await readSafeRegularFile(file2.absolutePath);
-      const currentHash = current.content === null ? null : sha256(current.content);
-      if (currentHash !== file2.planned.beforeSha256) {
-        throw new Error(
-          `Concurrent modification of ${file2.planned.relativePath}: expected ${formatHash(file2.planned.beforeSha256)}, found ${formatHash(currentHash)}`
-        );
+    pendingPath = await writePendingMutation(
+      root,
+      `${transactionRoot}/${transactionId}.apply.pending.json`,
+      {
+        schemaVersion: 1,
+        operation: "apply",
+        transactionId,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        files: prepared.map((file2) => ({
+          relativePath: file2.planned.relativePath,
+          sourceSha256: file2.planned.beforeSha256,
+          desiredSha256: file2.planned.afterSha256,
+          quarantinePath: path4.relative(root, file2.quarantinePath)
+        }))
       }
-      if (file2.planned.action === "delete") {
-        await unlink(file2.absolutePath);
-      } else {
-        const temporary = staged.get(file2.absolutePath);
-        if (temporary === void 0) {
-          throw new Error(`Missing staged file for ${file2.planned.relativePath}`);
-        }
-        await rename(temporary, file2.absolutePath);
+    );
+    for (const file2 of prepared) {
+      const temporary = file2.planned.action === "delete" ? null : staged.get(file2.absolutePath);
+      if (file2.planned.action !== "delete" && temporary === void 0) {
+        throw new Error(`Missing staged file for ${file2.planned.relativePath}`);
+      }
+      installed.push(
+        await mutateLosslessly({
+          relativePath: file2.planned.relativePath,
+          absolutePath: file2.absolutePath,
+          sourceSha256: file2.planned.beforeSha256,
+          desiredSha256: file2.planned.afterSha256,
+          stagedPath: temporary ?? null,
+          quarantinePath: file2.quarantinePath,
+          mode: file2.mode ?? 384,
+          hooks
+        })
+      );
+      if (temporary !== null && temporary !== void 0) {
         staged.delete(file2.absolutePath);
       }
-      installed.push(file2);
-      await syncDirectory(path4.dirname(file2.absolutePath));
     }
     const receiptRelativePath = `${transactionRoot}/${transactionId}.json`;
     const receiptPath = await safeTarget(root, receiptRelativePath);
     await ensureSafeParentDirectories(root, receiptPath);
     await atomicWrite(receiptPath, stableStringify(transaction), 384);
+    await finishPendingMutation(pendingPath, installed);
+    await releaseLock();
+    releaseLock = void 0;
     return transaction;
   } catch (error51) {
     await cleanupStaged(staged);
-    const restoreErrors = await restoreInstalled(installed);
+    const restoreErrors = await restoreMutationsLosslessly(installed);
+    if (restoreErrors.length === 0 && !(error51 instanceof PreservedConflictError) && pendingPath !== void 0) {
+      await unlink(pendingPath).catch(() => void 0);
+      await syncDirectory(path4.dirname(pendingPath)).catch(() => void 0);
+    }
+    if (!(error51 instanceof PreservedConflictError)) {
+      await releaseLock?.().catch(() => void 0);
+    }
     if (restoreErrors.length > 0) {
       throw new AggregateError(
         [error51, ...restoreErrors],
-        "Transaction failed and automatic restoration was incomplete"
+        "Transaction failed; conflicting bytes were preserved and manual recovery is required"
       );
     }
     throw error51;
   }
 }
-async function rollbackTransaction(workspace, transaction) {
+async function rollbackTransaction(workspace, transaction, hooks = {}) {
   const root = await resolveSafeWorkspace(workspace);
   const record2 = typeof transaction === "string" ? await loadTransaction(root, transaction) : transaction;
   validateTransaction(record2);
@@ -17684,38 +17885,65 @@ async function rollbackTransaction(workspace, transaction) {
     });
   }
   const staged = /* @__PURE__ */ new Map();
-  for (const target of targets) {
-    if (target.backup !== null) {
-      const temporary = await stageFile(
-        target.absolutePath,
-        target.backup,
-        target.record.mode ?? 384
-      );
-      staged.set(target.absolutePath, temporary);
-    }
-  }
+  const rollbackOperationId = `${record2.transactionId}-${randomUUID()}`;
   const completed = [];
+  let releaseLock;
+  let pendingPath;
   try {
+    releaseLock = await acquireMutationLock(
+      root,
+      "rollback",
+      record2.transactionId
+    );
     for (const target of targets) {
-      const current = await readSafeRegularFile(target.absolutePath);
-      const currentHash = current.content === null ? null : sha256(current.content);
-      if (currentHash !== target.record.afterSha256) {
-        throw new Error(
-          `Rollback concurrent modification of ${target.record.relativePath}`
+      if (target.backup !== null) {
+        const temporary = await stageFile(
+          target.absolutePath,
+          target.backup,
+          target.record.mode ?? 384
         );
+        staged.set(target.absolutePath, temporary);
       }
-      if (target.backup === null) {
-        await unlink(target.absolutePath);
-      } else {
-        const temporary = staged.get(target.absolutePath);
-        if (temporary === void 0) {
-          throw new Error(`Missing rollback stage for ${target.record.relativePath}`);
-        }
-        await rename(temporary, target.absolutePath);
+    }
+    pendingPath = await writePendingMutation(
+      root,
+      `${transactionRoot}/${record2.transactionId}.rollback.pending.json`,
+      {
+        schemaVersion: 1,
+        operation: "rollback",
+        transactionId: record2.transactionId,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        files: targets.map((target) => ({
+          relativePath: target.record.relativePath,
+          sourceSha256: target.record.afterSha256,
+          desiredSha256: target.record.beforeSha256,
+          quarantinePath: path4.relative(
+            root,
+            `${target.absolutePath}.codsemble-${rollbackOperationId}.quarantine`
+          )
+        }))
+      }
+    );
+    for (const target of targets) {
+      const temporary = target.backup === null ? null : staged.get(target.absolutePath);
+      if (target.backup !== null && temporary === void 0) {
+        throw new Error(`Missing rollback stage for ${target.record.relativePath}`);
+      }
+      completed.push(
+        await mutateLosslessly({
+          relativePath: target.record.relativePath,
+          absolutePath: target.absolutePath,
+          sourceSha256: target.record.afterSha256,
+          desiredSha256: target.record.beforeSha256,
+          stagedPath: temporary ?? null,
+          quarantinePath: `${target.absolutePath}.codsemble-${rollbackOperationId}.quarantine`,
+          mode: target.record.mode ?? 384,
+          hooks
+        })
+      );
+      if (temporary !== null && temporary !== void 0) {
         staged.delete(target.absolutePath);
       }
-      completed.push(target);
-      await syncDirectory(path4.dirname(target.absolutePath));
     }
     const rollbackMarker = await safeTarget(
       root,
@@ -17731,45 +17959,214 @@ async function rollbackTransaction(workspace, transaction) {
       }),
       384
     );
+    await finishPendingMutation(pendingPath, completed);
+    await releaseLock();
+    releaseLock = void 0;
   } catch (error51) {
     await cleanupStaged(staged);
-    const restoreErrors = await restoreRolledBack(completed);
+    const restoreErrors = await restoreMutationsLosslessly(completed);
+    if (restoreErrors.length === 0 && !(error51 instanceof PreservedConflictError) && pendingPath !== void 0) {
+      await unlink(pendingPath).catch(() => void 0);
+      await syncDirectory(path4.dirname(pendingPath)).catch(() => void 0);
+    }
+    if (!(error51 instanceof PreservedConflictError)) {
+      await releaseLock?.().catch(() => void 0);
+    }
     if (restoreErrors.length > 0) {
       throw new AggregateError(
         [error51, ...restoreErrors],
-        "Rollback failed and forward restoration was incomplete"
+        "Rollback failed; conflicting bytes were preserved and manual recovery is required"
       );
     }
     throw error51;
   }
 }
-async function restoreRolledBack(completed) {
+async function restoreMutationsLosslessly(completed) {
   const errors = [];
   for (const target of [...completed].reverse()) {
     try {
+      const forwardQuarantine = `${target.absolutePath}.codsemble-restore-${randomUUID()}.quarantine`;
       const current = await readSafeRegularFile(target.absolutePath);
-      const expectedRollbackHash = target.record.beforeSha256;
       const currentHash = current.content === null ? null : sha256(current.content);
-      if (currentHash !== expectedRollbackHash) {
+      if (currentHash !== target.desiredSha256) {
         throw new Error(
-          `Refusing forward restoration after concurrent modification of ${target.record.relativePath}`
+          `Refusing restoration after concurrent modification of ${target.relativePath}`
         );
       }
-      if (target.postimage === null) {
-        await unlink(target.absolutePath);
+      if (current.content !== null) {
+        await rename(target.absolutePath, forwardQuarantine);
         await syncDirectory(path4.dirname(target.absolutePath));
-      } else {
-        await atomicWrite(
-          target.absolutePath,
-          target.postimage,
-          target.record.mode ?? 384
+        const moved = await readSafeRegularFile(forwardQuarantine);
+        if (moved.content === null || sha256(moved.content) !== target.desiredSha256) {
+          await restoreQuarantineExclusive(
+            forwardQuarantine,
+            target.absolutePath
+          );
+          throw new Error(
+            `Concurrent modification raced restoration of ${target.relativePath}`
+          );
+        }
+      }
+      if (target.quarantinePath !== null) {
+        await restoreQuarantineExclusive(
+          target.quarantinePath,
+          target.absolutePath
         );
       }
+      if (current.content !== null) {
+        await unlink(forwardQuarantine);
+      }
+      await syncDirectory(path4.dirname(target.absolutePath));
     } catch (error51) {
       errors.push(error51);
     }
   }
   return errors;
+}
+async function mutateLosslessly(input) {
+  const {
+    relativePath,
+    absolutePath,
+    sourceSha256,
+    desiredSha256,
+    stagedPath,
+    quarantinePath,
+    mode,
+    hooks
+  } = input;
+  const quarantineState = await readSafeRegularFile(quarantinePath);
+  if (quarantineState.content !== null) {
+    throw new Error(`Quarantine path already exists for ${relativePath}`);
+  }
+  let retainedQuarantine = null;
+  if (sourceSha256 !== null) {
+    try {
+      await rename(absolutePath, quarantinePath);
+    } catch (error51) {
+      throw new Error(
+        `Concurrent modification of ${relativePath}: source disappeared before quarantine`,
+        { cause: error51 }
+      );
+    }
+    retainedQuarantine = quarantinePath;
+    await syncDirectory(path4.dirname(absolutePath));
+    const quarantined = await readSafeRegularFile(quarantinePath);
+    const quarantinedHash = quarantined.content === null ? null : sha256(quarantined.content);
+    if (quarantinedHash !== sourceSha256) {
+      try {
+        await restoreQuarantineExclusive(quarantinePath, absolutePath);
+      } catch (error51) {
+        throw new PreservedConflictError(
+          `Concurrent bytes for ${relativePath} and its quarantine were preserved for manual recovery`,
+          { cause: error51 }
+        );
+      }
+      throw new Error(
+        `Concurrent modification of ${relativePath}: expected ${formatHash(sourceSha256)}, quarantined ${formatHash(quarantinedHash)}`
+      );
+    }
+  } else {
+    const current = await readSafeRegularFile(absolutePath);
+    if (current.content !== null) {
+      throw new Error(`Concurrent creation of ${relativePath}`);
+    }
+  }
+  try {
+    await hooks.beforeExclusivePublish?.(relativePath);
+    if (desiredSha256 !== null) {
+      if (stagedPath === null) {
+        throw new Error(`Missing staged desired image for ${relativePath}`);
+      }
+      await link(stagedPath, absolutePath);
+      await unlink(stagedPath);
+      await syncDirectory(path4.dirname(absolutePath));
+      const published = await readSafeRegularFile(absolutePath);
+      if (published.content === null || sha256(published.content) !== desiredSha256) {
+        throw new Error(`Published image verification failed for ${relativePath}`);
+      }
+    } else {
+      const recreated = await readSafeRegularFile(absolutePath);
+      if (recreated.content !== null) {
+        throw new Error(
+          `Concurrent recreation of ${relativePath}; the new bytes were preserved`
+        );
+      }
+    }
+    return {
+      relativePath,
+      absolutePath,
+      sourceSha256,
+      desiredSha256,
+      quarantinePath: retainedQuarantine,
+      mode
+    };
+  } catch (error51) {
+    if (retainedQuarantine !== null) {
+      try {
+        await restoreQuarantineExclusive(
+          retainedQuarantine,
+          absolutePath
+        );
+      } catch (restoreError) {
+        throw new PreservedConflictError(
+          `Exclusive publication failed for ${relativePath}; target and quarantine bytes were preserved for manual recovery`,
+          { cause: new AggregateError([error51, restoreError]) }
+        );
+      }
+    }
+    throw new Error(
+      `Exclusive publication failed for ${relativePath}; conflicting bytes were not overwritten`,
+      { cause: error51 }
+    );
+  }
+}
+async function restoreQuarantineExclusive(quarantinePath, targetPath) {
+  await link(quarantinePath, targetPath);
+  await syncDirectory(path4.dirname(targetPath));
+  await unlink(quarantinePath);
+  await syncDirectory(path4.dirname(targetPath));
+}
+async function acquireMutationLock(root, operation, transactionId) {
+  const lockPath = await safeTarget(
+    root,
+    `${transactionRoot}/mutation.lock`
+  );
+  await ensureSafeParentDirectories(root, lockPath);
+  try {
+    await mkdir(lockPath, { mode: 448 });
+    await syncDirectory(path4.dirname(lockPath));
+  } catch (error51) {
+    throw new Error(
+      `A Codsemble mutation lock already exists; ${operation} ${transactionId} cannot proceed until the prior operation is recovered`,
+      { cause: error51 }
+    );
+  }
+  return async () => {
+    await rmdir(lockPath);
+    await syncDirectory(path4.dirname(lockPath));
+  };
+}
+async function writePendingMutation(root, relativePath, journal) {
+  const target = await safeTarget(root, relativePath);
+  await ensureSafeParentDirectories(root, target);
+  const existing = await readSafeRegularFile(target);
+  if (existing.content !== null) {
+    throw new Error(`Pending mutation record already exists: ${relativePath}`);
+  }
+  await atomicWrite(target, stableStringify(journal), 384);
+  return target;
+}
+async function finishPendingMutation(pendingPath, mutations) {
+  for (const mutation of mutations) {
+    if (mutation.quarantinePath !== null) {
+      await unlink(mutation.quarantinePath);
+      await syncDirectory(path4.dirname(mutation.quarantinePath));
+    }
+  }
+  if (pendingPath !== void 0) {
+    await unlink(pendingPath);
+    await syncDirectory(path4.dirname(pendingPath));
+  }
 }
 async function resolveSafeWorkspace(workspace) {
   const supplied = path4.resolve(workspace);
@@ -17905,32 +18302,6 @@ function isUnsupportedDirectorySync(error51) {
     String(error51.code)
   );
 }
-async function restoreInstalled(installed) {
-  const errors = [];
-  for (const file2 of [...installed].reverse()) {
-    try {
-      const current = await readSafeRegularFile(file2.absolutePath);
-      const currentHash = current.content === null ? null : sha256(current.content);
-      if (currentHash !== file2.planned.afterSha256) {
-        throw new Error(
-          `Refusing automatic restoration after concurrent modification of ${file2.planned.relativePath}`
-        );
-      }
-      if (file2.before === null) {
-        await unlink(file2.absolutePath);
-      } else {
-        await atomicWrite(
-          file2.absolutePath,
-          file2.before,
-          file2.mode ?? 384
-        );
-      }
-    } catch (error51) {
-      errors.push(error51);
-    }
-  }
-  return errors;
-}
 async function cleanupStaged(staged) {
   await Promise.all(
     [...staged.values()].map(
@@ -17958,7 +18329,7 @@ async function loadTransaction(root, transactionId) {
     });
   }
 }
-function validatePlan(plan) {
+function assertValidTeamPlan(plan) {
   if (plan.schemaVersion !== 1 || !plan.planId || !/^[a-f0-9]{32}$/.test(plan.confirmationId) || !Array.isArray(plan.files) || !Array.isArray(plan.preimages)) {
     throw new Error("Invalid team plan");
   }
@@ -18007,34 +18378,41 @@ function validatePlan(plan) {
     }
   }
 }
-function validatePlannedOutput(relativePath, content) {
-  if (/^\.codex\/agents\/.+\.toml$/.test(relativePath)) {
+function validatePlannedOutput(relativePath, content, plan) {
+  if (agentPathPattern.test(relativePath)) {
     const parsed = validateToml(content);
-    const allowed = /* @__PURE__ */ new Set([
-      "name",
-      "description",
-      "developer_instructions",
-      "model",
-      "model_reasoning_effort",
-      "sandbox_mode"
-    ]);
-    for (const key of Object.keys(parsed)) {
-      if (!allowed.has(key)) {
-        throw new Error(`Generated agent contains unsupported key: ${key}`);
-      }
+    const validated = generatedAgentSchema.safeParse(parsed);
+    if (!validated.success) {
+      throw new Error(
+        `Generated agent has an invalid schema: ${validated.error.message}`
+      );
     }
-    for (const required2 of ["name", "description", "developer_instructions"]) {
-      if (typeof parsed[required2] !== "string" || parsed[required2] === "") {
-        throw new Error(`Generated agent is missing ${required2}`);
-      }
-    }
-    if (parsed.sandbox_mode !== "read-only" && parsed.sandbox_mode !== "workspace-write") {
-      throw new Error("Generated agent has an unsupported sandbox_mode");
+    const roleId = path4.posix.basename(relativePath, ".toml");
+    const role = plan.roles.find(({ id }) => id === roleId);
+    if (role === void 0 || validated.data.name !== role.id.replaceAll("-", "_") || validated.data.description !== role.description || validated.data.developer_instructions !== role.developerInstructions || validated.data.model !== role.model || validated.data.model_reasoning_effort !== role.reasoningEffort || validated.data.sandbox_mode !== role.sandbox) {
+      throw new Error(`Generated agent is not bound to plan role: ${roleId}`);
     }
   } else if (relativePath === ".codex/codsemble/manifest.json") {
-    const parsed = JSON.parse(content);
-    if (parsed.schemaVersion !== 1 || typeof parsed.planId !== "string" || parsed.generator?.name !== "codsemble" || typeof parsed.generator.version !== "string" || typeof parsed.catalogVersion !== "string" || typeof parsed.ownership !== "object" || parsed.ownership === null) {
-      throw new Error("Generated Codsemble manifest has an invalid schema");
+    const parsed = manifestSchema.safeParse(JSON.parse(content));
+    if (!parsed.success) {
+      throw new Error(
+        `Generated Codsemble manifest has an invalid schema: ${parsed.error.message}`
+      );
+    }
+    const expectedAgentFiles = plan.roles.map(({ id }) => `.codex/agents/${id}.toml`).sort();
+    const ownedAgentFiles = [...parsed.data.ownership.agentFiles].sort();
+    if (parsed.data.planId !== plan.planId || parsed.data.auditFingerprint !== plan.auditFingerprint || parsed.data.proposal.maxConcurrentWorkers !== plan.concurrency.requestedWorkers || stableStringify(ownedAgentFiles) !== stableStringify(expectedAgentFiles) || Object.keys(parsed.data.ownership.agentSha256).sort().join("\n") !== expectedAgentFiles.join("\n")) {
+      throw new Error("Generated Codsemble manifest is not bound to the plan");
+    }
+    for (const relativeAgentPath of expectedAgentFiles) {
+      const plannedAgent = plan.files.find(
+        ({ relativePath: candidate, action }) => candidate === relativeAgentPath && action !== "delete"
+      );
+      if (plannedAgent?.afterSha256 !== void 0 && plannedAgent.afterSha256 !== parsed.data.ownership.agentSha256[relativeAgentPath]) {
+        throw new Error(
+          `Generated Codsemble manifest ownership hash mismatch: ${relativeAgentPath}`
+        );
+      }
     }
   } else if (relativePath === "AGENTS.md") {
     const starts = content.split("<!-- codsemble:start -->").length - 1;
@@ -18100,6 +18478,14 @@ async function readRegularFile(candidate, root) {
   }
   return readFile4(candidate);
 }
+async function readSafeDirectory(candidate, root) {
+  await assertNoSymlinkAncestors(root, candidate);
+  const stats = await lstat5(candidate);
+  if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    throw new Error("Expected a real directory");
+  }
+  return readdir2(candidate);
+}
 async function doctorWorkspace(workspace) {
   const root = await assertWorkspaceRoot(workspace);
   const checks = [];
@@ -18134,7 +18520,14 @@ async function doctorWorkspace(workspace) {
   let agentEntries = [];
   if (await exists(agentsDirectory)) {
     const invalid = [];
-    const entries = (await readdir2(agentsDirectory)).filter((entry) => entry.endsWith(".toml")).sort();
+    let entries = [];
+    try {
+      entries = (await readSafeDirectory(agentsDirectory, root)).filter((entry) => entry.endsWith(".toml")).sort();
+    } catch (error51) {
+      invalid.push(
+        error51 instanceof Error ? error51.message : String(error51)
+      );
+    }
     agentEntries = entries.map((entry) => `.codex/agents/${entry}`);
     for (const entry of entries) {
       try {
@@ -18285,12 +18678,20 @@ async function inspectTransactions(root) {
     };
   }
   try {
-    const receiptNames = (await readdir2(directory)).filter(
-      (entry) => entry.endsWith(".json") && !entry.endsWith(".rollback.json")
+    const directoryEntries = await readSafeDirectory(directory, root);
+    const pendingNames = directoryEntries.filter((entry) => entry.endsWith(".pending.json")).sort();
+    const lockPresent = directoryEntries.includes("mutation.lock");
+    const receiptNames = directoryEntries.filter(
+      (entry) => entry.endsWith(".json") && !entry.endsWith(".rollback.json") && !entry.endsWith(".pending.json")
     ).sort();
-    const rollbackMarkerNames = (await readdir2(directory)).filter((entry) => entry.endsWith(".rollback.json")).sort();
+    const rollbackMarkerNames = directoryEntries.filter((entry) => entry.endsWith(".rollback.json")).sort();
     const receipts = [];
-    const invalid = [];
+    const invalid = [
+      ...pendingNames.map(
+        (name) => `${name}: incomplete mutation requires recovery before further writes`
+      ),
+      ...lockPresent ? ["mutation.lock: a mutation is active or was interrupted"] : []
+    ];
     const rolledBackIds = /* @__PURE__ */ new Set();
     for (const name of rollbackMarkerNames) {
       try {
@@ -18355,7 +18756,7 @@ async function inspectTransactions(root) {
     return {
       id: "transactions",
       status: invalid.length > 0 ? "fail" : drift.length > 0 ? "warn" : receipts.length > 0 ? "pass" : "warn",
-      summary: receipts.length > 0 ? activeReceipts.length === 0 ? `${receipts.length} transaction receipt(s) found; all are recorded as rolled back` : `${receipts.length} transaction receipt(s) found; latest active rollback ${drift.length === 0 ? "has matching postimages" : "is blocked by drift"}` : "No transaction receipts were found",
+      summary: pendingNames.length > 0 || lockPresent ? "Incomplete Codsemble mutation state was detected" : receipts.length > 0 ? activeReceipts.length === 0 ? `${receipts.length} transaction receipt(s) found; all are recorded as rolled back` : `${receipts.length} transaction receipt(s) found; latest active rollback ${drift.length === 0 ? "has matching postimages" : "is blocked by drift"}` : "No transaction receipts were found",
       ...details.length > 0 ? { details } : {}
     };
   } catch (error51) {
@@ -18763,6 +19164,8 @@ async function run(arguments_) {
       const answers = await readAnswers(
         flag(arguments_, "--answers", { required: true })
       );
+      const capabilities = await detectCodexCapabilities(workspace);
+      const boundAnswers = bindIntakeCapabilities(answers, capabilities);
       const kind = flag(arguments_, "--proposal", {
         required: true
       });
@@ -18771,20 +19174,29 @@ async function run(arguments_) {
       }
       const roles = await loadCatalog(flag(arguments_, "--catalog"));
       const audit = await auditWorkspace(workspace);
-      const recommendation = recommendTeams(audit, answers, roles);
+      const recommendation = recommendTeams(audit, boundAnswers, roles);
       const proposal = recommendation.proposals.find(
         (candidate) => candidate.kind === kind
       );
       if (!proposal) {
         throw new Error(`Recommendation did not produce a ${kind} proposal`);
       }
-      return compileTeamPlan(workspace, audit, answers, proposal, roles);
+      const plan = await compileTeamPlan(
+        workspace,
+        audit,
+        boundAnswers,
+        proposal,
+        roles
+      );
+      assertPlanCapabilities(plan, capabilities, "plan");
+      return plan;
     }
     case "apply": {
       allowOnly(arguments_, ["--workspace", "--plan", "--confirm"]);
       const plan = await readJson(
         flag(arguments_, "--plan", { required: true })
       );
+      assertValidTeamPlan(plan);
       const confirmation = flag(arguments_, "--confirm", {
         required: true
       });
@@ -18798,6 +19210,8 @@ async function run(arguments_) {
           "Apply refused: preview plans are read-only; regenerate with apply-project, manual, or unchanged mode"
         );
       }
+      const capabilities = await detectCodexCapabilities(workspace);
+      assertPlanCapabilities(plan, capabilities, "apply");
       const transaction = await applyTeamPlan(workspace, plan);
       return {
         transaction,

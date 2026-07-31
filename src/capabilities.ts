@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 import { assertWorkspaceRoot } from "./util.js";
+import type { IntakeAnswers, TeamPlan } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -127,6 +128,111 @@ export async function detectCodexCapabilities(
     },
     warnings,
   };
+}
+
+export function bindIntakeCapabilities(
+  answers: IntakeAnswers,
+  report: CodexCapabilityReport,
+): IntakeAnswers {
+  assertNativeRuntime(report, "Plan");
+  const liveAdapter = report.multiAgent.configAdapter;
+  if (
+    answers.configAdapter !== null &&
+    answers.configAdapter !== liveAdapter
+  ) {
+    throw new Error(
+      `Plan capability check failed: answers claim ${answers.configAdapter}, but the local runtime did not confirm it`,
+    );
+  }
+  if (
+    (answers.configMode === "preview" ||
+      answers.configMode === "apply-project") &&
+    liveAdapter !== "agents-v1"
+  ) {
+    throw new Error(
+      "Plan capability check failed: project concurrency requires a live agents-v1 adapter",
+    );
+  }
+  const liveModels = report.models.entries.map(
+    ({ id, supportedReasoningEfforts }) => ({
+      id,
+      supportedReasoningEfforts: [...supportedReasoningEfforts],
+    }),
+  );
+  const liveById = new Map(liveModels.map((model) => [model.id, model]));
+  for (const [profile, model] of Object.entries(answers.verifiedModels)) {
+    if (model !== undefined && !liveById.has(model)) {
+      throw new Error(
+        `Plan capability check failed: ${profile} model ${model} is absent from the live local model catalog`,
+      );
+    }
+  }
+  return {
+    ...answers,
+    configAdapter: liveAdapter,
+    modelCapabilities: liveModels,
+  };
+}
+
+export function assertPlanCapabilities(
+  plan: Pick<TeamPlan, "roles" | "concurrency">,
+  report: CodexCapabilityReport,
+  phase: "plan" | "apply",
+): void {
+  const label = phase === "plan" ? "Plan" : "Apply";
+  assertNativeRuntime(report, label);
+  if (
+    plan.concurrency.adapter !== null &&
+    plan.concurrency.adapter !== report.multiAgent.configAdapter
+  ) {
+    throw new Error(
+      `${label} capability check failed: required adapter ${plan.concurrency.adapter} is not live`,
+    );
+  }
+  if (
+    plan.concurrency.configMode === "apply-project" &&
+    report.multiAgent.configAdapter !== "agents-v1"
+  ) {
+    throw new Error(
+      `${label} capability check failed: project concurrency requires a live agents-v1 adapter`,
+    );
+  }
+  const models = new Map(
+    report.models.entries.map((model) => [model.id, model]),
+  );
+  for (const role of plan.roles) {
+    if (role.model === undefined) continue;
+    const live = models.get(role.model);
+    if (live === undefined) {
+      throw new Error(
+        `${label} capability check failed: role ${role.id} requires unavailable model ${role.model}`,
+      );
+    }
+    if (
+      role.reasoningEffort !== undefined &&
+      !live.supportedReasoningEfforts.includes(role.reasoningEffort)
+    ) {
+      throw new Error(
+        `${label} capability check failed: model ${role.model} does not support ${role.reasoningEffort}`,
+      );
+    }
+  }
+}
+
+function assertNativeRuntime(
+  report: CodexCapabilityReport,
+  label: "Plan" | "Apply",
+): void {
+  if (!report.codex.available) {
+    throw new Error(
+      `${label} capability check failed: the local Codex runtime is unavailable`,
+    );
+  }
+  if (report.multiAgent.enabled !== true) {
+    throw new Error(
+      `${label} capability check failed: native multi-agent support is not enabled`,
+    );
+  }
 }
 
 function supportsAgentsV1(version: string): boolean {

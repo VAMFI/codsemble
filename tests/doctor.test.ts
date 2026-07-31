@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -66,20 +66,54 @@ describe("doctorWorkspace", () => {
     expect(check?.details?.join("\n")).toContain("developer_instructions");
   });
 
+  it("refuses to enumerate symlinked managed directories", async () => {
+    const workspace = await fixture();
+    const outside = await fixture();
+    await mkdir(path.join(workspace, ".codex"), { recursive: true });
+    await writeFile(
+      path.join(outside, "outside-probe.toml"),
+      'name = "outside"\ndescription = "Outside"\ndeveloper_instructions = "No."\nsandbox_mode = "read-only"\n',
+    );
+    await symlink(outside, path.join(workspace, ".codex", "agents"));
+
+    const report = await doctorWorkspace(workspace);
+    const agents = report.checks.find(({ id }) => id === "agent-files");
+    expect(agents?.status).toBe("fail");
+    expect(agents?.summary).toBe("The agent directory is empty");
+    expect(agents?.details?.join(" ")).toContain("real directory");
+    expect(agents?.details?.join(" ")).not.toContain("outside-probe.toml");
+  });
+
   it("checks manifest ownership and latest transaction drift", async () => {
     const workspace = await fixture();
+    const auditFingerprint = "a".repeat(64);
+    const agent =
+      'name = "reviewer"\ndescription = "Review changes"\ndeveloper_instructions = "Report evidence."\nsandbox_mode = "read-only"\n';
     const files = {
       "AGENTS.md":
         "<!-- codsemble:start -->\n## Codsemble team\n<!-- codsemble:end -->\n",
       ".codex/config.toml":
         "[agents]\nmax_concurrent_threads_per_session = 2\n",
-      ".codex/agents/reviewer.toml":
-        'name = "Reviewer"\ndescription = "Review changes"\ndeveloper_instructions = "Report evidence."\nsandbox_mode = "read-only"\n',
+      ".codex/agents/reviewer.toml": agent,
       ".codex/codsemble/manifest.json": `${JSON.stringify({
         schemaVersion: 1,
         generator: { name: "codsemble", version: "0.1.0" },
         catalogVersion: "0.1.0",
         planId: "doctor-plan",
+        auditFingerprint,
+        proposal: { kind: "balanced", maxConcurrentWorkers: 2 },
+        capabilities: {
+          configAdapter: "agents-v1",
+          modelCapabilities: [],
+          availableTools: ["workspace-read"],
+        },
+        roles: [{
+          id: "reviewer",
+          name: "reviewer",
+          modelProfile: "inherit",
+          sandbox: "read-only",
+          source: "catalog",
+        }],
         ownership: {
           agentsBlock: {
             path: "AGENTS.md",
@@ -87,14 +121,24 @@ describe("doctorWorkspace", () => {
             end: "<!-- codsemble:end -->",
           },
           agentFiles: [".codex/agents/reviewer.toml"],
+          agentSha256: {
+            ".codex/agents/reviewer.toml": sha256(agent),
+          },
         },
       })}\n`,
     };
     const unsignedPlan: Omit<TeamPlan, "confirmationId"> = {
       schemaVersion: 1,
       planId: "doctor-plan",
-      auditFingerprint: "fixture",
-      roles: [],
+      auditFingerprint,
+      roles: [{
+        id: "reviewer",
+        name: "reviewer",
+        description: "Review changes",
+        developerInstructions: "Report evidence.",
+        modelProfile: "inherit",
+        sandbox: "read-only",
+      }],
       concurrency: {
         requestedWorkers: 2,
         projectCurrentValue: null,
@@ -189,5 +233,29 @@ describe("doctorWorkspace", () => {
     expect(transactions?.details?.join(" ")).toContain(
       "not a Codsemble-owned output",
     );
+  });
+
+  it("fails closed on an interrupted mutation record and lock", async () => {
+    const workspace = await fixture();
+    const transactionDirectory = path.join(
+      workspace,
+      ".codex/codsemble/transactions",
+    );
+    await mkdir(path.join(transactionDirectory, "mutation.lock"), {
+      recursive: true,
+    });
+    await writeFile(
+      path.join(transactionDirectory, "interrupted.apply.pending.json"),
+      '{"schemaVersion":1,"operation":"apply"}\n',
+    );
+
+    const report = await doctorWorkspace(workspace);
+    const transactions = report.checks.find(
+      (check) => check.id === "transactions",
+    );
+    expect(transactions?.status).toBe("fail");
+    expect(transactions?.summary).toContain("Incomplete");
+    expect(transactions?.details?.join(" ")).toContain("requires recovery");
+    expect(transactions?.details?.join(" ")).toContain("mutation.lock");
   });
 });

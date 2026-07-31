@@ -58,10 +58,18 @@ export async function compileTeamPlan(
   for (const role of resolvedRoles) {
     const relativePath = `.codex/agents/${role.id}.toml`;
     const existing = await getExistingContent(root, relativePath, existingFiles);
-    if (existing !== undefined && !priorOwnedAgents.has(relativePath)) {
-      throw new Error(
-        `Refusing to overwrite user-owned agent file: ${relativePath}`,
-      );
+    if (existing !== undefined) {
+      const ownedHash = priorOwnedAgents.get(relativePath);
+      if (ownedHash === undefined) {
+        throw new Error(
+          `Refusing to overwrite user-owned agent file: ${relativePath}`,
+        );
+      }
+      if (sha256(existing) !== ownedHash) {
+        throw new Error(
+          `Refusing to overwrite edited Codsemble agent file: ${relativePath}`,
+        );
+      }
     }
     desiredFiles.set(relativePath, renderRoleToml(role));
   }
@@ -181,6 +189,12 @@ export async function compileTeamPlan(
       agentFiles: resolvedRoles.map(
         ({ id }) => `.codex/agents/${id}.toml`,
       ),
+      agentSha256: Object.fromEntries(
+        resolvedRoles.map(({ id }) => {
+          const relativePath = `.codex/agents/${id}.toml`;
+          return [relativePath, sha256(desiredFiles.get(relativePath) as string)];
+        }),
+      ),
     },
   };
   desiredFiles.set(
@@ -213,11 +227,16 @@ export async function compileTeamPlan(
       });
     }
   }
-  for (const relativePath of [...priorOwnedAgents].sort()) {
+  for (const relativePath of [...priorOwnedAgents.keys()].sort()) {
     if (desiredFiles.has(relativePath)) continue;
     const before = await getExistingFile(root, relativePath, existingFiles);
     if (before.content === undefined) continue;
     const beforeSha256 = sha256(Buffer.from(before.content));
+    if (beforeSha256 !== priorOwnedAgents.get(relativePath)) {
+      throw new Error(
+        `Refusing to delete edited Codsemble agent file: ${relativePath}`,
+      );
+    }
     preimages.push({
       relativePath,
       exists: true,
@@ -251,13 +270,13 @@ export async function compileTeamPlan(
 async function readPriorOwnedAgents(
   root: string,
   existingFiles?: ExistingFiles,
-): Promise<Set<string>> {
+): Promise<Map<string, string>> {
   const source = await getExistingContent(
     root,
     ".codex/codsemble/manifest.json",
     existingFiles,
   );
-  if (source === undefined) return new Set();
+  if (source === undefined) return new Map();
   let parsed: unknown;
   try {
     parsed = JSON.parse(source);
@@ -266,20 +285,32 @@ async function readPriorOwnedAgents(
       cause: error,
     });
   }
-  const owned =
+  const ownership =
     typeof parsed === "object" &&
     parsed !== null &&
     "ownership" in parsed &&
     typeof parsed.ownership === "object" &&
-    parsed.ownership !== null &&
-    "agentFiles" in parsed.ownership &&
-    Array.isArray(parsed.ownership.agentFiles)
-      ? parsed.ownership.agentFiles
+    parsed.ownership !== null
+      ? parsed.ownership
       : null;
-  if (owned === null) {
+  const owned =
+    ownership !== null &&
+    "agentFiles" in ownership &&
+    Array.isArray(ownership.agentFiles)
+      ? ownership.agentFiles
+      : null;
+  const hashes =
+    ownership !== null &&
+    "agentSha256" in ownership &&
+    typeof ownership.agentSha256 === "object" &&
+    ownership.agentSha256 !== null &&
+    !Array.isArray(ownership.agentSha256)
+      ? ownership.agentSha256 as Record<string, unknown>
+      : null;
+  if (owned === null || hashes === null) {
     throw new Error("Existing Codsemble manifest has invalid agent ownership");
   }
-  const result = new Set<string>();
+  const result = new Map<string, string>();
   for (const entry of owned) {
     if (
       typeof entry !== "string" ||
@@ -287,7 +318,14 @@ async function readPriorOwnedAgents(
     ) {
       throw new Error("Existing Codsemble manifest contains an unsafe agent path");
     }
-    result.add(entry);
+    const digest = hashes[entry];
+    if (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest)) {
+      throw new Error("Existing Codsemble manifest has invalid agent ownership hash");
+    }
+    result.set(entry, digest);
+  }
+  if (Object.keys(hashes).length !== result.size) {
+    throw new Error("Existing Codsemble manifest has unexpected agent ownership hashes");
   }
   return result;
 }

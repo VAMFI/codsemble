@@ -29,11 +29,23 @@
 - Exclude secrets and sensitive path classes before reading content.
 - Parse only allowlisted manifest formats and extract typed signals.
 - Escape generated TOML and Markdown; never interpolate user data into shell commands.
-- Use managed markers, preimage hashes, file locks where available, same-directory
-  temporary files, fsync, atomic rename, post-write parse, and rollback receipts.
+- Use managed markers, ownership and preimage hashes, a cooperative project
+  lock, durable pending records, same-filesystem quarantine, fsync, exclusive
+  no-clobber publication, post-write validation, and rollback receipts.
 - Default read-heavy roles to read-only and reject dangerous generated settings.
 - Bound fan-out, depth, retries, time, and generated file counts.
 - Keep telemetry and network access off in v0.1.0.
+
+## Filesystem limitation
+
+Codsemble does not claim atomic multi-file visibility or power-loss-safe
+automatic recovery. Portable Node APIs do not provide an atomic
+compare-and-swap replacement for an existing path, and directory durability is
+weaker on some Windows filesystems. v0.1 therefore preserves conflicting bytes,
+fails closed on an incomplete lock or pending record, and requires manual
+recovery after interruption. A malicious same-user process that deliberately
+races inside Codsemble's private quarantine namespace remains outside the
+portable guarantee.
 
 ## Evidence levels
 

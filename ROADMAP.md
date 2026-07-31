@@ -9,7 +9,8 @@ The roadmap describes intent, not a compatibility or delivery promise.
 - Lean, Balanced, and Full proposals.
 - Native project agent and managed `AGENTS.md` generation.
 - Separate role-count and spawned-worker decisions.
-- Side-effect-free previews, atomic project apply, doctor, update, and rollback.
+- Side-effect-free previews, locked no-clobber project apply, doctor, update,
+  and rollback.
 - Cross-platform fixtures, adversarial tests, official validators, and isolated
   fresh-session runtime evidence.
 
@@ -19,6 +20,7 @@ The roadmap describes intent, not a compatibility or delivery promise.
 - Broader monorepo and non-code project fixtures.
 - Stronger configuration adapters across supported Codex versions.
 - Accessibility review of interactive onboarding.
+- Idempotent automatic recovery for interrupted mutation journals.
 - Signed release artifacts, SBOM, provenance, and reproducibility reporting.
 
 ## Later, only with a new threat model

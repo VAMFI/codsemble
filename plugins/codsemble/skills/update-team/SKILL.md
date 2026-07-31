@@ -1,6 +1,6 @@
 ---
 name: update-team
-description: Re-audit a workspace with an existing Codsemble team, recommend role or concurrency changes, and preview or explicitly apply a conflict-safe project update. Use when a user asks to refresh, regenerate, resize, customize, upgrade, or change an existing Codex multi-agent team.
+description: Re-audit a workspace with an existing Codsemble team, recommend role or concurrency changes, and preview or explicitly apply a locked no-clobber project update. Use when a user asks to refresh, regenerate, resize, customize, upgrade, or change an existing Codex multi-agent team.
 ---
 
 # Update a Codex team
@@ -30,7 +30,8 @@ reconstruct ownership from guesses or download replacement tooling.
 ## Workflow
 
 1. Run `doctor --workspace <absolute-workspace>` and surface drift or prior
-   transaction problems before planning.
+   transaction problems before planning. Stop if it reports a mutation lock,
+   pending record, or retained quarantine; preserve all recovery artifacts.
 
 2. Run:
 

@@ -54,10 +54,23 @@ Apply requires:
 - paths confined to the selected workspace;
 - valid generated TOML and JSON.
 
-The writer uses a scoped transaction and must abort on concurrent modification.
-It preserves unrelated configuration and user content outside managed
-boundaries. Rollback verifies postimage hashes and refuses to overwrite later
-user edits.
+The writer uses a cooperative project lock, durable pending record,
+same-filesystem quarantine, and exclusive publication. It verifies the bytes
+after moving them to quarantine, so a change racing the earlier preflight
+cannot be silently deleted. A file recreated before publication causes a
+no-clobber conflict; both the competing target and quarantined bytes are
+retained. Rollback applies the same checks to confirmed postimages.
+
+This is not an atomic multi-file snapshot, and portable Node filesystems do not
+offer compare-and-swap replacement of an existing pathname. A process or power
+interruption may leave
+`.codex/codsemble/transactions/mutation.lock`, a `*.pending.json` record,
+backups, or adjacent `*.quarantine` files. `doctor` reports incomplete mutation
+state and later writes refuse to proceed. Do not delete or merge those files
+blindly: preserve the project, inspect the pending record and hashes, copy both
+target and quarantine to a safe location, and restore the confirmed preimage
+from the transaction backup only after resolving any competing bytes. Automatic
+crash recovery is deferred beyond v0.1.
 
 ## Manual mode
 
@@ -76,12 +89,13 @@ environment. A catalog reasoning-effort default is emitted only alongside that
 verified model; otherwise it inherits. Explicit custom-role choices remain
 user-owned inputs.
 
-Run `codsemble capabilities` before mapping profiles. The command probes only
+Planning runs the same live probe itself, and apply re-runs it before writing.
+`codsemble capabilities` exposes the bounded report for review. The probe reads only
 the installed local Codex executable and returns bounded model identifiers,
 supported reasoning efforts, native multi-agent feature state, and the
 compatible config adapter. It discards raw provider instructions and cannot
-grant permissions. If the probe cannot confirm multi-agent support, use
-`manual` or `unchanged` mode and do not claim that concurrency is active.
+grant permissions. If the probe cannot confirm multi-agent support, planning
+fails closed, including in `manual` and `unchanged` modes.
 Pinned reasoning effort is accepted only when that model reports the effort as
 supported; otherwise planning fails closed.
 

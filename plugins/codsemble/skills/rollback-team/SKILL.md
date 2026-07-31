@@ -37,6 +37,8 @@ rollback ownership from filenames.
    ```
 
    Identify available transaction ids, drift, and conflicts.
+   Stop if an incomplete mutation lock or pending record exists. Preserve the
+   target, quarantine, backup, and pending record for manual recovery.
 
 2. Ask the user to select an exact transaction if the request is ambiguous.
    Resolve the selected transaction record inside
@@ -52,8 +54,9 @@ rollback ownership from filenames.
    - conflicts caused by later edits;
    - what remains untouched.
 
-   For a transaction JSON supplied from outside the workspace, verify it refers
-   only to workspace-contained Codsemble-owned paths before presenting it.
+   Never accept a transaction JSON supplied from outside the workspace. The
+   canonical transaction id must resolve inside Codsemble's transaction
+   directory.
 
 4. Ask for explicit confirmation of the exact transaction id and displayed
    reverse changes. Do not infer this confirmation from the initial rollback
@@ -64,7 +67,7 @@ rollback ownership from filenames.
    ```text
    node <plugin-root>/scripts/codsemble.mjs rollback \
      --workspace <absolute-workspace> \
-     --transaction <exact-transaction-id-or-absolute-json-path> \
+     --transaction <exact-transaction-id> \
      --confirm <exact-transaction-id>
    ```
 

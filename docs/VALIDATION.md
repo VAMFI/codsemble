@@ -18,7 +18,7 @@ npm run checksums:verify
 The current candidate passes:
 
 - strict TypeScript checking;
-- 59 unit, golden, property, security, fixture, transaction, capability,
+- 66 unit, golden, property, security, fixture, transaction, capability,
   doctor, compiler, and bundled-CLI tests;
 - deterministic bundle generation;
 - full source-payload checksum verification;
@@ -28,7 +28,7 @@ The current candidate passes:
 - repository metadata and absolute-path leak checks;
 - CycloneDX 1.5 SBOM generation for 133 components;
 - `npm audit` with zero reported vulnerabilities.
-- the complete 58-test check on Linux arm64 in a clean Node 20
+- the complete test check on Linux arm64 in a clean Node 20
   `bookworm-slim` container with Git installed.
 
 Ignored secret-like fixture files are created dynamically, so a clean checkout

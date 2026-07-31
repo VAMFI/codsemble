@@ -13,7 +13,7 @@ workspace
   -> deterministic role ranking
   -> Lean / Balanced / Full proposals
   -> exact generated-file and configuration preview
-  -> confirmed atomic transaction
+  -> confirmed, locked no-clobber transaction
   -> doctor and fresh-session validation
 ```
 
@@ -42,6 +42,11 @@ at runtime.
 - Recommendation consumes typed signals, not arbitrary repository prose.
 - Preview has no side effects.
 - Apply requires a content-bound confirmation id and unchanged preimage hashes.
+- Plan binds answer-file claims to a live local capability probe; apply
+  independently re-probes the requirements encoded in the confirmed plan.
+- Mutations use a cooperative lock, durable pending record, quarantine, and
+  exclusive per-file publication. They do not claim atomic multi-file
+  visibility or automatic crash recovery.
 - Global Codex configuration, project trust, credentials, external systems, and
   publication are outside the automatic transaction boundary.
 

@@ -47,11 +47,15 @@ async function answers(
   return target;
 }
 
-async function run(args: string[]): Promise<string> {
+async function run(
+  args: string[],
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<string> {
   return (
     await execFileAsync(process.execPath, [cli, ...args], {
       timeout: 20_000,
       maxBuffer: 8 * 1024 * 1024,
+      env: environment,
     })
   ).stdout;
 }
@@ -72,6 +76,32 @@ describe("bundled CLI", () => {
     };
     expect(output.total).toBe(111);
     expect(output.matched).toBeGreaterThan(0);
+  });
+
+  it("fails closed when planning cannot run the local Codex probe", async () => {
+    const root = await workspace();
+    const answerFile = await answers(root, "preview");
+    await expect(
+      run(
+        [
+          "plan",
+          "--workspace",
+          root,
+          "--answers",
+          answerFile,
+          "--proposal",
+          "lean",
+        ],
+        { ...process.env, PATH: "/nonexistent" },
+      ),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "Plan capability check failed: the local Codex runtime is unavailable",
+      ),
+    });
+    await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("refuses to apply a preview plan", async () => {

@@ -16,7 +16,9 @@ Codsemble `v0.1.0` is a release candidate only when all applicable items pass.
 - Ignored, untracked-by-default, secret-like, binary, oversized, and generated files are excluded.
 - Repository prompt injection cannot alter policy or execute code.
 - Preview performs no writes.
-- Apply preserves unrelated content, validates preimages, writes atomically, and is reversible.
+- Apply preserves unrelated content, validates preimages, publishes each file
+  without clobbering a racing writer, and is reversible during an uninterrupted
+  cooperative transaction.
 - The exact confirmation id is recomputed from the complete plan before apply.
 - Update deletes only stale agent files owned by the prior Codsemble manifest.
 - No global config, trust, credentials, plugins, MCP servers, hooks, or external systems are changed.
@@ -29,12 +31,14 @@ Codsemble `v0.1.0` is a release candidate only when all applicable items pass.
 - A fresh isolated Codex session discovers the plugin and generated roles.
 - A real separable task produces attributable specialist results and root integration.
 - Capacity exhaustion degrades safely and a trivial task causes no unnecessary delegation.
-- Rollback restores the prior project state without overwriting later user edits.
+- Rollback restores the prior project state without overwriting later user
+  edits; interruption is detected and retained for manual recovery.
 
 ## Open source
 
 - Apache-2.0 license, README, architecture, threat model, privacy statement,
   contribution guide, code of conduct, security policy, support policy,
-  changelog, roadmap, CI, SBOM, checksums, and provenance are ready.
+  changelog, roadmap, CI, SBOM, and checksums are ready. Signed release
+  provenance remains a separately reported publication boundary.
 - Local proof, public GitHub release, marketplace exposure, OpenAI submission,
   and universal publication are reported as separate boundaries.

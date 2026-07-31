@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   symlink,
   writeFile,
 } from "node:fs/promises";
@@ -35,7 +36,7 @@ afterEach(async () => {
 });
 
 describe("project transactions", () => {
-  it("atomically applies and rolls back updated and created files", async () => {
+  it("applies and rolls back updated and created files without clobbering", async () => {
     const workspace = await makeWorkspace();
     const configPath = path.join(workspace, ".codex/config.toml");
     await mkdir(path.dirname(configPath), { recursive: true });
@@ -209,6 +210,73 @@ describe("project transactions", () => {
     );
   });
 
+  it("rejects table-valued model fields in generated agent TOML", async () => {
+    const workspace = await makeWorkspace();
+    const invalid = [
+      'name = "reviewer"',
+      'description = "Bounded test agent"',
+      'developer_instructions = "Report evidence."',
+      'sandbox_mode = "read-only"',
+      "[model]",
+      'command = "not-a-model-id"',
+      "",
+    ].join("\n");
+    const plan = makePlan([
+      planned(".codex/agents/reviewer.toml", "create", null, invalid),
+    ]);
+
+    await expect(applyTeamPlan(workspace, plan)).rejects.toThrow(
+      "Generated agent has an invalid schema",
+    );
+    await expect(
+      readFile(path.join(workspace, ".codex/agents/reviewer.toml")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("preserves racing bytes and leaves a fail-closed recovery record", async () => {
+    const workspace = await makeWorkspace();
+    const target = path.join(workspace, ".codex/agents/reviewer.toml");
+    await mkdir(path.dirname(target), { recursive: true });
+    const before = agentToml("reviewer");
+    const after = agentToml("reviewer").replace(
+      "Report evidence.",
+      "Report verified evidence.",
+    );
+    await writeFile(target, before);
+    const plan = makePlan([
+      planned(".codex/agents/reviewer.toml", "update", before, after),
+    ]);
+    const role = plan.roles[0];
+    if (role === undefined) throw new Error("missing test role");
+    role.developerInstructions = "Report verified evidence.";
+    plan.confirmationId = computeConfirmationId(plan);
+
+    await expect(
+      applyTeamPlan(workspace, plan, {
+        beforeExclusivePublish: async () => {
+          await writeFile(target, "racing user bytes");
+        },
+      }),
+    ).rejects.toThrow("preserved for manual recovery");
+
+    expect(await readFile(target, "utf8")).toBe("racing user bytes");
+    const agentDirectory = await readdir(path.dirname(target));
+    const quarantine = agentDirectory.find((entry) =>
+      entry.includes(".quarantine"),
+    );
+    expect(quarantine).toBeDefined();
+    expect(
+      await readFile(path.join(path.dirname(target), quarantine as string), "utf8"),
+    ).toBe(before);
+    const transactionEntries = await readdir(
+      path.join(workspace, ".codex/codsemble/transactions"),
+    );
+    expect(transactionEntries).toContain("mutation.lock");
+    expect(
+      transactionEntries.some((entry) => entry.endsWith(".apply.pending.json")),
+    ).toBe(true);
+  });
+
   it("applies and rolls back deletion of a previously owned output", async () => {
     const workspace = await makeWorkspace();
     const target = path.join(workspace, ".codex/agents/stale.toml");
@@ -259,11 +327,28 @@ function agentToml(name: string): string {
 }
 
 function makePlan(files: ReturnType<typeof planned>[]): TeamPlan {
+  const roles = files
+    .filter(
+      ({ relativePath, content }) =>
+        /^\.codex\/agents\/.+\.toml$/.test(relativePath) &&
+        content?.includes("Bounded test agent"),
+    )
+    .map(({ relativePath }) => {
+      const id = path.posix.basename(relativePath, ".toml");
+      return {
+        id,
+        name: id,
+        description: "Bounded test agent",
+        developerInstructions: "Report evidence.",
+        modelProfile: "inherit" as const,
+        sandbox: "read-only" as const,
+      };
+    });
   const unsigned: Omit<TeamPlan, "confirmationId"> = {
     schemaVersion: 1,
     planId: "test-plan",
     auditFingerprint: "test",
-    roles: [],
+    roles,
     concurrency: {
       requestedWorkers: 2,
       projectCurrentValue: null,

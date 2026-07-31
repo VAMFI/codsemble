@@ -1,13 +1,21 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { auditWorkspace } from "./audit.js";
-import { detectCodexCapabilities } from "./capabilities.js";
+import {
+  assertPlanCapabilities,
+  bindIntakeCapabilities,
+  detectCodexCapabilities,
+} from "./capabilities.js";
 import { loadCatalog } from "./catalog.js";
 import { compileTeamPlan } from "./compiler.js";
 import { doctorWorkspace } from "./doctor.js";
 import { recommendTeams } from "./recommend.js";
 import { intakeAnswersSchema } from "./schemas.js";
-import { applyTeamPlan, rollbackTransaction } from "./transaction.js";
+import {
+  applyTeamPlan,
+  assertValidTeamPlan,
+  rollbackTransaction,
+} from "./transaction.js";
 import type {
   IntakeAnswers,
   TeamPlan,
@@ -135,6 +143,8 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       const answers = await readAnswers(
         flag(arguments_, "--answers", { required: true }) as string,
       );
+      const capabilities = await detectCodexCapabilities(workspace);
+      const boundAnswers = bindIntakeCapabilities(answers, capabilities);
       const kind = flag(arguments_, "--proposal", {
         required: true,
       }) as "lean" | "balanced" | "full";
@@ -143,20 +153,29 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       }
       const roles = await loadCatalog(flag(arguments_, "--catalog"));
       const audit = await auditWorkspace(workspace);
-      const recommendation = recommendTeams(audit, answers, roles);
+      const recommendation = recommendTeams(audit, boundAnswers, roles);
       const proposal = recommendation.proposals.find(
         (candidate) => candidate.kind === kind,
       );
       if (!proposal) {
         throw new Error(`Recommendation did not produce a ${kind} proposal`);
       }
-      return compileTeamPlan(workspace, audit, answers, proposal, roles);
+      const plan = await compileTeamPlan(
+        workspace,
+        audit,
+        boundAnswers,
+        proposal,
+        roles,
+      );
+      assertPlanCapabilities(plan, capabilities, "plan");
+      return plan;
     }
     case "apply": {
       allowOnly(arguments_, ["--workspace", "--plan", "--confirm"]);
       const plan = await readJson<TeamPlan>(
         flag(arguments_, "--plan", { required: true }) as string,
       );
+      assertValidTeamPlan(plan);
       const confirmation = flag(arguments_, "--confirm", {
         required: true,
       });
@@ -173,6 +192,8 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
           "Apply refused: preview plans are read-only; regenerate with apply-project, manual, or unchanged mode",
         );
       }
+      const capabilities = await detectCodexCapabilities(workspace);
+      assertPlanCapabilities(plan, capabilities, "apply");
       const transaction = await applyTeamPlan(workspace, plan);
       return {
         transaction,

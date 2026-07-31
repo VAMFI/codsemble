@@ -57,6 +57,18 @@ async function readRegularFile(
   return readFile(candidate);
 }
 
+async function readSafeDirectory(
+  candidate: string,
+  root: string,
+): Promise<string[]> {
+  await assertNoSymlinkAncestors(root, candidate);
+  const stats = await lstat(candidate);
+  if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    throw new Error("Expected a real directory");
+  }
+  return readdir(candidate);
+}
+
 export async function doctorWorkspace(workspace: string): Promise<DoctorReport> {
   const root = await assertWorkspaceRoot(workspace);
   const checks: DoctorCheck[] = [];
@@ -97,9 +109,16 @@ export async function doctorWorkspace(workspace: string): Promise<DoctorReport> 
   let agentEntries: string[] = [];
   if (await exists(agentsDirectory)) {
     const invalid: string[] = [];
-    const entries = (await readdir(agentsDirectory))
-      .filter((entry) => entry.endsWith(".toml"))
-      .sort();
+    let entries: string[] = [];
+    try {
+      entries = (await readSafeDirectory(agentsDirectory, root))
+        .filter((entry) => entry.endsWith(".toml"))
+        .sort();
+    } catch (error) {
+      invalid.push(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     agentEntries = entries.map((entry) => `.codex/agents/${entry}`);
     for (const entry of entries) {
       try {
@@ -292,17 +311,32 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
     };
   }
   try {
-    const receiptNames = (await readdir(directory))
+    const directoryEntries = await readSafeDirectory(directory, root);
+    const pendingNames = directoryEntries
+      .filter((entry) => entry.endsWith(".pending.json"))
+      .sort();
+    const lockPresent = directoryEntries.includes("mutation.lock");
+    const receiptNames = directoryEntries
       .filter(
         (entry) =>
-          entry.endsWith(".json") && !entry.endsWith(".rollback.json"),
+          entry.endsWith(".json") &&
+          !entry.endsWith(".rollback.json") &&
+          !entry.endsWith(".pending.json"),
       )
       .sort();
-    const rollbackMarkerNames = (await readdir(directory))
+    const rollbackMarkerNames = directoryEntries
       .filter((entry) => entry.endsWith(".rollback.json"))
       .sort();
     const receipts: TransactionRecord[] = [];
-    const invalid: string[] = [];
+    const invalid: string[] = [
+      ...pendingNames.map(
+        (name) =>
+          `${name}: incomplete mutation requires recovery before further writes`,
+      ),
+      ...(lockPresent
+        ? ["mutation.lock: a mutation is active or was interrupted"]
+        : []),
+    ];
     const rolledBackIds = new Set<string>();
     for (const name of rollbackMarkerNames) {
       try {
@@ -391,7 +425,9 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
       status:
         invalid.length > 0 ? "fail" : drift.length > 0 ? "warn" : receipts.length > 0 ? "pass" : "warn",
       summary:
-        receipts.length > 0
+        pendingNames.length > 0 || lockPresent
+          ? "Incomplete Codsemble mutation state was detected"
+          : receipts.length > 0
           ? activeReceipts.length === 0
             ? `${receipts.length} transaction receipt(s) found; all are recorded as rolled back`
             : `${receipts.length} transaction receipt(s) found; latest active rollback ${drift.length === 0 ? "has matching postimages" : "is blocked by drift"}`

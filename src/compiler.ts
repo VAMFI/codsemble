@@ -49,6 +49,7 @@ export async function compileTeamPlan(
   for (const role of resolvedRoles) {
     assertSafeManagedLine(role.name, `Role ${role.id} name`);
     assertSafeManagedLine(role.description, `Role ${role.id} description`);
+    validateResolvedModelCapability(role, answers);
   }
   const auditFingerprint = sha256(stableStringify(audit));
   const desiredFiles = new Map<string, string>();
@@ -159,7 +160,7 @@ export async function compileTeamPlan(
     },
     capabilities: {
       configAdapter: answers.configAdapter,
-      availableModelIds: answers.availableModelIds,
+      modelCapabilities: answers.modelCapabilities,
       availableTools: answers.availableTools,
     },
     roles: resolvedRoles.map((role) => ({
@@ -300,13 +301,31 @@ export function computeConfirmationId(
 }
 
 function validateModelMappings(answers: IntakeAnswers): void {
-  const available = new Set(answers.availableModelIds);
+  const available = new Set(answers.modelCapabilities.map(({ id }) => id));
   for (const [profile, model] of Object.entries(answers.verifiedModels)) {
     if (model !== undefined && !available.has(model)) {
       throw new Error(
         `Model mapping ${profile}=${model} was not present in the local capability probe`,
       );
     }
+  }
+}
+
+function validateResolvedModelCapability(
+  role: ResolvedRole,
+  answers: IntakeAnswers,
+): void {
+  if (!role.model || !role.reasoningEffort) return;
+  const capability = answers.modelCapabilities.find(
+    ({ id }) => id === role.model,
+  );
+  if (
+    capability === undefined ||
+    !capability.supportedReasoningEfforts.includes(role.reasoningEffort)
+  ) {
+    throw new Error(
+      `Model ${role.model} does not report reasoning effort ${role.reasoningEffort}`,
+    );
   }
 }
 
@@ -444,7 +463,7 @@ function resolveCustomRole(
     ].join("\n"),
     modelProfile: role.modelProfile,
     ...(model ? { model } : {}),
-    ...(role.reasoningEffort !== "inherit"
+    ...(model && role.reasoningEffort !== "inherit"
       ? { reasoningEffort: role.reasoningEffort }
       : {}),
     sandbox: role.sandbox,

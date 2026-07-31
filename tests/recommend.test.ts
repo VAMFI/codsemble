@@ -90,7 +90,7 @@ function answers(
     excludedRoles: [],
     customRoles: [],
     availableTools: ["workspace-read"],
-    availableModelIds: [],
+    modelCapabilities: [],
     verifiedModels: {},
     allowHighConcurrency: false,
     ...overrides,

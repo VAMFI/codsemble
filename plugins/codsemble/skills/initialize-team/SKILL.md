@@ -36,9 +36,10 @@ not download, install, or substitute another executable.
    node <plugin-root>/scripts/codsemble.mjs capabilities --workspace <absolute-workspace>
    ```
 
-   The probe is read-only. Copy its model ids into `availableModelIds`, use
-   only those ids in `verifiedModels`, and record only tools actually available
-   to the current session in `availableTools`.
+   The probe is read-only. Copy its bounded model ids and supported reasoning
+   efforts into `modelCapabilities`, use only those ids in `verifiedModels`,
+   and record only tools actually available to the current session in
+   `availableTools`.
    If it cannot confirm native multi-agent support, keep models inherited and
    use `manual` or `unchanged` config mode. A requested sandbox never grants
    authority beyond the parent session.

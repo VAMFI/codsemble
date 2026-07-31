@@ -82,6 +82,8 @@ supported reasoning efforts, native multi-agent feature state, and the
 compatible config adapter. It discards raw provider instructions and cannot
 grant permissions. If the probe cannot confirm multi-agent support, use
 `manual` or `unchanged` mode and do not claim that concurrency is active.
+Pinned reasoning effort is accepted only when that model reports the effort as
+supported; otherwise planning fails closed.
 
 ## Evidence after apply
 

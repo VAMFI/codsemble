@@ -16012,9 +16012,17 @@ var intakeAnswersSchema = external_exports.object({
   availableTools: external_exports.array(external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/)).max(100).refine((values) => new Set(values).size === values.length, {
     message: "availableTools must not contain duplicates"
   }),
-  availableModelIds: external_exports.array(external_exports.string().min(1).max(200).regex(/^[^\s]+$/)).max(100).refine((values) => new Set(values).size === values.length, {
-    message: "availableModelIds must not contain duplicates"
-  }),
+  modelCapabilities: external_exports.array(
+    external_exports.object({
+      id: external_exports.string().min(1).max(200).regex(/^[^\s]+$/),
+      supportedReasoningEfforts: external_exports.array(external_exports.string().min(1).max(40).regex(/^[a-z0-9_-]+$/)).max(20)
+    }).strict()
+  ).max(100).refine(
+    (values) => new Set(values.map(({ id }) => id)).size === values.length,
+    {
+      message: "modelCapabilities must not contain duplicate ids"
+    }
+  ),
   verifiedModels: external_exports.object({
     inherit: external_exports.string().optional(),
     deep: external_exports.string().optional(),
@@ -16030,7 +16038,9 @@ var intakeAnswersSchema = external_exports.object({
       path: ["maxConcurrentWorkers"]
     });
   }
-  const available = new Set(answers.availableModelIds);
+  const available = new Set(
+    answers.modelCapabilities.map(({ id }) => id)
+  );
   for (const [profile, model] of Object.entries(answers.verifiedModels)) {
     if (model !== void 0 && !available.has(model)) {
       context.addIssue({
@@ -17082,6 +17092,7 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
   for (const role of resolvedRoles) {
     assertSafeManagedLine(role.name, `Role ${role.id} name`);
     assertSafeManagedLine(role.description, `Role ${role.id} description`);
+    validateResolvedModelCapability(role, answers);
   }
   const auditFingerprint = sha256(stableStringify(audit));
   const desiredFiles = /* @__PURE__ */ new Map();
@@ -17171,7 +17182,7 @@ max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
     },
     capabilities: {
       configAdapter: answers.configAdapter,
-      availableModelIds: answers.availableModelIds,
+      modelCapabilities: answers.modelCapabilities,
       availableTools: answers.availableTools
     },
     roles: resolvedRoles.map((role) => ({
@@ -17283,13 +17294,24 @@ function computeConfirmationId(plan) {
   return sha256(stableStringify(unsigned)).slice(0, 32);
 }
 function validateModelMappings(answers) {
-  const available = new Set(answers.availableModelIds);
+  const available = new Set(answers.modelCapabilities.map(({ id }) => id));
   for (const [profile, model] of Object.entries(answers.verifiedModels)) {
     if (model !== void 0 && !available.has(model)) {
       throw new Error(
         `Model mapping ${profile}=${model} was not present in the local capability probe`
       );
     }
+  }
+}
+function validateResolvedModelCapability(role, answers) {
+  if (!role.model || !role.reasoningEffort) return;
+  const capability = answers.modelCapabilities.find(
+    ({ id }) => id === role.model
+  );
+  if (capability === void 0 || !capability.supportedReasoningEfforts.includes(role.reasoningEffort)) {
+    throw new Error(
+      `Model ${role.model} does not report reasoning effort ${role.reasoningEffort}`
+    );
   }
 }
 function assertSafeManagedLine(value, label) {
@@ -17390,7 +17412,7 @@ function resolveCustomRole(role, answers) {
     ].join("\n"),
     modelProfile: role.modelProfile,
     ...model ? { model } : {},
-    ...role.reasoningEffort !== "inherit" ? { reasoningEffort: role.reasoningEffort } : {},
+    ...model && role.reasoningEffort !== "inherit" ? { reasoningEffort: role.reasoningEffort } : {},
     sandbox: role.sandbox
   };
 }

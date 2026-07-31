@@ -18,7 +18,7 @@ npm run checksums:verify
 The current candidate passes:
 
 - strict TypeScript checking;
-- 58 unit, golden, property, security, fixture, transaction, capability,
+- 59 unit, golden, property, security, fixture, transaction, capability,
   doctor, compiler, and bundled-CLI tests;
 - deterministic bundle generation;
 - full source-payload checksum verification;

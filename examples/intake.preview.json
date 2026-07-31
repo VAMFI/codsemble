@@ -19,7 +19,7 @@
   "availableTools": [
     "workspace-read"
   ],
-  "availableModelIds": [],
+  "modelCapabilities": [],
   "verifiedModels": {},
   "allowHighConcurrency": false
 }

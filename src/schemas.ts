@@ -69,11 +69,22 @@ export const intakeAnswersSchema = z
       .refine((values) => new Set(values).size === values.length, {
         message: "availableTools must not contain duplicates",
       }),
-    availableModelIds: z
-      .array(z.string().min(1).max(200).regex(/^[^\s]+$/))
+    modelCapabilities: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).max(200).regex(/^[^\s]+$/),
+            supportedReasoningEfforts: z
+              .array(z.string().min(1).max(40).regex(/^[a-z0-9_-]+$/))
+              .max(20),
+          })
+          .strict(),
+      )
       .max(100)
-      .refine((values) => new Set(values).size === values.length, {
-        message: "availableModelIds must not contain duplicates",
+      .refine(
+        (values) => new Set(values.map(({ id }) => id)).size === values.length,
+        {
+        message: "modelCapabilities must not contain duplicate ids",
       }),
     verifiedModels: z
       .object({
@@ -95,7 +106,9 @@ export const intakeAnswersSchema = z
         path: ["maxConcurrentWorkers"],
       });
     }
-    const available = new Set(answers.availableModelIds);
+    const available = new Set(
+      answers.modelCapabilities.map(({ id }) => id),
+    );
     for (const [profile, model] of Object.entries(answers.verifiedModels)) {
       if (model !== undefined && !available.has(model)) {
         context.addIssue({

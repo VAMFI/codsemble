@@ -76,7 +76,7 @@ function answers(
     excludedRoles: [],
     customRoles: [],
     availableTools: ["workspace-read"],
-    availableModelIds: [],
+    modelCapabilities: [],
     verifiedModels: {},
     allowHighConcurrency: false,
     ...overrides,
@@ -141,7 +141,12 @@ describe("compileTeamPlan", () => {
       root,
       audit,
       answers({
-        availableModelIds: ["gpt-verified-deep"],
+        modelCapabilities: [
+          {
+            id: "gpt-verified-deep",
+            supportedReasoningEfforts: ["high"],
+          },
+        ],
         verifiedModels: { deep: "gpt-verified-deep" },
       }),
       proposal,
@@ -168,6 +173,28 @@ describe("compileTeamPlan", () => {
         {},
       ),
     ).rejects.toThrow("not present in the local capability probe");
+  });
+
+  it("rejects an unsupported model reasoning effort", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codsemble-effort-reject-"));
+    await expect(
+      compileTeamPlan(
+        root,
+        audit,
+        answers({
+          modelCapabilities: [
+            {
+              id: "gpt-low-only",
+              supportedReasoningEfforts: ["low"],
+            },
+          ],
+          verifiedModels: { deep: "gpt-low-only" },
+        }),
+        proposal,
+        [blueprint],
+        {},
+      ),
+    ).rejects.toThrow("does not report reasoning effort high");
   });
 
   it("uses a Codex-safe identifier as the native agent name", async () => {

@@ -96,7 +96,10 @@ export interface IntakeAnswers {
   excludedRoles: string[];
   customRoles: CustomRoleInput[];
   availableTools: string[];
-  availableModelIds: string[];
+  modelCapabilities: Array<{
+    id: string;
+    supportedReasoningEfforts: string[];
+  }>;
   verifiedModels: Partial<Record<ModelProfile, string>>;
   allowHighConcurrency: boolean;
 }

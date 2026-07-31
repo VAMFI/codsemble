@@ -68,12 +68,12 @@ export async function compileTeamPlan(
       }
       if (ownedHash === null && existing !== desired) {
         throw new Error(
-          `Refusing to overwrite legacy Codsemble agent without an ownership hash: ${relativePath}`,
+          `Refusing to overwrite legacy Codesemble agent without an ownership hash: ${relativePath}`,
         );
       }
       if (ownedHash !== null && sha256(existing) !== ownedHash) {
         throw new Error(
-          `Refusing to overwrite edited Codsemble agent file: ${relativePath}`,
+          `Refusing to overwrite edited Codesemble agent file: ${relativePath}`,
         );
       }
     }
@@ -247,7 +247,7 @@ export async function compileTeamPlan(
     const beforeSha256 = sha256(Buffer.from(before.content));
     if (beforeSha256 !== priorOwnedAgents.get(relativePath)) {
       throw new Error(
-        `Refusing to delete edited Codsemble agent file: ${relativePath}`,
+        `Refusing to delete edited Codesemble agent file: ${relativePath}`,
       );
     }
     preimages.push({
@@ -294,7 +294,7 @@ async function readPriorOwnedAgents(
   try {
     parsed = JSON.parse(source);
   } catch (error) {
-    throw new Error("Existing Codsemble manifest is not valid JSON", {
+    throw new Error("Existing Codesemble manifest is not valid JSON", {
       cause: error,
     });
   }
@@ -325,7 +325,7 @@ async function readPriorOwnedAgents(
       ? ownership.agentSha256 as Record<string, unknown>
       : undefined;
   if (owned === null || hashes === undefined) {
-    throw new Error("Existing Codsemble manifest has invalid agent ownership");
+    throw new Error("Existing Codesemble manifest has invalid agent ownership");
   }
   const result = new Map<string, string | null>();
   for (const entry of owned) {
@@ -333,7 +333,7 @@ async function readPriorOwnedAgents(
       typeof entry !== "string" ||
       !/^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(entry)
     ) {
-      throw new Error("Existing Codsemble manifest contains an unsafe agent path");
+      throw new Error("Existing Codesemble manifest contains an unsafe agent path");
     }
     const digest = hashes?.[entry] ?? null;
     if (
@@ -341,13 +341,13 @@ async function readPriorOwnedAgents(
       (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest))
     ) {
       throw new Error(
-        "Existing Codsemble manifest has invalid agent ownership hash",
+        "Existing Codesemble manifest has invalid agent ownership hash",
       );
     }
     result.set(entry, digest);
   }
   if (hashes !== null && Object.keys(hashes).length !== result.size) {
-    throw new Error("Existing Codsemble manifest has unexpected agent ownership hashes");
+    throw new Error("Existing Codesemble manifest has unexpected agent ownership hashes");
   }
   return result;
 }
@@ -564,7 +564,7 @@ function renderManagedAgentsBody(
   kind: TeamProposal["kind"],
 ): string {
   return [
-    "## Codsemble team",
+    "## Codesemble team",
     "",
     `Selected profile: ${kind}. Installed roles: ${roles.length}.`,
     "",
@@ -606,7 +606,7 @@ function mergeManagedAgentsBlock(
   const start = existing.indexOf(AGENTS_START);
   const end = existing.indexOf(AGENTS_END);
   if ((start === -1) !== (end === -1) || end < start) {
-    throw new Error("AGENTS.md contains malformed Codsemble managed markers");
+    throw new Error("AGENTS.md contains malformed Codesemble managed markers");
   }
   if (start === -1) {
     return `${existing.replace(/\s*$/, "")}\n\n${block}\n`;
@@ -615,7 +615,7 @@ function mergeManagedAgentsBlock(
     existing.indexOf(AGENTS_START, start + AGENTS_START.length) !== -1 ||
     existing.indexOf(AGENTS_END, end + AGENTS_END.length) !== -1
   ) {
-    throw new Error("AGENTS.md contains multiple Codsemble managed blocks");
+    throw new Error("AGENTS.md contains multiple Codesemble managed blocks");
   }
   return `${existing.slice(0, start)}${block}${existing.slice(
     end + AGENTS_END.length,

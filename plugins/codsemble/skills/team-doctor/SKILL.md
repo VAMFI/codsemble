@@ -1,6 +1,6 @@
 ---
 name: team-doctor
-description: Diagnose a Codsemble-generated Codex team, its manifest, agent files, managed guidance, project concurrency configuration, and transaction drift without repairing or mutating the workspace. Use when a user asks to check, validate, troubleshoot, inspect, or explain why a generated team or worker limit is not working.
+description: Diagnose a Codesemble-generated Codex team, its manifest, agent files, managed guidance, project concurrency configuration, and transaction drift without repairing or mutating the workspace. Use when a user asks to check, validate, troubleshoot, inspect, or explain why a generated team or worker limit is not working.
 ---
 
 # Diagnose a Codex team

@@ -1,6 +1,6 @@
 # Architecture
 
-Codsemble is a configuration compiler for Codex, not a second agent runtime.
+Codesemble is a configuration compiler for Codex, not a second agent runtime.
 
 ## Flow
 
@@ -61,7 +61,7 @@ Codex environment. Otherwise the generated agent inherits Codex's active model.
 
 ## Concurrency
 
-Installed roles and live workers are separate. Codsemble recommends a spawned
+Installed roles and live workers are separate. Codesemble recommends a spawned
 worker ceiling from the peak independent workflow width, user budget, and
 detected runtime support. The primary thread is excluded from
 `max_concurrent_threads_per_session`.

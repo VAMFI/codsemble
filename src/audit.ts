@@ -453,7 +453,7 @@ async function enumerateGitCandidates(
       ]),
     ]);
     const tracked = parseGitPaths(trackedOutput, git.workspacePrefix)
-      .filter((relativePath) => !isCodsembleTransactionPath(relativePath))
+      .filter((relativePath) => !isCodesembleTransactionPath(relativePath))
       .sort(compareText)
       .map((relativePath) => ({ relativePath, source: "tracked" as const }));
     const trackedSet = new Set(tracked.map(({ relativePath }) => relativePath));
@@ -461,7 +461,7 @@ async function enumerateGitCandidates(
       .filter((relativePath) => !trackedSet.has(relativePath))
       .sort(compareText);
     const workspaceUntracked = untracked.filter(
-      (relativePath) => !isCodsembleTransactionPath(relativePath),
+      (relativePath) => !isCodesembleTransactionPath(relativePath),
     );
     const managedUntracked = workspaceUntracked
       .filter(isCodexStateCandidate)
@@ -517,7 +517,7 @@ function hasRelevantGitStatus(
     });
     if (
       workspacePaths.some(
-        (relativePath) => !isCodsembleTransactionPath(relativePath),
+        (relativePath) => !isCodesembleTransactionPath(relativePath),
       )
     ) {
       return true;
@@ -603,7 +603,7 @@ async function enumerateNonGitCandidates(
     entries.sort((left, right) => compareText(left.name, right.name));
     for (const entry of entries) {
       const relativePath = toPosix(path.join(relativeDirectory, entry.name));
-      if (isCodsembleTransactionPath(relativePath)) {
+      if (isCodesembleTransactionPath(relativePath)) {
         continue;
       }
       if (entry.isSymbolicLink()) {
@@ -634,7 +634,7 @@ async function enumerateNonGitCandidates(
   return candidates;
 }
 
-function isCodsembleTransactionPath(relativePath: string): boolean {
+function isCodesembleTransactionPath(relativePath: string): boolean {
   return (
     relativePath === ".codex/codsemble/transactions" ||
     relativePath.startsWith(".codex/codsemble/transactions/")

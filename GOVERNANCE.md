@@ -1,6 +1,6 @@
 # Governance
 
-Codsemble uses a maintainer-led, consensus-seeking model.
+Codesemble uses a maintainer-led, consensus-seeking model.
 
 ## Roles
 

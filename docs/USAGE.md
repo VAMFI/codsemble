@@ -6,7 +6,7 @@ for inspection, automation, and troubleshooting.
 ## Before starting
 
 - Select the exact workspace root.
-- Preserve uncommitted work; Codsemble does not require a clean worktree.
+- Preserve uncommitted work; Codesemble does not require a clean worktree.
 - Use an isolated Codex environment for pre-release testing.
 - Do not place answer or plan files inside the audited workspace unless you
   intentionally want them treated as project files.
@@ -95,7 +95,7 @@ $update-team Re-audit and preview changes for the current team.
 ```
 
 Update follows the same audit, recommend, plan, and exact-confirmation flow.
-User-owned agents and content outside the Codsemble managed section remain
+User-owned agents and content outside the Codesemble managed section remain
 untouched. Overlapping edits cause a conflict instead of an overwrite.
 
 ## Diagnose
@@ -122,7 +122,7 @@ session. A clean doctor report is not by itself native delegation proof.
 Invoke:
 
 ```text
-$rollback-team Preview rollback of the latest Codsemble transaction.
+$rollback-team Preview rollback of the latest Codesemble transaction.
 ```
 
 Or select a transaction:
@@ -138,7 +138,7 @@ Only a canonical receipt selected by transaction id can be rolled back;
 external receipt JSON is never accepted. The `$rollback-team` skill performs a
 read-only reverse preview first. The
 direct `rollback` CLI command is the mutating boundary and requires the exact
-transaction id after that review. Rollback restores only Codsemble-owned
+transaction id after that review. Rollback restores only Codesemble-owned
 postimages whose hashes still match. It refuses to overwrite later edits and
 reports a manual recovery path for conflicts.
 
@@ -163,7 +163,7 @@ unverified source as an automatic fallback.
 
 Confirm the project is trusted, check closer nested `.codex/config.toml` files,
 check command-line overrides and managed policy, and start a fresh session.
-Codsemble never changes trust.
+Codesemble never changes trust.
 
 ### Worker limit reached
 

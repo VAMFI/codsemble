@@ -17,9 +17,9 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Codsemble",
+    "displayName": "Codesemble",
     "shortDescription": "Build the right Codex agent team for any workspace.",
-    "longDescription": "Codsemble audits a workspace, recommends an evidence-backed specialist team, previews native Codex configuration, and applies only the changes you confirm.",
+    "longDescription": "Codesemble audits a workspace, recommends an evidence-backed specialist team, previews native Codex configuration, and applies only the changes you confirm.",
     "developerName": "VAMFI",
     "category": "Productivity",
     "capabilities": [

@@ -1,6 +1,6 @@
 # Support
 
-Codsemble is community-supported.
+Codesemble is community-supported.
 
 Use the repository issue tracker for:
 

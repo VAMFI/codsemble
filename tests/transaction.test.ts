@@ -232,14 +232,14 @@ describe("project transactions", () => {
     });
   });
 
-  it("rejects plans outside Codsemble-owned outputs", async () => {
+  it("rejects plans outside Codesemble-owned outputs", async () => {
     const workspace = await makeWorkspace();
     await expect(
       applyTeamPlan(
         workspace,
         makePlan([planned("src/injected.ts", "create", null, "bad")]),
       ),
-    ).rejects.toThrow("non-Codsemble output path");
+    ).rejects.toThrow("non-Codesemble output path");
   });
 
   it("rejects a plan changed after its confirmation id was generated", async () => {
@@ -515,7 +515,7 @@ describe("project transactions", () => {
           ),
         ]),
       ),
-    ).rejects.toThrow("Incomplete Codsemble mutation record");
+    ).rejects.toThrow("Incomplete Codesemble mutation record");
     await expect(
       readFile(path.join(workspace, ".codex/agents/reviewer.toml")),
     ).rejects.toMatchObject({ code: "ENOENT" });

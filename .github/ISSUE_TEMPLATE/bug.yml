@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible Codsemble defect using non-sensitive data.
+description: Report a reproducible Codesemble defect using non-sensitive data.
 title: "[Bug]: "
 labels:
   - bug
@@ -13,7 +13,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: Codsemble version or commit
+      label: Codesemble version or commit
     validations:
       required: true
   - type: input

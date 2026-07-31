@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-Until the first stable release, only the latest release candidate on the
-default branch receives security fixes.
+Security fixes are provided for the latest published minor release. Users
+should upgrade to the newest available patch release before reporting an issue.
 
 ## Reporting a vulnerability
 

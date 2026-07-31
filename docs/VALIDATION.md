@@ -29,7 +29,7 @@ The current candidate passes:
 - the official skill validator for all four skills;
 - repository metadata and absolute-path leak checks;
 - deterministic, lockfile-complete CycloneDX 1.5 SBOM generation and
-  verification for 133 components;
+  verification for 128 components;
 - `npm audit` with zero reported vulnerabilities.
 - the complete test check on Linux arm64 in a clean Node 20
   `bookworm-slim` container with Git installed.

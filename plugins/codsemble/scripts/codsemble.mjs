@@ -6,7 +6,11 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod) => function __require() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __export = (target, all) => {
   for (var name in all)
@@ -49,7 +53,7 @@ var require_ignore = __commonJS({
     var SLASH = "/";
     var TMP_KEY_IGNORE = "node-ignore";
     if (typeof Symbol !== "undefined") {
-      TMP_KEY_IGNORE = Symbol.for("node-ignore");
+      TMP_KEY_IGNORE = /* @__PURE__ */ Symbol.for("node-ignore");
     }
     var KEY_IGNORE = TMP_KEY_IGNORE;
     var define = (object2, key, value) => {
@@ -483,7 +487,7 @@ var require_ignore = __commonJS({
     module.exports = factory;
     factory.default = factory;
     module.exports.isPathValid = isPathValid;
-    define(module.exports, Symbol.for("setupWindows"), setupWindows);
+    define(module.exports, /* @__PURE__ */ Symbol.for("setupWindows"), setupWindows);
   }
 });
 
@@ -2215,7 +2219,7 @@ function $constructor(name, initializer3, params) {
   Object.defineProperty(_, "name", { value: name });
   return _;
 }
-var $brand = Symbol("zod_brand");
+var $brand = /* @__PURE__ */ Symbol("zod_brand");
 var $ZodAsyncError = class extends Error {
   constructor() {
     super(`Encountered Promise during synchronous parse. Use .parseAsync() instead.`);
@@ -11958,8 +11962,8 @@ function yo_default() {
 
 // node_modules/zod/v4/core/registries.js
 var _a2;
-var $output = Symbol("ZodOutput");
-var $input = Symbol("ZodInput");
+var $output = /* @__PURE__ */ Symbol("ZodOutput");
+var $input = /* @__PURE__ */ Symbol("ZodInput");
 var $ZodRegistry = class {
   constructor() {
     this._map = /* @__PURE__ */ new WeakMap();

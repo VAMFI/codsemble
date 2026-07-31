@@ -2,7 +2,7 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:73deecd4-0cc3-5b06-a0ad-e897e474afa0",
+  "serialNumber": "urn:uuid:36cb81ea-6e4e-51c7-990d-79e9e806342f",
   "version": 1,
   "metadata": {
     "tools": {
@@ -30,12 +30,66 @@
   },
   "components": [
     {
-      "bom-ref": "node_modules/@esbuild/aix-ppc64@0.25.12",
+      "bom-ref": "node_modules/@emnapi/core@2.0.0-alpha.3",
+      "type": "library",
+      "name": "@emnapi/core",
+      "version": "2.0.0-alpha.3",
+      "scope": "optional",
+      "purl": "pkg:npm/%40emnapi/core@2.0.0-alpha.3",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@emnapi/core"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@emnapi/runtime@2.0.0-alpha.3",
+      "type": "library",
+      "name": "@emnapi/runtime",
+      "version": "2.0.0-alpha.3",
+      "scope": "optional",
+      "purl": "pkg:npm/%40emnapi/runtime@2.0.0-alpha.3",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@emnapi/runtime"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@emnapi/wasi-threads@2.0.1",
+      "type": "library",
+      "name": "@emnapi/wasi-threads",
+      "version": "2.0.1",
+      "scope": "optional",
+      "purl": "pkg:npm/%40emnapi/wasi-threads@2.0.1",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@emnapi/wasi-threads"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@esbuild/aix-ppc64@0.28.1",
       "type": "library",
       "name": "@esbuild/aix-ppc64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/aix-ppc64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/aix-ppc64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -48,12 +102,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/android-arm@0.25.12",
+      "bom-ref": "node_modules/@esbuild/android-arm@0.28.1",
       "type": "library",
       "name": "@esbuild/android-arm",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-arm@0.25.12",
+      "purl": "pkg:npm/%40esbuild/android-arm@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -66,12 +120,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/android-arm64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/android-arm64@0.28.1",
       "type": "library",
       "name": "@esbuild/android-arm64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-arm64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/android-arm64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -84,12 +138,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/android-x64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/android-x64@0.28.1",
       "type": "library",
       "name": "@esbuild/android-x64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-x64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/android-x64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -102,12 +156,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/darwin-arm64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/darwin-arm64@0.28.1",
       "type": "library",
       "name": "@esbuild/darwin-arm64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/darwin-arm64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/darwin-arm64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -120,12 +174,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/darwin-x64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/darwin-x64@0.28.1",
       "type": "library",
       "name": "@esbuild/darwin-x64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/darwin-x64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/darwin-x64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -138,12 +192,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/freebsd-arm64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/freebsd-arm64@0.28.1",
       "type": "library",
       "name": "@esbuild/freebsd-arm64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/freebsd-arm64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/freebsd-arm64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -156,12 +210,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/freebsd-x64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/freebsd-x64@0.28.1",
       "type": "library",
       "name": "@esbuild/freebsd-x64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/freebsd-x64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/freebsd-x64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -174,12 +228,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-arm@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-arm@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-arm",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-arm@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-arm@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -192,12 +246,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-arm64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-arm64@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-arm64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-arm64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-arm64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -210,12 +264,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-ia32@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-ia32@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-ia32",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-ia32@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-ia32@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -228,12 +282,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-loong64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-loong64@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-loong64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-loong64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-loong64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -246,12 +300,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-mips64el@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-mips64el@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-mips64el",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-mips64el@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-mips64el@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -264,12 +318,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-ppc64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-ppc64@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-ppc64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-ppc64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-ppc64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -282,12 +336,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-riscv64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-riscv64@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-riscv64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-riscv64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-riscv64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -300,12 +354,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-s390x@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-s390x@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-s390x",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-s390x@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-s390x@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -318,12 +372,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/linux-x64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/linux-x64@0.28.1",
       "type": "library",
       "name": "@esbuild/linux-x64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-x64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/linux-x64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -336,12 +390,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/netbsd-arm64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/netbsd-arm64@0.28.1",
       "type": "library",
       "name": "@esbuild/netbsd-arm64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/netbsd-arm64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/netbsd-arm64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -354,12 +408,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/netbsd-x64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/netbsd-x64@0.28.1",
       "type": "library",
       "name": "@esbuild/netbsd-x64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/netbsd-x64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/netbsd-x64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -372,12 +426,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/openbsd-arm64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/openbsd-arm64@0.28.1",
       "type": "library",
       "name": "@esbuild/openbsd-arm64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/openbsd-arm64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/openbsd-arm64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -390,12 +444,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/openbsd-x64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/openbsd-x64@0.28.1",
       "type": "library",
       "name": "@esbuild/openbsd-x64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/openbsd-x64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/openbsd-x64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -408,12 +462,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/openharmony-arm64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/openharmony-arm64@0.28.1",
       "type": "library",
       "name": "@esbuild/openharmony-arm64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/openharmony-arm64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/openharmony-arm64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -426,12 +480,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/sunos-x64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/sunos-x64@0.28.1",
       "type": "library",
       "name": "@esbuild/sunos-x64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/sunos-x64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/sunos-x64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -444,12 +498,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/win32-arm64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/win32-arm64@0.28.1",
       "type": "library",
       "name": "@esbuild/win32-arm64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-arm64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/win32-arm64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -462,12 +516,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/win32-ia32@0.25.12",
+      "bom-ref": "node_modules/@esbuild/win32-ia32@0.28.1",
       "type": "library",
       "name": "@esbuild/win32-ia32",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-ia32@0.25.12",
+      "purl": "pkg:npm/%40esbuild/win32-ia32@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -480,12 +534,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@esbuild/win32-x64@0.25.12",
+      "bom-ref": "node_modules/@esbuild/win32-x64@0.28.1",
       "type": "library",
       "name": "@esbuild/win32-x64",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-x64@0.25.12",
+      "purl": "pkg:npm/%40esbuild/win32-x64@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -516,16 +570,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-android-arm-eabi@4.62.3",
+      "bom-ref": "node_modules/@napi-rs/wasm-runtime@1.2.2",
       "type": "library",
-      "name": "@rollup/rollup-android-arm-eabi",
-      "version": "4.62.3",
+      "name": "@napi-rs/wasm-runtime",
+      "version": "1.2.2",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-android-arm-eabi@4.62.3",
+      "purl": "pkg:npm/%40napi-rs/wasm-runtime@1.2.2",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-android-arm-eabi"
+          "value": "node_modules/@napi-rs/wasm-runtime"
         },
         {
           "name": "codsemble:development",
@@ -534,16 +588,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-android-arm64@4.62.3",
+      "bom-ref": "node_modules/@oxc-project/types@0.142.0",
       "type": "library",
-      "name": "@rollup/rollup-android-arm64",
-      "version": "4.62.3",
-      "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-android-arm64@4.62.3",
+      "name": "@oxc-project/types",
+      "version": "0.142.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40oxc-project/types@0.142.0",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-android-arm64"
+          "value": "node_modules/@oxc-project/types"
         },
         {
           "name": "codsemble:development",
@@ -552,16 +606,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-darwin-arm64@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-android-arm64@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-darwin-arm64",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-android-arm64",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-darwin-arm64@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-android-arm64@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-darwin-arm64"
+          "value": "node_modules/@rolldown/binding-android-arm64"
         },
         {
           "name": "codsemble:development",
@@ -570,16 +624,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-darwin-x64@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-darwin-arm64@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-darwin-x64",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-darwin-arm64",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-darwin-x64@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-darwin-arm64@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-darwin-x64"
+          "value": "node_modules/@rolldown/binding-darwin-arm64"
         },
         {
           "name": "codsemble:development",
@@ -588,16 +642,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-freebsd-arm64@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-darwin-x64@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-freebsd-arm64",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-darwin-x64",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-freebsd-arm64@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-darwin-x64@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-freebsd-arm64"
+          "value": "node_modules/@rolldown/binding-darwin-x64"
         },
         {
           "name": "codsemble:development",
@@ -606,16 +660,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-freebsd-x64@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-freebsd-x64@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-freebsd-x64",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-freebsd-x64",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-freebsd-x64@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-freebsd-x64@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-freebsd-x64"
+          "value": "node_modules/@rolldown/binding-freebsd-x64"
         },
         {
           "name": "codsemble:development",
@@ -624,16 +678,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-arm-gnueabihf@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-linux-arm-gnueabihf@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-arm-gnueabihf",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-linux-arm-gnueabihf",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-arm-gnueabihf@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-linux-arm-gnueabihf@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-arm-gnueabihf"
+          "value": "node_modules/@rolldown/binding-linux-arm-gnueabihf"
         },
         {
           "name": "codsemble:development",
@@ -642,16 +696,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-arm-musleabihf@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-linux-arm64-gnu@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-arm-musleabihf",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-linux-arm64-gnu",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-arm-musleabihf@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-linux-arm64-gnu@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-arm-musleabihf"
+          "value": "node_modules/@rolldown/binding-linux-arm64-gnu"
         },
         {
           "name": "codsemble:development",
@@ -660,16 +714,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-arm64-gnu@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-linux-arm64-musl@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-arm64-gnu",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-linux-arm64-musl",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-arm64-gnu@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-linux-arm64-musl@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-arm64-gnu"
+          "value": "node_modules/@rolldown/binding-linux-arm64-musl"
         },
         {
           "name": "codsemble:development",
@@ -678,16 +732,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-arm64-musl@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-linux-ppc64-gnu@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-arm64-musl",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-linux-ppc64-gnu",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-arm64-musl@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-linux-ppc64-gnu@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-arm64-musl"
+          "value": "node_modules/@rolldown/binding-linux-ppc64-gnu"
         },
         {
           "name": "codsemble:development",
@@ -696,16 +750,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-loong64-gnu@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-linux-s390x-gnu@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-loong64-gnu",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-linux-s390x-gnu",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-loong64-gnu@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-linux-s390x-gnu@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-loong64-gnu"
+          "value": "node_modules/@rolldown/binding-linux-s390x-gnu"
         },
         {
           "name": "codsemble:development",
@@ -714,16 +768,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-loong64-musl@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-linux-x64-gnu@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-loong64-musl",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-linux-x64-gnu",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-loong64-musl@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-linux-x64-gnu@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-loong64-musl"
+          "value": "node_modules/@rolldown/binding-linux-x64-gnu"
         },
         {
           "name": "codsemble:development",
@@ -732,16 +786,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-ppc64-gnu@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-linux-x64-musl@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-ppc64-gnu",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-linux-x64-musl",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-ppc64-gnu@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-linux-x64-musl@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-ppc64-gnu"
+          "value": "node_modules/@rolldown/binding-linux-x64-musl"
         },
         {
           "name": "codsemble:development",
@@ -750,16 +804,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-ppc64-musl@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-openharmony-arm64@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-ppc64-musl",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-openharmony-arm64",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-ppc64-musl@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-openharmony-arm64@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-ppc64-musl"
+          "value": "node_modules/@rolldown/binding-openharmony-arm64"
         },
         {
           "name": "codsemble:development",
@@ -768,16 +822,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-riscv64-gnu@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-wasm32-wasi@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-riscv64-gnu",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-wasm32-wasi",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-riscv64-gnu@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-wasm32-wasi@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-riscv64-gnu"
+          "value": "node_modules/@rolldown/binding-wasm32-wasi"
         },
         {
           "name": "codsemble:development",
@@ -786,16 +840,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-riscv64-musl@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-win32-arm64-msvc@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-riscv64-musl",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-win32-arm64-msvc",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-riscv64-musl@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-win32-arm64-msvc@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-riscv64-musl"
+          "value": "node_modules/@rolldown/binding-win32-arm64-msvc"
         },
         {
           "name": "codsemble:development",
@@ -804,16 +858,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-s390x-gnu@4.62.3",
+      "bom-ref": "node_modules/@rolldown/binding-win32-x64-msvc@1.2.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-s390x-gnu",
-      "version": "4.62.3",
+      "name": "@rolldown/binding-win32-x64-msvc",
+      "version": "1.2.1",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-s390x-gnu@4.62.3",
+      "purl": "pkg:npm/%40rolldown/binding-win32-x64-msvc@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-s390x-gnu"
+          "value": "node_modules/@rolldown/binding-win32-x64-msvc"
         },
         {
           "name": "codsemble:development",
@@ -822,16 +876,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-x64-gnu@4.62.3",
+      "bom-ref": "node_modules/@rolldown/pluginutils@1.0.1",
       "type": "library",
-      "name": "@rollup/rollup-linux-x64-gnu",
-      "version": "4.62.3",
-      "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-x64-gnu@4.62.3",
+      "name": "@rolldown/pluginutils",
+      "version": "1.0.1",
+      "scope": "required",
+      "purl": "pkg:npm/%40rolldown/pluginutils@1.0.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-x64-gnu"
+          "value": "node_modules/@rolldown/pluginutils"
         },
         {
           "name": "codsemble:development",
@@ -840,16 +894,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-linux-x64-musl@4.62.3",
+      "bom-ref": "node_modules/@standard-schema/spec@1.1.0",
       "type": "library",
-      "name": "@rollup/rollup-linux-x64-musl",
-      "version": "4.62.3",
-      "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-linux-x64-musl@4.62.3",
+      "name": "@standard-schema/spec",
+      "version": "1.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40standard-schema/spec@1.1.0",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-linux-x64-musl"
+          "value": "node_modules/@standard-schema/spec"
         },
         {
           "name": "codsemble:development",
@@ -858,106 +912,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@rollup/rollup-openbsd-x64@4.62.3",
+      "bom-ref": "node_modules/@tybys/wasm-util@0.10.3",
       "type": "library",
-      "name": "@rollup/rollup-openbsd-x64",
-      "version": "4.62.3",
+      "name": "@tybys/wasm-util",
+      "version": "0.10.3",
       "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-openbsd-x64@4.62.3",
+      "purl": "pkg:npm/%40tybys/wasm-util@0.10.3",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-openbsd-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/@rollup/rollup-openharmony-arm64@4.62.3",
-      "type": "library",
-      "name": "@rollup/rollup-openharmony-arm64",
-      "version": "4.62.3",
-      "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-openharmony-arm64@4.62.3",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-openharmony-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/@rollup/rollup-win32-arm64-msvc@4.62.3",
-      "type": "library",
-      "name": "@rollup/rollup-win32-arm64-msvc",
-      "version": "4.62.3",
-      "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-win32-arm64-msvc@4.62.3",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-win32-arm64-msvc"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/@rollup/rollup-win32-ia32-msvc@4.62.3",
-      "type": "library",
-      "name": "@rollup/rollup-win32-ia32-msvc",
-      "version": "4.62.3",
-      "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-win32-ia32-msvc@4.62.3",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-win32-ia32-msvc"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/@rollup/rollup-win32-x64-gnu@4.62.3",
-      "type": "library",
-      "name": "@rollup/rollup-win32-x64-gnu",
-      "version": "4.62.3",
-      "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-win32-x64-gnu@4.62.3",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-win32-x64-gnu"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/@rollup/rollup-win32-x64-msvc@4.62.3",
-      "type": "library",
-      "name": "@rollup/rollup-win32-x64-msvc",
-      "version": "4.62.3",
-      "scope": "optional",
-      "purl": "pkg:npm/%40rollup/rollup-win32-x64-msvc@4.62.3",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/@rollup/rollup-win32-x64-msvc"
+          "value": "node_modules/@tybys/wasm-util"
         },
         {
           "name": "codsemble:development",
@@ -1020,12 +984,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@types/node@24.13.3",
+      "bom-ref": "node_modules/@types/node@26.1.2",
       "type": "library",
       "name": "@types/node",
-      "version": "24.13.3",
+      "version": "26.1.2",
       "scope": "required",
-      "purl": "pkg:npm/%40types/node@24.13.3",
+      "purl": "pkg:npm/%40types/node@26.1.2",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1038,12 +1002,372 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@vitest/expect@3.2.7",
+      "bom-ref": "node_modules/@typescript/typescript-aix-ppc64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-aix-ppc64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-aix-ppc64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-aix-ppc64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-darwin-arm64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-darwin-arm64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-darwin-arm64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-darwin-arm64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-darwin-x64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-darwin-x64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-darwin-x64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-darwin-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-freebsd-arm64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-freebsd-arm64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-freebsd-arm64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-freebsd-arm64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-freebsd-x64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-freebsd-x64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-freebsd-x64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-freebsd-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-linux-arm@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-linux-arm",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-linux-arm@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-linux-arm"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-linux-arm64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-linux-arm64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-linux-arm64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-linux-arm64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-linux-loong64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-linux-loong64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-linux-loong64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-linux-loong64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-linux-mips64el@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-linux-mips64el",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-linux-mips64el@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-linux-mips64el"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-linux-ppc64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-linux-ppc64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-linux-ppc64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-linux-ppc64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-linux-riscv64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-linux-riscv64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-linux-riscv64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-linux-riscv64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-linux-s390x@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-linux-s390x",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-linux-s390x@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-linux-s390x"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-linux-x64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-linux-x64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-linux-x64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-linux-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-netbsd-arm64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-netbsd-arm64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-netbsd-arm64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-netbsd-arm64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-netbsd-x64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-netbsd-x64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-netbsd-x64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-netbsd-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-openbsd-arm64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-openbsd-arm64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-openbsd-arm64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-openbsd-arm64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-openbsd-x64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-openbsd-x64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-openbsd-x64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-openbsd-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-sunos-x64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-sunos-x64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-sunos-x64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-sunos-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-win32-arm64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-win32-arm64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-win32-arm64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-win32-arm64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@typescript/typescript-win32-x64@7.0.2",
+      "type": "library",
+      "name": "@typescript/typescript-win32-x64",
+      "version": "7.0.2",
+      "scope": "optional",
+      "purl": "pkg:npm/%40typescript/typescript-win32-x64@7.0.2",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/@typescript/typescript-win32-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/@vitest/expect@4.1.10",
       "type": "library",
       "name": "@vitest/expect",
-      "version": "3.2.7",
+      "version": "4.1.10",
       "scope": "required",
-      "purl": "pkg:npm/%40vitest/expect@3.2.7",
+      "purl": "pkg:npm/%40vitest/expect@4.1.10",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1056,12 +1380,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@vitest/mocker@3.2.7",
+      "bom-ref": "node_modules/@vitest/mocker@4.1.10",
       "type": "library",
       "name": "@vitest/mocker",
-      "version": "3.2.7",
+      "version": "4.1.10",
       "scope": "required",
-      "purl": "pkg:npm/%40vitest/mocker@3.2.7",
+      "purl": "pkg:npm/%40vitest/mocker@4.1.10",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1074,12 +1398,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@vitest/pretty-format@3.2.7",
+      "bom-ref": "node_modules/@vitest/pretty-format@4.1.10",
       "type": "library",
       "name": "@vitest/pretty-format",
-      "version": "3.2.7",
+      "version": "4.1.10",
       "scope": "required",
-      "purl": "pkg:npm/%40vitest/pretty-format@3.2.7",
+      "purl": "pkg:npm/%40vitest/pretty-format@4.1.10",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1092,12 +1416,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@vitest/runner@3.2.7",
+      "bom-ref": "node_modules/@vitest/runner@4.1.10",
       "type": "library",
       "name": "@vitest/runner",
-      "version": "3.2.7",
+      "version": "4.1.10",
       "scope": "required",
-      "purl": "pkg:npm/%40vitest/runner@3.2.7",
+      "purl": "pkg:npm/%40vitest/runner@4.1.10",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1110,12 +1434,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@vitest/snapshot@3.2.7",
+      "bom-ref": "node_modules/@vitest/snapshot@4.1.10",
       "type": "library",
       "name": "@vitest/snapshot",
-      "version": "3.2.7",
+      "version": "4.1.10",
       "scope": "required",
-      "purl": "pkg:npm/%40vitest/snapshot@3.2.7",
+      "purl": "pkg:npm/%40vitest/snapshot@4.1.10",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1128,12 +1452,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@vitest/spy@3.2.7",
+      "bom-ref": "node_modules/@vitest/spy@4.1.10",
       "type": "library",
       "name": "@vitest/spy",
-      "version": "3.2.7",
+      "version": "4.1.10",
       "scope": "required",
-      "purl": "pkg:npm/%40vitest/spy@3.2.7",
+      "purl": "pkg:npm/%40vitest/spy@4.1.10",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1146,12 +1470,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/@vitest/utils@3.2.7",
+      "bom-ref": "node_modules/@vitest/utils@4.1.10",
       "type": "library",
       "name": "@vitest/utils",
-      "version": "3.2.7",
+      "version": "4.1.10",
       "scope": "required",
-      "purl": "pkg:npm/%40vitest/utils@3.2.7",
+      "purl": "pkg:npm/%40vitest/utils@4.1.10",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1182,30 +1506,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/cac@6.7.14",
-      "type": "library",
-      "name": "cac",
-      "version": "6.7.14",
-      "scope": "required",
-      "purl": "pkg:npm/cac@6.7.14",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/cac"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/chai@5.3.3",
+      "bom-ref": "node_modules/chai@6.2.2",
       "type": "library",
       "name": "chai",
-      "version": "5.3.3",
+      "version": "6.2.2",
       "scope": "required",
-      "purl": "pkg:npm/chai@5.3.3",
+      "purl": "pkg:npm/chai@6.2.2",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1218,16 +1524,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/check-error@2.1.3",
+      "bom-ref": "node_modules/convert-source-map@2.0.0",
       "type": "library",
-      "name": "check-error",
-      "version": "2.1.3",
+      "name": "convert-source-map",
+      "version": "2.0.0",
       "scope": "required",
-      "purl": "pkg:npm/check-error@2.1.3",
+      "purl": "pkg:npm/convert-source-map@2.0.0",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/check-error"
+          "value": "node_modules/convert-source-map"
         },
         {
           "name": "codsemble:development",
@@ -1236,16 +1542,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/debug@4.4.3",
+      "bom-ref": "node_modules/detect-libc@2.1.2",
       "type": "library",
-      "name": "debug",
-      "version": "4.4.3",
+      "name": "detect-libc",
+      "version": "2.1.2",
       "scope": "required",
-      "purl": "pkg:npm/debug@4.4.3",
+      "purl": "pkg:npm/detect-libc@2.1.2",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/debug"
+          "value": "node_modules/detect-libc"
         },
         {
           "name": "codsemble:development",
@@ -1254,30 +1560,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/deep-eql@5.0.2",
-      "type": "library",
-      "name": "deep-eql",
-      "version": "5.0.2",
-      "scope": "required",
-      "purl": "pkg:npm/deep-eql@5.0.2",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/deep-eql"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/es-module-lexer@1.7.0",
+      "bom-ref": "node_modules/es-module-lexer@2.3.1",
       "type": "library",
       "name": "es-module-lexer",
-      "version": "1.7.0",
+      "version": "2.3.1",
       "scope": "required",
-      "purl": "pkg:npm/es-module-lexer@1.7.0",
+      "purl": "pkg:npm/es-module-lexer@2.3.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1290,12 +1578,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/esbuild@0.25.12",
+      "bom-ref": "node_modules/esbuild@0.28.1",
       "type": "library",
       "name": "esbuild",
-      "version": "0.25.12",
+      "version": "0.28.1",
       "scope": "required",
-      "purl": "pkg:npm/esbuild@0.25.12",
+      "purl": "pkg:npm/esbuild@0.28.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1398,16 +1686,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/js-tokens@9.0.1",
+      "bom-ref": "node_modules/lightningcss-android-arm64@1.33.0",
       "type": "library",
-      "name": "js-tokens",
-      "version": "9.0.1",
-      "scope": "required",
-      "purl": "pkg:npm/js-tokens@9.0.1",
+      "name": "lightningcss-android-arm64",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-android-arm64@1.33.0",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/js-tokens"
+          "value": "node_modules/lightningcss-android-arm64"
         },
         {
           "name": "codsemble:development",
@@ -1416,16 +1704,196 @@
       ]
     },
     {
-      "bom-ref": "node_modules/loupe@3.2.1",
+      "bom-ref": "node_modules/lightningcss-darwin-arm64@1.33.0",
       "type": "library",
-      "name": "loupe",
-      "version": "3.2.1",
-      "scope": "required",
-      "purl": "pkg:npm/loupe@3.2.1",
+      "name": "lightningcss-darwin-arm64",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-darwin-arm64@1.33.0",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/loupe"
+          "value": "node_modules/lightningcss-darwin-arm64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-darwin-x64@1.33.0",
+      "type": "library",
+      "name": "lightningcss-darwin-x64",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-darwin-x64@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-darwin-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-freebsd-x64@1.33.0",
+      "type": "library",
+      "name": "lightningcss-freebsd-x64",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-freebsd-x64@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-freebsd-x64"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-linux-arm-gnueabihf@1.33.0",
+      "type": "library",
+      "name": "lightningcss-linux-arm-gnueabihf",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-linux-arm-gnueabihf@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-linux-arm-gnueabihf"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-linux-arm64-gnu@1.33.0",
+      "type": "library",
+      "name": "lightningcss-linux-arm64-gnu",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-linux-arm64-gnu@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-linux-arm64-gnu"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-linux-arm64-musl@1.33.0",
+      "type": "library",
+      "name": "lightningcss-linux-arm64-musl",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-linux-arm64-musl@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-linux-arm64-musl"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-linux-x64-gnu@1.33.0",
+      "type": "library",
+      "name": "lightningcss-linux-x64-gnu",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-linux-x64-gnu@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-linux-x64-gnu"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-linux-x64-musl@1.33.0",
+      "type": "library",
+      "name": "lightningcss-linux-x64-musl",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-linux-x64-musl@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-linux-x64-musl"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-win32-arm64-msvc@1.33.0",
+      "type": "library",
+      "name": "lightningcss-win32-arm64-msvc",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-win32-arm64-msvc@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-win32-arm64-msvc"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss-win32-x64-msvc@1.33.0",
+      "type": "library",
+      "name": "lightningcss-win32-x64-msvc",
+      "version": "1.33.0",
+      "scope": "optional",
+      "purl": "pkg:npm/lightningcss-win32-x64-msvc@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss-win32-x64-msvc"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "bom-ref": "node_modules/lightningcss@1.33.0",
+      "type": "library",
+      "name": "lightningcss",
+      "version": "1.33.0",
+      "scope": "required",
+      "purl": "pkg:npm/lightningcss@1.33.0",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/lightningcss"
         },
         {
           "name": "codsemble:development",
@@ -1452,24 +1920,6 @@
       ]
     },
     {
-      "bom-ref": "node_modules/ms@2.1.3",
-      "type": "library",
-      "name": "ms",
-      "version": "2.1.3",
-      "scope": "required",
-      "purl": "pkg:npm/ms@2.1.3",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/ms"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
       "bom-ref": "node_modules/nanoid@3.3.16",
       "type": "library",
       "name": "nanoid",
@@ -1488,6 +1938,24 @@
       ]
     },
     {
+      "bom-ref": "node_modules/obug@2.1.4",
+      "type": "library",
+      "name": "obug",
+      "version": "2.1.4",
+      "scope": "required",
+      "purl": "pkg:npm/obug@2.1.4",
+      "properties": [
+        {
+          "name": "codsemble:lockfile-path",
+          "value": "node_modules/obug"
+        },
+        {
+          "name": "codsemble:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
       "bom-ref": "node_modules/pathe@2.0.3",
       "type": "library",
       "name": "pathe",
@@ -1498,24 +1966,6 @@
         {
           "name": "codsemble:lockfile-path",
           "value": "node_modules/pathe"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/pathval@2.0.1",
-      "type": "library",
-      "name": "pathval",
-      "version": "2.0.1",
-      "scope": "required",
-      "purl": "pkg:npm/pathval@2.0.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/pathval"
         },
         {
           "name": "codsemble:development",
@@ -1578,16 +2028,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/rollup@4.62.3",
+      "bom-ref": "node_modules/rolldown@1.2.1",
       "type": "library",
-      "name": "rollup",
-      "version": "4.62.3",
+      "name": "rolldown",
+      "version": "1.2.1",
       "scope": "required",
-      "purl": "pkg:npm/rollup@4.62.3",
+      "purl": "pkg:npm/rolldown@1.2.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/rollup"
+          "value": "node_modules/rolldown"
         },
         {
           "name": "codsemble:development",
@@ -1668,34 +2118,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/std-env@3.10.0",
+      "bom-ref": "node_modules/std-env@4.2.0",
       "type": "library",
       "name": "std-env",
-      "version": "3.10.0",
+      "version": "4.2.0",
       "scope": "required",
-      "purl": "pkg:npm/std-env@3.10.0",
+      "purl": "pkg:npm/std-env@4.2.0",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
           "value": "node_modules/std-env"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/strip-literal@3.1.0",
-      "type": "library",
-      "name": "strip-literal",
-      "version": "3.1.0",
-      "scope": "required",
-      "purl": "pkg:npm/strip-literal@3.1.0",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/strip-literal"
         },
         {
           "name": "codsemble:development",
@@ -1722,12 +2154,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/tinyexec@0.3.2",
+      "bom-ref": "node_modules/tinyexec@1.2.4",
       "type": "library",
       "name": "tinyexec",
-      "version": "0.3.2",
+      "version": "1.2.4",
       "scope": "required",
-      "purl": "pkg:npm/tinyexec@0.3.2",
+      "purl": "pkg:npm/tinyexec@1.2.4",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1758,30 +2190,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/tinypool@1.1.1",
-      "type": "library",
-      "name": "tinypool",
-      "version": "1.1.1",
-      "scope": "required",
-      "purl": "pkg:npm/tinypool@1.1.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/tinypool"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/tinyrainbow@2.0.0",
+      "bom-ref": "node_modules/tinyrainbow@3.1.1",
       "type": "library",
       "name": "tinyrainbow",
-      "version": "2.0.0",
+      "version": "3.1.1",
       "scope": "required",
-      "purl": "pkg:npm/tinyrainbow@2.0.0",
+      "purl": "pkg:npm/tinyrainbow@3.1.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1794,16 +2208,16 @@
       ]
     },
     {
-      "bom-ref": "node_modules/tinyspy@4.0.4",
+      "bom-ref": "node_modules/tslib@2.8.1",
       "type": "library",
-      "name": "tinyspy",
-      "version": "4.0.4",
-      "scope": "required",
-      "purl": "pkg:npm/tinyspy@4.0.4",
+      "name": "tslib",
+      "version": "2.8.1",
+      "scope": "optional",
+      "purl": "pkg:npm/tslib@2.8.1",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
-          "value": "node_modules/tinyspy"
+          "value": "node_modules/tslib"
         },
         {
           "name": "codsemble:development",
@@ -1812,12 +2226,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/typescript@5.9.3",
+      "bom-ref": "node_modules/typescript@7.0.2",
       "type": "library",
       "name": "typescript",
-      "version": "5.9.3",
+      "version": "7.0.2",
       "scope": "required",
-      "purl": "pkg:npm/typescript@5.9.3",
+      "purl": "pkg:npm/typescript@7.0.2",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1830,12 +2244,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/undici-types@7.18.2",
+      "bom-ref": "node_modules/undici-types@8.3.0",
       "type": "library",
       "name": "undici-types",
-      "version": "7.18.2",
+      "version": "8.3.0",
       "scope": "required",
-      "purl": "pkg:npm/undici-types@7.18.2",
+      "purl": "pkg:npm/undici-types@8.3.0",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1848,30 +2262,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/vite-node@3.2.4",
-      "type": "library",
-      "name": "vite-node",
-      "version": "3.2.4",
-      "scope": "required",
-      "purl": "pkg:npm/vite-node@3.2.4",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite-node"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite@7.3.6",
+      "bom-ref": "node_modules/vite@8.2.0",
       "type": "library",
       "name": "vite",
-      "version": "7.3.6",
+      "version": "8.2.0",
       "scope": "required",
-      "purl": "pkg:npm/vite@7.3.6",
+      "purl": "pkg:npm/vite@8.2.0",
       "properties": [
         {
           "name": "codsemble:lockfile-path",
@@ -1884,498 +2280,12 @@
       ]
     },
     {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/aix-ppc64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/aix-ppc64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/aix-ppc64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/aix-ppc64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/android-arm@0.28.1",
-      "type": "library",
-      "name": "@esbuild/android-arm",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-arm@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/android-arm"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/android-arm64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/android-arm64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-arm64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/android-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/android-x64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/android-x64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-x64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/android-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/darwin-arm64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/darwin-arm64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/darwin-arm64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/darwin-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/darwin-x64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/darwin-x64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/darwin-x64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/darwin-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/freebsd-arm64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/freebsd-arm64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/freebsd-arm64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/freebsd-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/freebsd-x64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/freebsd-x64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/freebsd-x64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/freebsd-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-arm@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-arm",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-arm@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-arm"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-arm64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-arm64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-arm64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-ia32@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-ia32",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-ia32@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-ia32"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-loong64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-loong64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-loong64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-loong64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-mips64el@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-mips64el",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-mips64el@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-mips64el"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-ppc64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-ppc64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-ppc64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-ppc64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-riscv64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-riscv64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-riscv64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-riscv64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-s390x@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-s390x",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-s390x@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-s390x"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/linux-x64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/linux-x64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-x64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/linux-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/netbsd-arm64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/netbsd-arm64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/netbsd-arm64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/netbsd-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/netbsd-x64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/netbsd-x64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/netbsd-x64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/netbsd-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/openbsd-arm64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/openbsd-arm64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/openbsd-arm64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/openbsd-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/openbsd-x64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/openbsd-x64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/openbsd-x64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/openbsd-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/openharmony-arm64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/openharmony-arm64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/openharmony-arm64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/openharmony-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/sunos-x64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/sunos-x64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/sunos-x64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/sunos-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/win32-arm64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/win32-arm64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-arm64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/win32-arm64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/win32-ia32@0.28.1",
-      "type": "library",
-      "name": "@esbuild/win32-ia32",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-ia32@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/win32-ia32"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/@esbuild/win32-x64@0.28.1",
-      "type": "library",
-      "name": "@esbuild/win32-x64",
-      "version": "0.28.1",
-      "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-x64@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/@esbuild/win32-x64"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vite/node_modules/esbuild@0.28.1",
-      "type": "library",
-      "name": "esbuild",
-      "version": "0.28.1",
-      "scope": "required",
-      "purl": "pkg:npm/esbuild@0.28.1",
-      "properties": [
-        {
-          "name": "codsemble:lockfile-path",
-          "value": "node_modules/vite/node_modules/esbuild"
-        },
-        {
-          "name": "codsemble:development",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "bom-ref": "node_modules/vitest@3.2.7",
+      "bom-ref": "node_modules/vitest@4.1.10",
       "type": "library",
       "name": "vitest",
-      "version": "3.2.7",
+      "version": "4.1.10",
       "scope": "required",
-      "purl": "pkg:npm/vitest@3.2.7",
+      "purl": "pkg:npm/vitest@4.1.10",
       "properties": [
         {
           "name": "codsemble:lockfile-path",

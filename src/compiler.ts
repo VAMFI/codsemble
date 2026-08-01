@@ -16,6 +16,7 @@ import type {
   GeneratedRoleSpec,
   IntakeAnswers,
   PlannedFile,
+  ReasoningEffort,
   ResolvedRole,
   RoleBlueprint,
   TeamPlan,
@@ -654,7 +655,12 @@ function resolveGeneratedRole(
   role: GeneratedRoleSpec,
   answers: IntakeAnswers,
 ): ResolvedRole {
-  const model = resolveModel(role.modelProfile, answers);
+  const model = resolveModelForEffort(
+    role.id,
+    role.modelProfile,
+    role.reasoningEffort,
+    answers,
+  );
   return {
     id: role.id,
     name: role.name,
@@ -743,7 +749,12 @@ function resolveCatalogRole(
   role: RoleBlueprint,
   answers: IntakeAnswers,
 ): ResolvedRole {
-  const model = resolveModel(role.defaultModelProfile, answers);
+  const model = resolveModelForEffort(
+    role.id,
+    role.defaultModelProfile,
+    role.defaultReasoningEffort,
+    answers,
+  );
   return {
     id: role.id,
     name: role.name,
@@ -780,7 +791,12 @@ function resolveCustomRole(
   role: CustomRoleInput,
   answers: IntakeAnswers,
 ): ResolvedRole {
-  const model = resolveModel(role.modelProfile, answers);
+  const model = resolveModelForEffort(
+    role.id,
+    role.modelProfile,
+    role.reasoningEffort,
+    answers,
+  );
   return {
     id: role.id,
     name: role.name,
@@ -822,6 +838,21 @@ function resolveModel(
   if (profile === "inherit") return undefined;
   const verified = answers.verifiedModels[profile]?.trim();
   return verified ? verified : undefined;
+}
+
+function resolveModelForEffort(
+  roleId: string,
+  profile: ResolvedRole["modelProfile"],
+  effort: ReasoningEffort,
+  answers: IntakeAnswers,
+): string | undefined {
+  const model = resolveModel(profile, answers);
+  if ((effort === "max" || effort === "ultra") && model === undefined) {
+    throw new Error(
+      `Role ${roleId} requests ${effort} reasoning but profile ${profile} has no verified live model mapping`,
+    );
+  }
+  return model;
 }
 
 function renderRoleToml(role: ResolvedRole): string {

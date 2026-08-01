@@ -1,7 +1,15 @@
 import { z } from "zod";
 
 const modelProfile = z.enum(["inherit", "deep", "balanced", "fast"]);
-const reasoningEffort = z.enum(["inherit", "low", "medium", "high", "xhigh"]);
+const reasoningEffort = z.enum([
+  "inherit",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+  "ultra",
+]);
 const sandboxProfile = z.enum(["read-only", "workspace-write"]);
 
 export const roleBlueprintSchema = z

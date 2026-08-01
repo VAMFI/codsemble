@@ -49,7 +49,7 @@ const generatedAgentSchema = z
     developer_instructions: z.string().min(1).max(64 * 1024),
     model: z.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
     model_reasoning_effort: z
-      .enum(["low", "medium", "high", "xhigh"])
+      .enum(["low", "medium", "high", "xhigh", "max", "ultra"])
       .optional(),
     sandbox_mode: z.enum(["read-only", "workspace-write"]),
   })

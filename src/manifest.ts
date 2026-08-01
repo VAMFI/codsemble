@@ -57,7 +57,7 @@ export const generatedManifestSchema = z
           modelProfile: z.enum(["inherit", "deep", "balanced", "fast"]),
           model: z.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
           reasoningEffort: z
-            .enum(["low", "medium", "high", "xhigh"])
+            .enum(["low", "medium", "high", "xhigh", "max", "ultra"])
             .optional(),
           sandbox: z.enum(["read-only", "workspace-write"]),
           source: z.enum(["custom", "catalog", "generated"]),

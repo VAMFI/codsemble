@@ -734,7 +734,17 @@ export function admitGeneratedRoleSpec(
   if (!["inherit", "deep", "balanced", "fast"].includes(role.modelProfile)) {
     throw new Error(`Generated role ${role.id} has an unknown model profile`);
   }
-  if (!["inherit", "low", "medium", "high", "xhigh"].includes(role.reasoningEffort)) {
+  if (
+    ![
+      "inherit",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+      "ultra",
+    ].includes(role.reasoningEffort)
+  ) {
     throw new Error(`Generated role ${role.id} has an unknown reasoning effort`);
   }
   if (!["read-only", "workspace-write"].includes(role.sandbox)) {

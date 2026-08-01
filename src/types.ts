@@ -1,5 +1,12 @@
 export type ModelProfile = "inherit" | "deep" | "balanced" | "fast";
-export type ReasoningEffort = "inherit" | "low" | "medium" | "high" | "xhigh";
+export type ReasoningEffort =
+  | "inherit"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max"
+  | "ultra";
 export type SandboxProfile = "read-only" | "workspace-write";
 export type OptimizeFor = "balanced" | "quality" | "speed" | "cost";
 export type ConfigMode = "preview" | "apply-project" | "manual" | "unchanged";

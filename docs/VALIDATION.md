@@ -26,7 +26,7 @@ downloaded by the project.
 The current local candidate passes:
 
 - strict TypeScript checking;
-- 139 automated tests across 20 files, including audit, capability compilation,
+- 140 automated tests across 20 files, including audit, capability compilation,
   representative fixtures, semantic golden/property behavior, generated-role
   admission, evidence freshness, voice confirmation, CLI integration, manifest
   shared strict lifecycle lineage, trusted-Git PATH refusal, no-clobber

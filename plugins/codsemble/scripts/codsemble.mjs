@@ -2020,7 +2020,15 @@ function admitGeneratedRoleSpec(role, map2, workPackages, answers, primitives) {
   if (!["inherit", "deep", "balanced", "fast"].includes(role.modelProfile)) {
     throw new Error(`Generated role ${role.id} has an unknown model profile`);
   }
-  if (!["inherit", "low", "medium", "high", "xhigh"].includes(role.reasoningEffort)) {
+  if (![
+    "inherit",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+    "ultra"
+  ].includes(role.reasoningEffort)) {
     throw new Error(`Generated role ${role.id} has an unknown reasoning effort`);
   }
   if (!["read-only", "workspace-write"].includes(role.sandbox)) {
@@ -17047,7 +17055,15 @@ config(en_default());
 
 // src/schemas.ts
 var modelProfile = external_exports.enum(["inherit", "deep", "balanced", "fast"]);
-var reasoningEffort = external_exports.enum(["inherit", "low", "medium", "high", "xhigh"]);
+var reasoningEffort = external_exports.enum([
+  "inherit",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+  "ultra"
+]);
 var sandboxProfile = external_exports.enum(["read-only", "workspace-write"]);
 var roleBlueprintSchema = external_exports.object({
   id: external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/),
@@ -18310,7 +18326,7 @@ var generatedManifestSchema = external_exports.object({
       name: external_exports.string().min(1),
       modelProfile: external_exports.enum(["inherit", "deep", "balanced", "fast"]),
       model: external_exports.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
-      reasoningEffort: external_exports.enum(["low", "medium", "high", "xhigh"]).optional(),
+      reasoningEffort: external_exports.enum(["low", "medium", "high", "xhigh", "max", "ultra"]).optional(),
       sandbox: external_exports.enum(["read-only", "workspace-write"]),
       source: external_exports.enum(["custom", "catalog", "generated"]),
       workPackageIds: external_exports.array(external_exports.string().regex(/^wp-[a-z0-9-]{1,96}$/)).optional(),
@@ -18810,7 +18826,12 @@ function resolveRoles(proposal, answers, catalog, teamDesign) {
   });
 }
 function resolveGeneratedRole(role, answers) {
-  const model = resolveModel(role.modelProfile, answers);
+  const model = resolveModelForEffort(
+    role.id,
+    role.modelProfile,
+    role.reasoningEffort,
+    answers
+  );
   return {
     id: role.id,
     name: role.name,
@@ -18874,7 +18895,12 @@ function validateTeamDesignBinding(design, proposal, auditFingerprint) {
   return sha256(stableStringify(design));
 }
 function resolveCatalogRole(role, answers) {
-  const model = resolveModel(role.defaultModelProfile, answers);
+  const model = resolveModelForEffort(
+    role.id,
+    role.defaultModelProfile,
+    role.defaultReasoningEffort,
+    answers
+  );
   return {
     id: role.id,
     name: role.name,
@@ -18905,7 +18931,12 @@ function resolveCatalogRole(role, answers) {
   };
 }
 function resolveCustomRole(role, answers) {
-  const model = resolveModel(role.modelProfile, answers);
+  const model = resolveModelForEffort(
+    role.id,
+    role.modelProfile,
+    role.reasoningEffort,
+    answers
+  );
   return {
     id: role.id,
     name: role.name,
@@ -18939,6 +18970,15 @@ function resolveModel(profile, answers) {
   if (profile === "inherit") return void 0;
   const verified = answers.verifiedModels[profile]?.trim();
   return verified ? verified : void 0;
+}
+function resolveModelForEffort(roleId, profile, effort, answers) {
+  const model = resolveModel(profile, answers);
+  if ((effort === "max" || effort === "ultra") && model === void 0) {
+    throw new Error(
+      `Role ${roleId} requests ${effort} reasoning but profile ${profile} has no verified live model mapping`
+    );
+  }
+  return model;
 }
 function renderRoleToml(role) {
   const lines = [
@@ -19282,7 +19322,7 @@ var generatedAgentSchema = external_exports.object({
   description: external_exports.string().min(1).max(1e3),
   developer_instructions: external_exports.string().min(1).max(64 * 1024),
   model: external_exports.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
-  model_reasoning_effort: external_exports.enum(["low", "medium", "high", "xhigh"]).optional(),
+  model_reasoning_effort: external_exports.enum(["low", "medium", "high", "xhigh", "max", "ultra"]).optional(),
   sandbox_mode: external_exports.enum(["read-only", "workspace-write"])
 }).strict().superRefine((agent, context) => {
   if (agent.model_reasoning_effort !== void 0 && agent.model === void 0) {

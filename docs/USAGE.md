@@ -211,4 +211,6 @@ preimage drift invalidates the prior confirmation. Unrelated files do not.
 ### Unsupported model or effort
 
 Regenerate using inherited model configuration or a model verified for the
-active Codex environment.
+active Codex environment. Codesemble accepts `max` and `ultra` only when the
+selected live model reports that exact effort; it never silently downgrades an
+agent's requested reasoning level.

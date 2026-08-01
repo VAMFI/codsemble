@@ -366,7 +366,7 @@ describe("compileTeamPlan", () => {
     ).rejects.toThrow("reserved on Windows");
   });
 
-  it("deletes only stale agents owned by the prior manifest", async () => {
+  it("refuses stale-agent deletion from an unreceipted partial manifest", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "codsemble-stale-agent-"));
     const staleAgent = 'name = "stale_role"\n';
     const manifest = JSON.stringify({
@@ -379,26 +379,12 @@ describe("compileTeamPlan", () => {
         },
       },
     });
-    const plan = await compileTeamPlan(
-      root,
-      audit,
-      answers(),
-      proposal,
-      [blueprint],
-      {
+    await expect(
+      compileTeamPlan(root, audit, answers(), proposal, [blueprint], {
         ".codex/codsemble/manifest.json": manifest,
         ".codex/agents/stale-role.toml": staleAgent,
-      },
-    );
-
-    expect(plan.files).toContainEqual(
-      expect.objectContaining({
-        relativePath: ".codex/agents/stale-role.toml",
-        action: "delete",
-        afterSha256: null,
-        content: null,
       }),
-    );
+    ).rejects.toThrow("not a strict ownership manifest");
   });
 
   it("safely upgrades legacy ownership by hashing unchanged agents and preserving stale ones", async () => {

@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import {
   cp,
+  chmod,
   lstat,
   mkdir,
   mkdtemp,
@@ -15,7 +16,7 @@ import { promisify } from "node:util";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { auditWorkspace } from "../src/audit.js";
+import { auditWorkspace, resolveGitExecutable } from "../src/audit.js";
 
 const execFileAsync = promisify(execFile);
 const fixtureRoot = path.resolve("tests/fixtures/audit/typescript-app");
@@ -134,6 +135,52 @@ describe("auditWorkspace", () => {
       symlink: 1,
     });
   });
+
+  it("never resolves a repository-provided Git shim from PATH", async () => {
+    const workspace = await temporaryWorkspace();
+    const shimDirectory = path.join(workspace, "hostile-bin");
+    await mkdir(shimDirectory);
+    const shim = path.join(shimDirectory, process.platform === "win32" ? "git.exe" : "git");
+    await writeFile(shim, "hostile repository shim");
+
+    await expect(
+      resolveGitExecutable(workspace, { pathValue: shimDirectory }),
+    ).rejects.toThrow("trusted absolute PATH directory outside the workspace");
+    await expect(
+      resolveGitExecutable(workspace, { pathValue: `hostile-bin${path.delimiter}${shimDirectory}` }),
+    ).rejects.toThrow("trusted absolute PATH directory outside the workspace");
+
+    const report = await auditWorkspace(workspace, { gitPathValue: shimDirectory });
+    expect(report.gitRepository).toBe(false);
+    expect(report.dirtyWorktree).toBeNull();
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining("Trusted Git was unavailable"),
+    );
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "audits with an external trusted Git while a hostile workspace shim is first",
+    async () => {
+      const workspace = await temporaryWorkspace();
+      const trustedGit = await resolveGitExecutable(workspace);
+      await execFileAsync(trustedGit, ["init", "-q"], { cwd: workspace });
+      await writeFile(path.join(workspace, "package.json"), '{"name":"safe"}\n');
+      await execFileAsync(trustedGit, ["add", "package.json"], { cwd: workspace });
+      const shimDirectory = path.join(workspace, "hostile-bin");
+      const marker = path.join(workspace, "shim-executed");
+      await mkdir(shimDirectory);
+      const shim = path.join(shimDirectory, "git");
+      await writeFile(shim, `#!/bin/sh\ntouch '${marker}'\nexit 99\n`);
+      await chmod(shim, 0o755);
+
+      const report = await auditWorkspace(workspace, {
+        gitPathValue: `${shimDirectory}${path.delimiter}${path.dirname(trustedGit)}`,
+      });
+      expect(report.gitRepository).toBe(true);
+      expect(report.inspectedFiles).toEqual(["package.json"]);
+      await expect(lstat(marker)).rejects.toMatchObject({ code: "ENOENT" });
+    },
+  );
 
   it("excludes ordinary untracked files while reporting Git dirtiness", async () => {
     const workspace = await temporaryWorkspace();

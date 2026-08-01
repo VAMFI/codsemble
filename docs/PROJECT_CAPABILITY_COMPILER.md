@@ -50,6 +50,10 @@ The workspace root uses `unitId: "."`. Nested manifests create nested units,
 and an evidence leaf attaches to the deepest containing unit. Evidence is
 partitioned by unit before representative-reference bounds are applied, so a
 large root package cannot erase a smaller nested package from the design.
+Implementation goals are projected across every detected implementation unit.
+Verification goals use the same unit set, plus any observed verification-only
+unit. When same-kind evidence is absent, the goal remains required with an empty
+repository-evidence set and the Capability Map reports the exact unit gap.
 
 ## Work Packages
 
@@ -87,7 +91,9 @@ Codesemble compiles admitted structured fields into a fixed instruction template
 
 - **Focused** contains every role needed to cover activated required capabilities.
 - **Recommended** adds an independent validator only for high-risk required work.
-- **Extended** adds activated optional lifecycle work. It can legitimately equal
+- **Extended** adds only closed-rule optional lifecycle work: currently an
+  evidence-backed verifier for requested implementation work that has observed
+  tests and no required verification owner. It can legitimately equal
   Recommended when no additional specialist is justified.
 
 `desiredRoleCount` is a soft preference. It never adds filler or removes required
@@ -100,13 +106,16 @@ produce the Team Design ID. The complete design digest and every referenced
 repository evidence precondition enter the plan and confirmation digest. The v2
 manifest stores compact design provenance and ownership hashes.
 
-Approval and apply rebuild referenced evidence. A changed or missing leaf
-invalidates the plan; an unrelated file does not. Apply independently rechecks
-Codex capabilities and exact output preimages before the transaction begins.
+Approval and apply rebuild the complete typed capability-evidence fingerprint.
+Added, changed, removed, or newly truncated relevant evidence invalidates the
+plan; an unrelated file does not. Apply independently rechecks Codex capabilities,
+ownership-lineage preconditions, and exact output preimages before mutation.
 
-Existing v1 manifests and receipts remain readable. A v2 update requires a
-canonical apply receipt binding the current manifest before Codesemble accepts
-automatic ownership; otherwise it refuses adoption.
+Existing v1 manifests and receipts remain readable. Hashed v1 and v2 ownership
+requires a strict manifest plus an active canonical receipt whose filename,
+transaction id, plan id, recovery paths, and exact manifest postimage all bind.
+Receipt and rollback-marker preconditions enter the confirmed plan and are
+rechecked at approval and apply. Hashless v1 ownership remains preserve-only.
 
 ## Determinism boundary
 

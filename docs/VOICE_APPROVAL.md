@@ -10,7 +10,8 @@ speech as authorization.
 
 A plan has one of two approval states:
 
-- `preview-only`: the plan is terminal and has no voice challenge. It cannot be
+- `preview-only`: the plan is terminal and its approval description has neither
+  a confirmation id nor a voice challenge. It cannot be
   passed to `apply`. If the user later wants changes, Codesemble re-probes the
   runtime and workspace and creates a new plan in `apply-project`, `manual`, or
   `unchanged` mode.
@@ -70,6 +71,8 @@ Freshness is state-based, not time-based:
 
 - apply revalidates the full digest and live Codex capabilities;
 - every current workspace preimage must still match the reviewed plan;
+- complete typed capability evidence and strict ownership-lineage preconditions
+  must still match the reviewed plan;
 - a successful mutating apply changes those preimages, so immediate replay of
   the same plan fails closed;
 - an already-identical plan performs verification only and creates no receipt;
@@ -84,7 +87,8 @@ boundary.
 
 ## Definition of Done
 
-- Preview-only plans expose no voice challenge and fail before confirmation is
+- Preview-only approval descriptions expose no confirmation id or voice challenge
+  and fail before confirmation is
   requested.
 - Apply-capable plans expose a six-word pronounceable challenge without changing
   deterministic plan contents.

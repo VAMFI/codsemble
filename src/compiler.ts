@@ -4,6 +4,11 @@ import path from "node:path";
 import { patchConcurrencyToml } from "./config.js";
 import { fingerprintAuditReport } from "./audit.js";
 import { fingerprintProjectCapabilityEvidence } from "./capability-compiler.js";
+import {
+  assertValidTransactionRecord,
+  receiptBindsManifest,
+} from "./lifecycle.js";
+import { generatedManifestSchema } from "./manifest.js";
 import type {
   AuditReport,
   CustomRoleInput,
@@ -34,6 +39,11 @@ const AGENTS_END = "<!-- codsemble:end -->";
 
 export type ExistingFiles = Readonly<Record<string, string>>;
 
+interface PriorOwnership {
+  agents: Map<string, string | null>;
+  lineagePreconditions: FilePreimage[];
+}
+
 export async function compileTeamPlan(
   workspaceRoot: string,
   audit: AuditReport,
@@ -63,7 +73,8 @@ export async function compileTeamPlan(
     validateResolvedModelCapability(role, answers);
   }
   const desiredFiles = new Map<string, string>();
-  const priorOwnedAgents = await readPriorOwnedAgents(root, existingFiles);
+  const priorOwnership = await readPriorOwnedAgents(root, existingFiles);
+  const priorOwnedAgents = priorOwnership.agents;
 
   for (const role of resolvedRoles) {
     const relativePath = `.codex/agents/${role.id}.toml`;
@@ -319,6 +330,9 @@ export async function compileTeamPlan(
             })),
         }
       : {}),
+    ...(priorOwnership.lineagePreconditions.length > 0
+      ? { lineagePreconditions: priorOwnership.lineagePreconditions }
+      : {}),
     roles: resolvedRoles,
     concurrency,
     preimages,
@@ -333,13 +347,15 @@ export async function compileTeamPlan(
 async function readPriorOwnedAgents(
   root: string,
   existingFiles?: ExistingFiles,
-): Promise<Map<string, string | null>> {
+): Promise<PriorOwnership> {
   const source = await getExistingContent(
     root,
     ".codex/codsemble/manifest.json",
     existingFiles,
   );
-  if (source === undefined) return new Map();
+  if (source === undefined) {
+    return { agents: new Map(), lineagePreconditions: [] };
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(source);
@@ -348,13 +364,44 @@ async function readPriorOwnedAgents(
       cause: error,
     });
   }
-  if (
+  const hasOwnershipHashes =
     typeof parsed === "object" &&
     parsed !== null &&
-    "schemaVersion" in parsed &&
-    parsed.schemaVersion === 2
+    "ownership" in parsed &&
+    typeof parsed.ownership === "object" &&
+    parsed.ownership !== null &&
+    "agentSha256" in parsed.ownership;
+  if (hasOwnershipHashes) {
+    const strict = generatedManifestSchema.safeParse(parsed);
+    if (!strict.success) {
+      throw new Error(
+        "Existing hashed Codesemble manifest is not a strict ownership manifest",
+        { cause: strict.error },
+      );
+    }
+    const lineagePreconditions = await assertManifestLineage(
+      root,
+      source,
+      strict.data,
+      existingFiles,
+    );
+    return {
+      agents: new Map(
+        strict.data.ownership.agentFiles.map((entry) => [
+          entry,
+          strict.data.ownership.agentSha256[entry] as string,
+        ]),
+      ),
+      lineagePreconditions,
+    };
+  }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("schemaVersion" in parsed) ||
+    parsed.schemaVersion !== 1
   ) {
-    await assertV2ManifestLineage(root, source, parsed, existingFiles);
+    throw new Error("Existing Codesemble manifest has invalid agent ownership");
   }
   const ownership =
     typeof parsed === "object" &&
@@ -407,19 +454,16 @@ async function readPriorOwnedAgents(
   if (hashes !== null && Object.keys(hashes).length !== result.size) {
     throw new Error("Existing Codesemble manifest has unexpected agent ownership hashes");
   }
-  return result;
+  return { agents: result, lineagePreconditions: [] };
 }
 
-async function assertV2ManifestLineage(
+async function assertManifestLineage(
   root: string,
   manifestSource: string,
-  manifest: Record<string, unknown>,
+  manifest: ReturnType<typeof generatedManifestSchema.parse>,
   existingFiles?: ExistingFiles,
-): Promise<void> {
-  const planId = manifest["planId"];
-  if (typeof planId !== "string" || !/^[a-f0-9]{24}$/.test(planId)) {
-    throw new Error("Existing Codesemble v2 manifest has invalid lineage metadata");
-  }
+): Promise<FilePreimage[]> {
+  const planId = manifest.planId;
   const transactionPrefix = ".codex/codsemble/transactions/";
   let candidates: string[];
   if (existingFiles) {
@@ -460,34 +504,38 @@ async function assertV2ManifestLineage(
     if (content === undefined) continue;
     try {
       const receipt: unknown = JSON.parse(content);
+      assertValidTransactionRecord(receipt, {
+        fileName: path.posix.basename(candidate),
+      });
+      const rollbackPath =
+        `${transactionPrefix}${receipt.transactionId}.rollback.json`;
       if (
-        typeof receipt !== "object" ||
-        receipt === null ||
-        !("schemaVersion" in receipt) ||
-        receipt.schemaVersion !== 1 ||
-        !("planId" in receipt) ||
-        receipt.planId !== planId ||
-        !("files" in receipt) ||
-        !Array.isArray(receipt.files)
+        (await getExistingContent(root, rollbackPath, existingFiles)) !== undefined
       ) {
         continue;
       }
-      const bound = receipt.files.some(
-        (file) =>
-          typeof file === "object" &&
-          file !== null &&
-          "relativePath" in file &&
-          file.relativePath === ".codex/codsemble/manifest.json" &&
-          "afterSha256" in file &&
-          file.afterSha256 === manifestDigest,
-      );
-      if (bound) return;
+      if (receiptBindsManifest(receipt, { planId, manifestSha256: manifestDigest })) {
+        return [
+          {
+            relativePath: candidate,
+            exists: true,
+            sha256: sha256(content),
+            mode: null,
+          },
+          {
+            relativePath: rollbackPath,
+            exists: false,
+            sha256: null,
+            mode: null,
+          },
+        ];
+      }
     } catch {
       // An unrelated or malformed receipt cannot establish lineage.
     }
   }
   throw new Error(
-    "Existing Codesemble v2 manifest is not bound to a canonical apply transaction; refusing automatic ownership adoption",
+    "Existing Codesemble manifest is not bound to an active canonical apply transaction; refusing automatic ownership adoption",
   );
 }
 

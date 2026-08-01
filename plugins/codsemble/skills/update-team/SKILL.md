@@ -74,8 +74,9 @@ reconstruct ownership from guesses or download replacement tooling.
 
 6. Run `approval --workspace <absolute-workspace> --plan <absolute-temporary-plan-json>`.
    Stop after the plan for
-   `preview`: require `state: preview-only`, expose no challenge, ask for no
-   confirmation, and never promote that plan. If the user later wants changes,
+   `preview`: require `state: preview-only`, `confirmationId: null`, and
+   `voiceChallenge: null`; expose no approval token, ask for no confirmation,
+   and never promote that plan. If the user later wants changes,
    re-probe and regenerate a non-preview plan. For `manual`, state that the confirmed
    update will leave `.codex/config.toml` untouched and show the concurrency
    snippet separately. For `unchanged`, state that the confirmed update will

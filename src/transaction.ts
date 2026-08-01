@@ -15,7 +15,14 @@ import path from "node:path";
 import { z } from "zod";
 
 import { patchConcurrencyToml, validateToml } from "./config.js";
-import { MAX_PROJECT_WORKER_CEILING } from "./schemas.js";
+import {
+  AGENT_PATH_PATTERN,
+  assertValidRollbackMarker as assertStrictRollbackMarker,
+  assertValidTransactionRecord as assertStrictTransactionRecord,
+  isCodesembleOwnedOutput as isStrictCodesembleOwnedOutput,
+  TRANSACTION_ROOT,
+} from "./lifecycle.js";
+import { generatedManifestSchema } from "./manifest.js";
 import {
   computeConfirmationId,
   renderManagedAgentsFile,
@@ -32,10 +39,9 @@ import {
   toPosix,
 } from "./util.js";
 
-const transactionRoot = ".codex/codsemble/transactions";
+const transactionRoot = TRANSACTION_ROOT;
 const projectConfig = ".codex/config.toml";
-const agentPathPattern = /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/;
-const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
+const agentPathPattern = AGENT_PATH_PATTERN;
 const generatedAgentSchema = z
   .object({
     name: z.string().min(1).max(128),
@@ -54,168 +60,6 @@ const generatedAgentSchema = z
         code: "custom",
         message: "model_reasoning_effort requires model",
         path: ["model_reasoning_effort"],
-      });
-    }
-  });
-const transactionIdSchema = z
-  .string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/);
-const transactionFileSchema = z
-  .object({
-    relativePath: z.string().min(1),
-    beforeSha256: digestSchema.nullable(),
-    afterSha256: digestSchema.nullable(),
-    backupRelativePath: z.string().min(1).nullable(),
-    quarantineRelativePath: z.string().min(1).nullable(),
-    mode: z.number().int().min(0).max(0o777).nullable(),
-  })
-  .strict()
-  .refine(
-    ({ beforeSha256, afterSha256 }) =>
-      beforeSha256 !== null || afterSha256 !== null,
-    { message: "transaction file must have a preimage or postimage" },
-  );
-const transactionRecordSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    transactionId: transactionIdSchema,
-    planId: z.string().min(1).max(512),
-    createdAt: z.string().datetime({ offset: true }),
-    files: z.array(transactionFileSchema).min(1).max(256),
-  })
-  .strict();
-const rollbackMarkerSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    transactionId: transactionIdSchema,
-    rolledBackAt: z.string().datetime({ offset: true }),
-    quarantineRelativePaths: z.array(z.string().min(1)).max(256),
-  })
-  .strict();
-export const generatedManifestSchema = z
-  .object({
-    schemaVersion: z.union([z.literal(1), z.literal(2)]),
-    generator: z
-      .object({ name: z.literal("codsemble"), version: z.string().min(1) })
-      .strict(),
-    catalogVersion: z.string().min(1),
-    planId: z.string().min(1),
-    auditFingerprint: digestSchema,
-    proposal: z
-      .object({
-        kind: z.enum([
-          "lean",
-          "balanced",
-          "full",
-          "focused",
-          "recommended",
-          "extended",
-        ]),
-        maxConcurrentWorkers: z
-          .number()
-          .int()
-          .min(1)
-          .max(MAX_PROJECT_WORKER_CEILING),
-      })
-      .strict(),
-    capabilities: z
-      .object({
-        configAdapter: z.literal("agents-v1").nullable(),
-        modelCapabilities: z.array(
-          z
-            .object({
-              id: z.string().min(1).max(200).regex(/^[^\s]+$/),
-              supportedReasoningEfforts: z.array(
-                z.string().min(1).max(40).regex(/^[a-z0-9_-]+$/),
-              ),
-            })
-            .strict(),
-        ),
-        availableTools: z.array(
-          z.string().regex(/^[a-z][a-z0-9-]{1,63}$/),
-        ),
-      })
-      .strict(),
-    roles: z.array(
-      z
-        .object({
-          id: z.string().regex(/^[a-z][a-z0-9-]{1,63}$/),
-          name: z.string().min(1),
-          modelProfile: z.enum(["inherit", "deep", "balanced", "fast"]),
-          model: z.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
-          reasoningEffort: z
-            .enum(["low", "medium", "high", "xhigh"])
-            .optional(),
-          sandbox: z.enum(["read-only", "workspace-write"]),
-          source: z.enum(["custom", "catalog", "generated"]),
-          workPackageIds: z
-            .array(z.string().regex(/^wp-[a-z0-9-]{1,96}$/))
-            .optional(),
-          evidenceRefs: z
-            .array(z.string().regex(/^(?:ev|goal|context)-[a-f0-9]{16}$/))
-            .optional(),
-        })
-        .strict(),
-    ),
-    design: z
-      .object({
-        schemaVersion: z.literal(2),
-        designId: z.string().regex(/^[a-f0-9]{24}$/),
-        digest: digestSchema,
-        capabilityMapDigest: digestSchema,
-        workPackagesDigest: digestSchema,
-        policyVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
-      })
-      .strict()
-      .optional(),
-    ownership: z
-      .object({
-        agentsBlock: z
-          .object({
-            path: z.literal("AGENTS.md"),
-            start: z.literal("<!-- codsemble:start -->"),
-            end: z.literal("<!-- codsemble:end -->"),
-          })
-          .strict(),
-        agentFiles: z
-          .array(z.string().regex(agentPathPattern))
-          .refine((paths) => new Set(paths).size === paths.length, {
-            message: "agentFiles must be unique",
-          }),
-        agentSha256: z.record(z.string().regex(agentPathPattern), digestSchema),
-      })
-      .strict(),
-  })
-  .strict()
-  .superRefine((manifest, context) => {
-    if (manifest.schemaVersion === 1) {
-      if (
-        manifest.design !== undefined ||
-        !["lean", "balanced", "full"].includes(manifest.proposal.kind) ||
-        manifest.roles.some(
-          (role) =>
-            role.source === "generated" ||
-            role.workPackageIds !== undefined ||
-            role.evidenceRefs !== undefined,
-        )
-      ) {
-        context.addIssue({
-          code: "custom",
-          message: "schemaVersion 1 manifest contains v2 team-design fields",
-        });
-      }
-    } else if (
-      manifest.design === undefined ||
-      !["focused", "recommended", "extended"].includes(manifest.proposal.kind) ||
-      manifest.roles.some(
-        (role) =>
-          role.source === "generated" &&
-          (role.workPackageIds === undefined || role.evidenceRefs === undefined),
-      )
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "schemaVersion 2 manifest is missing admitted team-design bindings",
       });
     }
   });
@@ -248,6 +92,7 @@ class PreservedConflictError extends Error {}
 class CommitArtifactPublishedError extends Error {}
 
 export interface TransactionHooks {
+  beforeMutationLock?: () => Promise<void>;
   beforeExclusivePublish?: (relativePath: string) => Promise<void>;
   afterDurableCommit?: (
     operation: "apply" | "rollback",
@@ -273,6 +118,7 @@ export async function applyTeamPlan(
     );
   }
   const root = await resolveSafeWorkspace(workspace);
+  await verifyLineagePreconditionsAtRoot(root, plan);
   const transactionId = randomUUID();
   const prepared: PreflightFile[] = [];
   const verified: VerifiedFile[] = [];
@@ -390,7 +236,9 @@ export async function applyTeamPlan(
   let pendingPath: string | undefined;
   let committed = false;
   try {
+    await hooks.beforeMutationLock?.();
     releaseLock = await acquireMutationLock(root, "apply", transactionId);
+    await verifyLineagePreconditionsAtRoot(root, plan);
     await revalidateVerifiedFiles(verified);
     for (const file of prepared) {
       if (file.before !== null && file.backupRelativePath !== null) {
@@ -1278,7 +1126,11 @@ async function loadTransaction(
     throw new Error(`Transaction receipt not found: ${transactionId}`);
   }
   try {
-    return JSON.parse(decodeUtf8(state.content, receipt)) as TransactionRecord;
+    const parsed: unknown = JSON.parse(decodeUtf8(state.content, receipt));
+    assertValidTransactionRecord(parsed, {
+      fileName: `${transactionId}.json`,
+    });
+    return parsed;
   } catch (error) {
     throw new Error(`Invalid transaction receipt: ${transactionId}`, {
       cause: error,
@@ -1289,7 +1141,7 @@ async function loadTransaction(
 export function assertValidTeamPlan(plan: TeamPlan): void {
   if (
     plan.schemaVersion !== 1 ||
-    !plan.planId ||
+    !/^[a-f0-9]{24}$/.test(plan.planId) ||
     !/^[a-f0-9]{32}$/.test(plan.confirmationId) ||
     !Array.isArray(plan.files) ||
     !Array.isArray(plan.preimages) ||
@@ -1302,6 +1154,21 @@ export function assertValidTeamPlan(plan: TeamPlan): void {
   }
   if (computeConfirmationId(plan) !== plan.confirmationId) {
     throw new Error("Plan confirmation digest mismatch");
+  }
+  const lineagePaths = new Set<string>();
+  for (const precondition of plan.lineagePreconditions ?? []) {
+    if (
+      !/^\.codex\/codsemble\/transactions\/[A-Za-z0-9][A-Za-z0-9-]{0,127}(?:\.rollback)?\.json$/.test(
+        precondition.relativePath,
+      ) ||
+      lineagePaths.has(precondition.relativePath) ||
+      precondition.exists !== (precondition.sha256 !== null) ||
+      (precondition.sha256 !== null &&
+        !/^[a-f0-9]{64}$/.test(precondition.sha256))
+    ) {
+      throw new Error("Invalid ownership-lineage precondition");
+    }
+    lineagePaths.add(precondition.relativePath);
   }
   const paths = new Set<string>();
   let totalContentBytes = 0;
@@ -1376,6 +1243,33 @@ export function assertValidTeamPlan(plan: TeamPlan): void {
         !/^[a-f0-9]{64}$/.test(file.beforeSha256))
     ) {
       throw new Error(`Plan preimage metadata mismatch: ${file.relativePath}`);
+    }
+  }
+}
+
+export async function verifyLineagePreconditions(
+  workspace: string,
+  plan: TeamPlan,
+): Promise<void> {
+  const root = await resolveSafeWorkspace(workspace);
+  await verifyLineagePreconditionsAtRoot(root, plan);
+}
+
+async function verifyLineagePreconditionsAtRoot(
+  root: string,
+  plan: TeamPlan,
+): Promise<void> {
+  for (const expected of plan.lineagePreconditions ?? []) {
+    const target = await safeTarget(root, expected.relativePath);
+    const current = await readSafeRegularFile(target);
+    const observed = current.content === null ? null : sha256(current.content);
+    if (
+      (current.content !== null) !== expected.exists ||
+      observed !== expected.sha256
+    ) {
+      throw new Error(
+        `Ownership lineage changed after planning: ${expected.relativePath}; regenerate and review a new plan`,
+      );
     }
   }
 }
@@ -1627,68 +1521,20 @@ async function validateAgentDeletes(
 
 export function assertValidTransactionRecord(
   record: unknown,
+  options: { fileName?: string } = {},
 ): asserts record is TransactionRecord {
-  const parsed = transactionRecordSchema.safeParse(record);
-  if (!parsed.success) {
-    throw new Error(`Invalid transaction record: ${parsed.error.message}`);
-  }
-  const paths = new Set<string>();
-  for (const file of parsed.data.files) {
-    if (
-      !isCodesembleOwnedOutput(file.relativePath) ||
-      paths.has(file.relativePath)
-    ) {
-      throw new Error("Invalid transaction file record");
-    }
-    const expectedBackup =
-      file.beforeSha256 === null
-        ? null
-        : `${transactionRoot}/${parsed.data.transactionId}.backups/${file.relativePath}`;
-    if (file.backupRelativePath !== expectedBackup) {
-      throw new Error("Transaction backup path is outside its scoped directory");
-    }
-    const expectedQuarantine =
-      file.beforeSha256 === null
-        ? null
-        : `${transactionRoot}/${parsed.data.transactionId}.quarantines/${file.relativePath}`;
-    if (file.quarantineRelativePath !== expectedQuarantine) {
-      throw new Error("Transaction quarantine path is outside its scoped location");
-    }
-    paths.add(file.relativePath);
-  }
+  assertStrictTransactionRecord(record, options);
 }
 
 export function assertValidRollbackMarker(
   marker: unknown,
+  options: { fileName?: string } = {},
 ): asserts marker is RollbackMarker {
-  const parsed = rollbackMarkerSchema.safeParse(marker);
-  if (!parsed.success) {
-    throw new Error(`Invalid rollback marker: ${parsed.error.message}`);
-  }
-  const expectedPrefix =
-    `${transactionRoot}/${parsed.data.transactionId}.rollback.quarantines/`;
-  const paths = new Set<string>();
-  for (const quarantineRelativePath of parsed.data.quarantineRelativePaths) {
-    if (
-      !quarantineRelativePath.startsWith(expectedPrefix) ||
-      !isCodesembleOwnedOutput(
-        quarantineRelativePath.slice(expectedPrefix.length),
-      ) ||
-      paths.has(quarantineRelativePath)
-    ) {
-      throw new Error("Invalid rollback quarantine path");
-    }
-    paths.add(quarantineRelativePath);
-  }
+  assertStrictRollbackMarker(marker, options);
 }
 
 export function isCodesembleOwnedOutput(relativePath: string): boolean {
-  return (
-    relativePath === "AGENTS.md" ||
-    relativePath === ".codex/config.toml" ||
-    relativePath === ".codex/codsemble/manifest.json" ||
-    /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(relativePath)
-  );
+  return isStrictCodesembleOwnedOutput(relativePath);
 }
 
 function decodeUtf8(content: Buffer, label: string): string {

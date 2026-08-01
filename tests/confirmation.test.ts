@@ -87,6 +87,7 @@ describe("voice-friendly plan confirmation", () => {
     expect(describePlanApproval(preview)).toMatchObject({
       state: "preview-only",
       applyCapable: false,
+      confirmationId: null,
       voiceChallenge: null,
     });
     expect(() =>

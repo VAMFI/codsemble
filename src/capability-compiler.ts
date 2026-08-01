@@ -233,6 +233,7 @@ function buildCapabilityMap(
   evidence: EvidenceRef[],
 ): ProjectCapabilityMap {
   const seeds: CapabilitySeed[] = [];
+  const derivedGaps: string[] = [];
   const unitRoots = deriveUnitRoots(evidence);
   const evidenceByValue = new Map<string, EvidenceRef[]>();
   for (const ref of evidence) {
@@ -268,24 +269,41 @@ function buildCapabilityMap(
     }
   }
 
+  const observedSeeds = [...seeds];
+  const implementationUnitIds = uniqueSorted(
+    observedSeeds
+      .filter(({ kind }) => kind === "implementation")
+      .map(({ unitId }) => unitId),
+  );
   const goalRefs = evidence.filter(({ kind }) => kind === "user-goal");
   for (const ref of goalRefs) {
     const kind = classifyGoal(ref.value);
-    const matchingUnitIds = uniqueSorted(
-      seeds
+    const observedKindUnits = uniqueSorted(
+      observedSeeds
         .filter((seed) => seed.kind === kind)
         .map(({ unitId }) => unitId),
     );
-    for (const unitId of matchingUnitIds.length > 0 ? matchingUnitIds : ["."]) {
+    const targetUnitIds =
+      kind === "implementation"
+        ? implementationUnitIds
+        : kind === "verification"
+          ? uniqueSorted([...implementationUnitIds, ...observedKindUnits])
+          : observedKindUnits;
+    for (const unitId of targetUnitIds.length > 0 ? targetUnitIds : ["."]) {
       const supportingEvidence = selectRepresentativeRefs(
         uniqueSorted(
-          seeds
+          observedSeeds
             .filter((seed) => seed.kind === kind && seed.unitId === unitId)
             .flatMap(({ evidenceRefs }) => evidenceRefs),
         ),
         evidence,
         16,
       );
+      if (supportingEvidence.length === 0) {
+        derivedGaps.push(
+          `Goal ${ref.value} applies to unit ${unitId}, but no ${kind} repository evidence was observed.`,
+        );
+      }
       seeds.push({
         key: "goal",
         value: ref.value,
@@ -345,9 +363,12 @@ function buildCapabilityMap(
     auditFingerprint,
     evidence,
     capabilities: capabilities.sort((left, right) => compareAscii(left.id, right.id)),
-    gaps: audit.truncated
-      ? ["Audit coverage is truncated; re-audit before applying a high-confidence team."]
-      : [],
+    gaps: uniqueSorted([
+      ...derivedGaps,
+      ...(audit.truncated
+        ? ["Audit coverage is truncated; re-audit before applying a high-confidence team."]
+        : []),
+    ]),
     warnings: uniqueSorted(audit.warnings),
   };
 }
@@ -524,6 +545,38 @@ function buildGeneratedRoles(
     roles.push({
       role: makeRole(kind, selectedPackages, map, answers, primitives, false),
       tier: "focused",
+    });
+  }
+
+  const requiredImplementationUnits = new Set(
+    workPackages
+      .filter(({ required, capabilityIds }) => {
+        const capability = capabilitiesById.get(capabilityIds[0] ?? "");
+        return required && capability?.kind === "implementation";
+      })
+      .map(({ unitId }) => unitId),
+  );
+  for (const [groupKey, packages] of [...grouped].sort(([left], [right]) =>
+    compareAscii(left, right),
+  )) {
+    const separator = groupKey.indexOf(":");
+    const kind = groupKey.slice(0, separator) as CapabilityKind;
+    const unitId = groupKey.slice(separator + 1);
+    const hasRequiredPackage = packages.some(({ required }) => required);
+    const activated = packages.filter(
+      ({ required, evidenceRefs }) => !required && evidenceRefs.length > 0,
+    );
+    if (
+      kind !== "verification" ||
+      hasRequiredPackage ||
+      !requiredImplementationUnits.has(unitId) ||
+      activated.length === 0
+    ) {
+      continue;
+    }
+    roles.push({
+      role: makeRole(kind, activated, map, answers, primitives, false),
+      tier: "extended",
     });
   }
 
@@ -934,7 +987,8 @@ function proposalRationale(
   const purpose = {
     focused: "the minimum generated role set covering required work packages",
     recommended: "the focused team plus independent verification for evidenced high-risk work",
-    extended: "all evidenced required and optional lifecycle capabilities without filler roles",
+    extended:
+      "the recommended team plus closed-rule activated optional verification without filler roles",
   }[kind];
   return `${title(kind)} uses ${roles} role${roles === 1 ? "" : "s"}: ${purpose}. Required capabilities left uncovered: ${uncovered}.`;
 }

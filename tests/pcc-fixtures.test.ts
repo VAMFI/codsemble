@@ -18,6 +18,7 @@ interface Fixture {
   requiredKinds: CapabilityKind[];
   focusedRoles: number;
   recommendedRoles: number;
+  extendedRoles?: number;
   forbiddenRoleTerms: string[];
   truncated?: boolean;
   existingManagedTeam?: boolean;
@@ -117,6 +118,12 @@ describe("representative Project Capability Compiler fixtures", () => {
       expect(requiredKinds).toEqual([...fixture.requiredKinds].sort());
       expect(design.proposals[0]?.roleIds).toHaveLength(fixture.focusedRoles);
       expect(design.proposals[1]?.roleIds).toHaveLength(fixture.recommendedRoles);
+      expect(design.proposals[2]?.roleIds).toHaveLength(
+        fixture.extendedRoles ?? fixture.recommendedRoles,
+      );
+      expect(design.proposals[2]?.rationale).toContain(
+        "closed-rule activated optional verification",
+      );
       expect(design.proposals[0]?.uncoveredCapabilityIds).toEqual([]);
       if (fixture.requiredUnitIds) {
         expect(

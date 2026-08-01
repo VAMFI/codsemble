@@ -43,10 +43,12 @@ run applicable Codex diagnostics after apply.
 ## Preview and apply
 
 `audit`, `recommend`, `plan`, `approval`, `doctor`, `catalog`, and rollback
-preview are non-mutating. `plan` emits a content-bound confirmation id, exact
-intended files, content hashes, and configuration changes. `approval` reports
+preview are non-mutating. `plan` internally carries a content-bound confirmation
+id, exact intended files, content hashes, and configuration changes. `approval` reports
 whether that plan can be applied and derives a voice-friendly alias only for a
 non-preview plan.
+The approval description for a preview-only plan returns `confirmationId: null`
+and `voiceChallenge: null`.
 
 Apply requires:
 

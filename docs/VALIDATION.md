@@ -26,17 +26,19 @@ downloaded by the project.
 The current local candidate passes:
 
 - strict TypeScript checking;
-- 131 automated tests across 19 files, including audit, capability compilation,
+- 139 automated tests across 20 files, including audit, capability compilation,
   representative fixtures, semantic golden/property behavior, generated-role
   admission, evidence freshness, voice confirmation, CLI integration, manifest
-  lineage, no-clobber transactions, doctor, update convergence, and rollback;
+  shared strict lifecycle lineage, trusted-Git PATH refusal, no-clobber
+  transactions, doctor, update convergence, and rollback;
 - the current non-empty 111-entry compatibility primitive library, with no
   functional count requirement in schema, validation, recommendation, or concurrency;
 - deterministic bundled CLI generation and smoke testing;
 - official plugin validation and official validation of all four bundled skills;
 - repository metadata and absolute developer-path checks;
-- a deterministic complete 12-file plugin archive at
-  `artifacts/codsemble-0.2.0-plugin.tgz`;
+- a deterministic complete 12-file uncompressed plugin archive at
+  `artifacts/codsemble-0.2.0-plugin.tar`; the canonical tar bytes avoid
+  Node/zlib-dependent gzip output differences across supported runtimes;
 - deterministic lockfile-complete CycloneDX 1.5 SBOM generation for 128 components
   at `artifacts/codsemble-0.2.0-rc.sbom.cdx.json`;
 - complete source-payload checksum verification;
@@ -57,6 +59,7 @@ The committed corpus currently covers:
 - documentation-only work;
 - production regulated delivery.
 - a polyglot monorepo with deepest-manifest unit ownership;
+- an evidence-backed optional verification extension without passive-file padding;
 - a legacy service without test evidence;
 - a truncated ambiguous workspace;
 - an existing managed-team update boundary;
@@ -65,10 +68,12 @@ The committed corpus currently covers:
 
 The current properties prove 64 seeded signal/evidence/goal/primitive
 permutations, atomic evidence, distinct monorepo unit ownership, exact required
-coverage, Focused role-removal minimality, tier inclusion, irrelevant-file
-stability, relevant-evidence identity change, no desired-count padding,
+coverage, project-wide goal projection, explicit missing-evidence gaps, Focused
+role-removal minimality, closed-rule Extended inclusion, irrelevant-file
+stability, additive/relevant-evidence identity change, no desired-count padding,
 concurrency independence, strict admission, v1-to-v2 migration, v2 provenance,
-v2 receipt lineage, evidence-drift refusal, update convergence, and rollback.
+strict receipt/rollback lineage freshness, evidence-drift refusal, trusted-Git
+shim non-execution, update convergence, and rollback.
 Checked-in semantic goldens cover the polyglot and high-risk delivery designs.
 
 ## Cross-platform CI

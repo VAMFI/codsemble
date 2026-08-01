@@ -10,7 +10,7 @@ for inspection, automation, and troubleshooting.
 - Use an isolated Codex environment for pre-release testing.
 - Answer and plan files may be saved outside the workspace. If an approval plan
   is saved inside the workspace, it is treated as an unrelated artifact and does
-  not invalidate already referenced evidence.
+  not change the typed capability-evidence fingerprint.
 
 The bundled executable is:
 

@@ -299,6 +299,7 @@ export interface TeamPlan {
     digest: string;
     relativePaths: string[];
   }>;
+  lineagePreconditions?: FilePreimage[];
   roles: ResolvedRole[];
   concurrency: ConcurrencyPlan;
   preimages: FilePreimage[];

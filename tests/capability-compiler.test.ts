@@ -12,6 +12,7 @@ import {
 import { compileTeamPlan } from "../src/compiler.js";
 import { doctorWorkspace } from "../src/doctor.js";
 import { applyTeamPlan, rollbackTransaction } from "../src/transaction.js";
+import { sha256 } from "../src/util.js";
 import type {
   AuditReport,
   IntakeAnswers,
@@ -206,7 +207,21 @@ describe("Project Capability Compiler v1", () => {
           .map(({ unitId }) => unitId),
       )].sort(),
     ).toEqual([".", "apps/api", "apps/web"]);
-    expect(first.proposals[0]?.roleIds).toHaveLength(4);
+    expect(first.proposals[0]?.roleIds).toHaveLength(6);
+    const requiredByKind = (kind: "implementation" | "verification") =>
+      first.capabilityMap.capabilities
+        .filter(({ required, kind: candidate }) => required && candidate === kind)
+        .map(({ unitId }) => unitId)
+        .sort();
+    expect(requiredByKind("verification")).toEqual(
+      requiredByKind("implementation"),
+    );
+    expect(first.capabilityMap.gaps).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("unit apps/web"),
+        expect.stringContaining("unit ."),
+      ]),
+    );
 
     const packageById = new Map(
       first.workPackages.map((workPackage) => [workPackage.id, workPackage]),
@@ -636,6 +651,31 @@ describe("Project Capability Compiler v1", () => {
         .map(({ relativePath, content }) => [relativePath, content as string]),
     );
 
+    await expect(
+      compileTeamPlan(
+        workspace,
+        report,
+        answers(),
+        proposal,
+        [primitive()],
+        forged,
+        design,
+      ),
+    ).rejects.toThrow("refusing automatic ownership adoption");
+
+    const manifestSource = forged[".codex/codsemble/manifest.json"];
+    if (manifestSource === undefined) throw new Error("missing forged manifest");
+    const manifestPlanId = (JSON.parse(manifestSource) as { planId: string }).planId;
+    forged[".codex/codsemble/transactions/shallow.json"] = JSON.stringify({
+      schemaVersion: 1,
+      planId: manifestPlanId,
+      files: [
+        {
+          relativePath: ".codex/codsemble/manifest.json",
+          afterSha256: sha256(manifestSource),
+        },
+      ],
+    });
     await expect(
       compileTeamPlan(
         workspace,

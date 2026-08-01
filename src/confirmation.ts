@@ -143,7 +143,7 @@ export type PlanConfirmation =
 export interface PlanApprovalDescription {
   schemaVersion: 1;
   planId: string;
-  confirmationId: string;
+  confirmationId: string | null;
   state: "preview-only" | "ready";
   applyCapable: boolean;
   noChanges: boolean;
@@ -152,6 +152,11 @@ export interface PlanApprovalDescription {
   voiceChallenge: string | null;
   freshness: {
     mode: "audit-capability-and-preimage-bound";
+    summary: string;
+  };
+  ownershipLineage: {
+    state: "new-or-legacy-preserve-only" | "transaction-bound-update";
+    preconditionPaths: string[];
     summary: string;
   };
 }
@@ -192,7 +197,7 @@ export function describePlanApproval(
   return {
     schemaVersion: 1,
     planId: plan.planId,
-    confirmationId: plan.confirmationId,
+    confirmationId: applyCapable ? plan.confirmationId : null,
     state: applyCapable ? "ready" : "preview-only",
     applyCapable,
     noChanges: mutatingPaths.length === 0,
@@ -206,6 +211,19 @@ export function describePlanApproval(
       summary: applyCapable
         ? "Valid only for this exact plan while typed audit evidence, runtime capabilities, and every recorded workspace preimage remain unchanged."
         : "Preview-only plans have no approval step and must be regenerated in an apply-capable mode.",
+    },
+    ownershipLineage: {
+      state:
+        (plan.lineagePreconditions?.length ?? 0) > 0
+          ? "transaction-bound-update"
+          : "new-or-legacy-preserve-only",
+      preconditionPaths: (plan.lineagePreconditions ?? [])
+        .map(({ relativePath }) => relativePath)
+        .sort(),
+      summary:
+        (plan.lineagePreconditions?.length ?? 0) > 0
+          ? "Existing ownership is bound to a strict active local transaction receipt. The receipt and rollback-marker absence must remain unchanged through apply; local lineage is consistency evidence, not external authentication."
+          : "No destructive ownership adoption is inferred from repository metadata. New outputs remain no-clobber and hashless legacy outputs are preserve-only.",
     },
   };
 }

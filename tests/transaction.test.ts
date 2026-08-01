@@ -543,7 +543,7 @@ describe("project transactions", () => {
       schemaVersion: 1,
       generator: { name: "codsemble", version: "0.1.0" },
       catalogVersion: "0.1.0",
-      planId: "test-plan",
+      planId: "a".repeat(24),
       auditFingerprint: "a".repeat(64),
       proposal: { kind: "balanced", maxConcurrentWorkers: 2 },
       capabilities: {
@@ -578,7 +578,7 @@ describe("project transactions", () => {
     );
     const unsigned: Omit<TeamPlan, "confirmationId"> = {
       schemaVersion: 1,
-      planId: "test-plan",
+      planId: "a".repeat(24),
       auditFingerprint: "a".repeat(64),
       roles: [role],
       concurrency: {
@@ -621,9 +621,9 @@ describe("project transactions", () => {
     const previousManifest = manifestContent(
       [relativeTarget],
       { [relativeTarget]: sha256("stale") },
-      "previous-plan",
+      "b".repeat(24),
     );
-    const nextManifest = manifestContent([], {}, "test-plan");
+    const nextManifest = manifestContent([], {}, "a".repeat(24));
     await mkdir(path.dirname(manifestPath), { recursive: true });
     await writeFile(manifestPath, previousManifest);
     const transaction = await applyTeamPlan(
@@ -672,9 +672,9 @@ describe("project transactions", () => {
     const forgedManifest = manifestContent(
       [relativeTarget],
       { [relativeTarget]: sha256("different") },
-      "previous-plan",
+      "b".repeat(24),
     );
-    const nextManifest = manifestContent([], {}, "test-plan");
+    const nextManifest = manifestContent([], {}, "a".repeat(24));
     await mkdir(path.dirname(manifestPath), { recursive: true });
     await writeFile(manifestPath, forgedManifest);
 
@@ -778,7 +778,7 @@ function makePlan(files: ReturnType<typeof planned>[]): TeamPlan {
     });
   const unsigned: Omit<TeamPlan, "confirmationId"> = {
     schemaVersion: 1,
-    planId: "test-plan",
+    planId: "a".repeat(24),
     auditFingerprint: "a".repeat(64),
     roles,
     concurrency: {

@@ -24,12 +24,16 @@
 12. Letting generated candidates invent tools, models, instructions, output paths,
     sandboxes, or external authority.
 13. Applying a role after its referenced evidence leaf changed.
+14. Executing a repository-provided Git/PATH shim or fsmonitor hook during audit.
+15. Forging shallow manifest or receipt metadata to claim destructive ownership.
 
 ## Required controls
 
 - Resolve and verify every path remains below the approved root.
 - Use `lstat`; skip symlinks, devices, sockets, FIFOs, and hard-linked config targets.
-- Start from tracked files in Git repositories and bounded allowlisted discovery elsewhere.
+- Resolve Git only from a trusted absolute directory outside the workspace,
+  disable fsmonitor, strip inherited Git redirects, and otherwise use bounded
+  allowlisted discovery with an explicit unverified-state warning.
 - Exclude secrets and sensitive path classes before reading content.
 - Parse only allowlisted manifest formats and extract typed signals.
 - Escape generated TOML and Markdown; never interpolate user data into shell commands.
@@ -43,7 +47,12 @@
   templates; candidates cannot supply TOML, commands, concrete models, output
   paths, global settings, or external-write grants.
 - Treat generated path scopes as advisory. They do not narrow native workspace-write.
-- Bind referenced atomic evidence into the plan and re-audit it at approval and apply.
+- Bind the complete typed evidence fingerprint into the plan and re-audit it at
+  approval and apply, including added or newly truncated relevant evidence.
+- Require strict hashed manifest ownership, an active filename/id/plan/postimage-
+  bound receipt, and unchanged receipt/rollback preconditions. Treat local
+  receipts as consistency evidence rather than external authentication; keep
+  hashless legacy agents preserve-only.
 - Keep the full plan digest authoritative for voice approval; derive only a
   versioned spoken alias, require an exact conservative transcript match, give
   preview plans no challenge, and recheck capabilities and preimages before writes.

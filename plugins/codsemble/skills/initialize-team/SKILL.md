@@ -106,8 +106,9 @@ not download, install, or substitute another executable.
      --plan <absolute-temporary-plan-json>
    ```
 
-   For `preview`, require `state: preview-only`, do not display or speak a
-   challenge, do not ask for confirmation, and stop after stating that the plan
+   For `preview`, require `state: preview-only`, `confirmationId: null`, and
+   `voiceChallenge: null`; do not display or speak an approval token, do not ask
+   for confirmation, and stop after stating that the plan
    is read-only and terminal. If the user later wants changes, re-probe and
    regenerate a new non-preview plan; never promote the old preview. For
    `manual`, explain that apply will

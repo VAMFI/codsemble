@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { auditWorkspace } from "./audit.js";
-import { buildRepositoryEvidenceRefs } from "./capability-compiler.js";
+import {
+  buildRepositoryEvidenceRefs,
+  fingerprintProjectCapabilityEvidence,
+} from "./capability-compiler.js";
 import {
   assertPlanCapabilities,
   bindIntakeCapabilities,
@@ -20,6 +23,7 @@ import {
   applyTeamPlan,
   assertValidTeamPlan,
   rollbackTransaction,
+  verifyLineagePreconditions,
   verifyNoChangesPlan,
 } from "./transaction.js";
 import type {
@@ -202,6 +206,7 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
         ? workspace
         : path.dirname(path.resolve(planFile));
       await assertAuditFresh(approvalWorkspace, plan, "Approval");
+      await verifyLineagePreconditions(approvalWorkspace, plan);
       return describePlanApproval(plan);
     }
     case "apply": {
@@ -221,6 +226,7 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
         );
       }
       await assertAuditFresh(workspace, plan, "Apply");
+      await verifyLineagePreconditions(workspace, plan);
       const fullConfirmation = flag(arguments_, "--confirm");
       const voiceConfirmation = flag(arguments_, "--confirm-voice");
       if (
@@ -324,6 +330,12 @@ async function assertAuditFresh(
 ): Promise<void> {
   const current = await auditWorkspace(workspace);
   if (plan.evidencePreconditions === undefined) return;
+  const currentFingerprint = fingerprintProjectCapabilityEvidence(current);
+  if (currentFingerprint !== plan.auditFingerprint) {
+    throw new Error(
+      `${phase} refused: typed workspace capability evidence changed after planning; re-audit, regenerate, and review a new plan`,
+    );
+  }
   const currentEvidence = new Map(
     buildRepositoryEvidenceRefs(current).map((ref) => [ref.id, ref]),
   );

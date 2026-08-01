@@ -97,10 +97,26 @@
       ["testing", "tests-present", "services/api/tests/api.rs", "test-path"]
     ],
     "requiredKinds": ["implementation", "verification"],
-    "focusedRoles": 3,
-    "recommendedRoles": 3,
+    "focusedRoles": 4,
+    "recommendedRoles": 4,
     "requiredUnitIds": ["apps/web", "services/api"],
+    "expectedGapTerms": ["unit apps/web", "no verification repository evidence"],
     "forbiddenRoleTerms": ["marketing", "community", "licensing"]
+  },
+  {
+    "id": "evidenced-lifecycle-extension",
+    "goals": ["engineering"],
+    "stage": "active",
+    "signals": [
+      ["stack", "typescript", "package.json", "manifest-path"],
+      ["testing", "tests-present", "tests/example.test.ts", "test-path"],
+      ["documentation", "documentation-present", "README.md", "documentation-path"]
+    ],
+    "requiredKinds": ["implementation"],
+    "focusedRoles": 1,
+    "recommendedRoles": 1,
+    "extendedRoles": 2,
+    "forbiddenRoleTerms": ["marketing", "community", "documentation specialist"]
   },
   {
     "id": "legacy-service-without-tests",

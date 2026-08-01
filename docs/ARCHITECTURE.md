@@ -61,8 +61,12 @@ at runtime.
   an apply-capable mode before confirmation.
 - Plan binds answer-file claims to a live local capability probe; apply
   independently re-probes the requirements encoded in the confirmed plan.
-- Approval and apply re-audit referenced repository evidence. Unrelated new files
-  do not invalidate a plan, while a missing or changed referenced leaf does.
+- Approval and apply recompute the complete typed capability-evidence fingerprint.
+  Unrelated files do not invalidate a plan; added, removed, changed, or newly
+  truncated relevant evidence does.
+- Git discovery resolves one executable from an absolute PATH directory outside
+  the workspace, disables fsmonitor, strips inherited Git redirects, and falls
+  back to a bounded scan with an explicit unverified-state warning.
 - Mutations use a cooperative lock, durable pending record, quarantine, and
   exclusive per-file publication. They do not claim atomic multi-file
   visibility or automatic crash recovery.
@@ -81,6 +85,10 @@ Manifest-path evidence defines deterministic project units. The root unit is
 `.`; nested evidence attaches to the deepest containing manifest root. Unit IDs
 participate in capability and Work Package identity, and generated roles are
 grouped by both capability kind and unit so monorepo ownership stays bounded.
+Project-wide implementation goals apply to every detected implementation unit;
+verification goals apply to those same units. A unit with no same-kind evidence
+keeps its required goal capability and records an explicit gap instead of
+borrowing evidence from a sibling package.
 
 `WorkPackage` records the outcome, capability coverage, evidence and goal refs,
 risk, advisory paths, and validation boundary. `GeneratedRoleSpec` groups
@@ -89,8 +97,10 @@ cross-package evidence or paths, unknown runtime fields, unsafe paths,
 unsupported tools, permission widening, and external effects.
 
 Focused covers every required capability without count padding. Recommended adds
-an independent validator only for evidenced high-risk work. Extended may equal
-Recommended when no additional capability is justified.
+an independent validator only for evidenced high-risk work. Extended can add an
+evidence-backed optional verifier when requested implementation work has observed
+tests but no required verification owner. Passive documentation, CI, frameworks,
+and desired counts never activate this rule; Extended may equal Recommended.
 
 The current 111-entry catalog remains a reusable, replaceable primitive library.
 Its cardinality is neither an output constraint nor a worker limit.

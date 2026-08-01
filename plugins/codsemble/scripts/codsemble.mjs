@@ -499,7 +499,7 @@ import path8 from "node:path";
 var import_ignore = __toESM(require_ignore(), 1);
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
-import { lstat as lstat2, open, readdir, realpath as realpath2 } from "node:fs/promises";
+import { access, lstat as lstat2, open, readdir, realpath as realpath2 } from "node:fs/promises";
 import path2 from "node:path";
 import { promisify } from "node:util";
 
@@ -600,6 +600,7 @@ var GENERATED_DIRECTORIES = /* @__PURE__ */ new Set([
   ".cache",
   ".dart_tool",
   ".gradle",
+  ".git",
   ".next",
   ".nuxt",
   ".output",
@@ -778,7 +779,7 @@ async function auditWorkspace(workspace, options = {}) {
   const skips = /* @__PURE__ */ new Map();
   const warnings = [];
   const signals = /* @__PURE__ */ new Map();
-  const git = await detectGit(root);
+  const git = await detectGit(root, warnings, options.gitPathValue);
   let dirtyWorktree = null;
   let candidates;
   if (git) {
@@ -952,15 +953,28 @@ function boundedInteger(value, fallback, minimum, maximum, label) {
   }
   return value;
 }
-async function detectGit(root) {
+async function detectGit(root, warnings, pathValue) {
+  let executable;
   try {
-    const result = await runGit(root, ["rev-parse", "--show-toplevel"]);
+    executable = await resolveGitExecutable(
+      root,
+      pathValue === void 0 ? {} : { pathValue }
+    );
+  } catch {
+    warnings.push(
+      "Trusted Git was unavailable; Git repository state is unverified and a bounded filesystem scan was used."
+    );
+    return null;
+  }
+  try {
+    const result = await runGit(executable, root, ["rev-parse", "--show-toplevel"]);
     const topLevel = await realpath2(result.trim());
     const relative = path2.relative(topLevel, root);
     if (relative === ".." || relative.startsWith(`..${path2.sep}`) || path2.isAbsolute(relative)) {
       return null;
     }
     return {
+      executable,
       topLevel,
       workspacePrefix: toPosix(relative)
     };
@@ -972,8 +986,8 @@ async function enumerateGitCandidates(root, git, skips) {
   const pathspec = git.workspacePrefix || ".";
   try {
     const [trackedOutput, untrackedOutput, statusOutput] = await Promise.all([
-      runGit(git.topLevel, ["ls-files", "-z", "--cached", "--", pathspec]),
-      runGit(git.topLevel, [
+      runGit(git.executable, git.topLevel, ["ls-files", "-z", "--cached", "--", pathspec]),
+      runGit(git.executable, git.topLevel, [
         "ls-files",
         "-z",
         "--others",
@@ -981,7 +995,7 @@ async function enumerateGitCandidates(root, git, skips) {
         "--",
         pathspec
       ]),
-      runGit(git.topLevel, [
+      runGit(git.executable, git.topLevel, [
         "status",
         "--porcelain=v1",
         "-z",
@@ -1048,9 +1062,53 @@ function hasRelevantGitStatus(output, workspacePrefix) {
 function isCodexStateCandidate(relativePath) {
   return relativePath === "AGENTS.md" || relativePath === ".codex/config.toml" || relativePath === ".codex/codsemble/manifest.json" || /^\.codex\/agents\/[^/]+\.toml$/.test(relativePath);
 }
-async function runGit(cwd, args) {
-  const result = await execFileAsync("git", ["-c", "core.quotepath=false", ...args], {
+async function resolveGitExecutable(workspace, options = {}) {
+  const root = await realpath2(workspace);
+  const executableName = process.platform === "win32" ? "git.exe" : "git";
+  for (const rawDirectory of (options.pathValue ?? process.env.PATH ?? "").split(
+    path2.delimiter
+  )) {
+    const directory = rawDirectory.replace(/^"|"$/g, "");
+    if (directory === "" || !path2.isAbsolute(directory)) continue;
+    try {
+      if (isWithinPath(root, path2.resolve(directory))) continue;
+      const resolvedDirectory = await realpath2(directory);
+      if (isWithinPath(root, resolvedDirectory)) continue;
+      const candidate = await realpath2(path2.join(resolvedDirectory, executableName));
+      if (isWithinPath(root, candidate)) continue;
+      const metadata = await lstat2(candidate);
+      if (!metadata.isFile() || metadata.isSymbolicLink()) continue;
+      if (process.platform !== "win32") await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(
+    "Git executable was not found in a trusted absolute PATH directory outside the workspace"
+  );
+}
+function isWithinPath(root, candidate) {
+  const relative = path2.relative(root, candidate);
+  return relative === "" || !path2.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${path2.sep}`);
+}
+async function runGit(executable, cwd, args) {
+  const environment = Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) => !key.toUpperCase().startsWith("GIT_")
+    )
+  );
+  environment.GIT_OPTIONAL_LOCKS = "0";
+  environment.GIT_TERMINAL_PROMPT = "0";
+  const result = await execFileAsync(executable, [
+    "-c",
+    "core.quotepath=false",
+    "-c",
+    "core.fsmonitor=false",
+    ...args
+  ], {
     cwd,
+    env: environment,
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
     timeout: 1e4,
@@ -1563,6 +1621,7 @@ function fingerprintProjectCapabilityEvidence(audit) {
 }
 function buildCapabilityMap(audit, answers, auditFingerprint, evidence) {
   const seeds = [];
+  const derivedGaps = [];
   const unitRoots = deriveUnitRoots(evidence);
   const evidenceByValue = /* @__PURE__ */ new Map();
   for (const ref of evidence) {
@@ -1592,20 +1651,30 @@ function buildCapabilityMap(audit, answers, auditFingerprint, evidence) {
       }
     }
   }
+  const observedSeeds = [...seeds];
+  const implementationUnitIds = uniqueSorted(
+    observedSeeds.filter(({ kind }) => kind === "implementation").map(({ unitId }) => unitId)
+  );
   const goalRefs = evidence.filter(({ kind }) => kind === "user-goal");
   for (const ref of goalRefs) {
     const kind = classifyGoal(ref.value);
-    const matchingUnitIds = uniqueSorted(
-      seeds.filter((seed) => seed.kind === kind).map(({ unitId }) => unitId)
+    const observedKindUnits = uniqueSorted(
+      observedSeeds.filter((seed) => seed.kind === kind).map(({ unitId }) => unitId)
     );
-    for (const unitId of matchingUnitIds.length > 0 ? matchingUnitIds : ["."]) {
+    const targetUnitIds = kind === "implementation" ? implementationUnitIds : kind === "verification" ? uniqueSorted([...implementationUnitIds, ...observedKindUnits]) : observedKindUnits;
+    for (const unitId of targetUnitIds.length > 0 ? targetUnitIds : ["."]) {
       const supportingEvidence = selectRepresentativeRefs(
         uniqueSorted(
-          seeds.filter((seed) => seed.kind === kind && seed.unitId === unitId).flatMap(({ evidenceRefs }) => evidenceRefs)
+          observedSeeds.filter((seed) => seed.kind === kind && seed.unitId === unitId).flatMap(({ evidenceRefs }) => evidenceRefs)
         ),
         evidence,
         16
       );
+      if (supportingEvidence.length === 0) {
+        derivedGaps.push(
+          `Goal ${ref.value} applies to unit ${unitId}, but no ${kind} repository evidence was observed.`
+        );
+      }
       seeds.push({
         key: "goal",
         value: ref.value,
@@ -1660,7 +1729,10 @@ function buildCapabilityMap(audit, answers, auditFingerprint, evidence) {
     auditFingerprint,
     evidence,
     capabilities: capabilities.sort((left, right) => compareAscii(left.id, right.id)),
-    gaps: audit.truncated ? ["Audit coverage is truncated; re-audit before applying a high-confidence team."] : [],
+    gaps: uniqueSorted([
+      ...derivedGaps,
+      ...audit.truncated ? ["Audit coverage is truncated; re-audit before applying a high-confidence team."] : []
+    ]),
     warnings: uniqueSorted(audit.warnings)
   };
 }
@@ -1799,6 +1871,30 @@ function buildGeneratedRoles(workPackages, map2, answers, primitives) {
     roles.push({
       role: makeRole(kind, selectedPackages, map2, answers, primitives, false),
       tier: "focused"
+    });
+  }
+  const requiredImplementationUnits = new Set(
+    workPackages.filter(({ required: required2, capabilityIds }) => {
+      const capability = capabilitiesById.get(capabilityIds[0] ?? "");
+      return required2 && capability?.kind === "implementation";
+    }).map(({ unitId }) => unitId)
+  );
+  for (const [groupKey, packages] of [...grouped].sort(
+    ([left], [right]) => compareAscii(left, right)
+  )) {
+    const separator = groupKey.indexOf(":");
+    const kind = groupKey.slice(0, separator);
+    const unitId = groupKey.slice(separator + 1);
+    const hasRequiredPackage = packages.some(({ required: required2 }) => required2);
+    const activated = packages.filter(
+      ({ required: required2, evidenceRefs }) => !required2 && evidenceRefs.length > 0
+    );
+    if (kind !== "verification" || hasRequiredPackage || !requiredImplementationUnits.has(unitId) || activated.length === 0) {
+      continue;
+    }
+    roles.push({
+      role: makeRole(kind, activated, map2, answers, primitives, false),
+      tier: "extended"
     });
   }
   const highRisk = workPackages.filter(
@@ -2108,7 +2204,7 @@ function proposalRationale(kind, roles, uncovered) {
   const purpose = {
     focused: "the minimum generated role set covering required work packages",
     recommended: "the focused team plus independent verification for evidenced high-risk work",
-    extended: "all evidenced required and optional lifecycle capabilities without filler roles"
+    extended: "the recommended team plus closed-rule activated optional verification without filler roles"
   }[kind];
   return `${title(kind)} uses ${roles} role${roles === 1 ? "" : "s"}: ${purpose}. Required capabilities left uncovered: ${uncovered}.`;
 }
@@ -2154,7 +2250,7 @@ function compareAscii(left, right) {
 
 // src/capabilities.ts
 import { execFile as execFile2 } from "node:child_process";
-import { access, realpath as realpath3, stat } from "node:fs/promises";
+import { access as access2, realpath as realpath3, stat } from "node:fs/promises";
 import path3 from "node:path";
 import { promisify as promisify2 } from "node:util";
 var execFileAsync2 = promisify2(execFile2);
@@ -2205,7 +2301,7 @@ async function resolveCodexExecutable(workspace, options = {}) {
         const metadata = await stat(resolvedCandidate);
         if (!metadata.isFile()) continue;
         if (platform !== "win32") {
-          await access(resolvedCandidate, 1);
+          await access2(resolvedCandidate, 1);
         }
         return resolvedCandidate;
       } catch {
@@ -18078,6 +18174,196 @@ function stripBom(input) {
   return input.startsWith("\uFEFF") ? input.slice(1) : input;
 }
 
+// src/lifecycle.ts
+var TRANSACTION_ROOT = ".codex/codsemble/transactions";
+var AGENT_PATH_PATTERN = /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/;
+var digestSchema = external_exports.string().regex(/^[a-f0-9]{64}$/);
+var transactionIdSchema = external_exports.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/);
+var transactionFileSchema = external_exports.object({
+  relativePath: external_exports.string().min(1),
+  beforeSha256: digestSchema.nullable(),
+  afterSha256: digestSchema.nullable(),
+  backupRelativePath: external_exports.string().min(1).nullable(),
+  quarantineRelativePath: external_exports.string().min(1).nullable(),
+  mode: external_exports.number().int().min(0).max(511).nullable()
+}).strict().superRefine((file2, context) => {
+  if (file2.beforeSha256 === null && file2.afterSha256 === null) {
+    context.addIssue({
+      code: "custom",
+      message: "transaction file must have a preimage or postimage"
+    });
+  }
+  if (file2.beforeSha256 === null && (file2.backupRelativePath !== null || file2.quarantineRelativePath !== null || file2.mode !== null)) {
+    context.addIssue({
+      code: "custom",
+      message: "created transaction files cannot have recovery paths or a prior mode"
+    });
+  }
+  if (file2.beforeSha256 !== null && (file2.backupRelativePath === null || file2.quarantineRelativePath === null || file2.mode === null)) {
+    context.addIssue({
+      code: "custom",
+      message: "existing transaction files require scoped recovery paths and a prior mode"
+    });
+  }
+});
+var transactionRecordSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  transactionId: transactionIdSchema,
+  planId: external_exports.string().regex(/^[a-f0-9]{24}$/),
+  createdAt: external_exports.string().datetime({ offset: true }),
+  files: external_exports.array(transactionFileSchema).min(1).max(256)
+}).strict();
+var rollbackMarkerSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  transactionId: transactionIdSchema,
+  rolledBackAt: external_exports.string().datetime({ offset: true }),
+  quarantineRelativePaths: external_exports.array(external_exports.string().min(1)).max(256)
+}).strict();
+function assertValidTransactionRecord(record2, options = {}) {
+  const parsed = transactionRecordSchema.safeParse(record2);
+  if (!parsed.success) {
+    throw new Error(`Invalid transaction record: ${parsed.error.message}`);
+  }
+  if (options.fileName !== void 0 && options.fileName !== `${parsed.data.transactionId}.json`) {
+    throw new Error("transaction receipt filename does not match its id");
+  }
+  const paths = /* @__PURE__ */ new Set();
+  for (const file2 of parsed.data.files) {
+    if (!isCodesembleOwnedOutput(file2.relativePath) || paths.has(file2.relativePath)) {
+      throw new Error("Invalid transaction file record");
+    }
+    const expectedBackup = file2.beforeSha256 === null ? null : `${TRANSACTION_ROOT}/${parsed.data.transactionId}.backups/${file2.relativePath}`;
+    if (file2.backupRelativePath !== expectedBackup) {
+      throw new Error("Transaction backup path is outside its scoped directory");
+    }
+    const expectedQuarantine = file2.beforeSha256 === null ? null : `${TRANSACTION_ROOT}/${parsed.data.transactionId}.quarantines/${file2.relativePath}`;
+    if (file2.quarantineRelativePath !== expectedQuarantine) {
+      throw new Error("Transaction quarantine path is outside its scoped location");
+    }
+    paths.add(file2.relativePath);
+  }
+}
+function assertValidRollbackMarker(marker, options = {}) {
+  const parsed = rollbackMarkerSchema.safeParse(marker);
+  if (!parsed.success) {
+    throw new Error(`Invalid rollback marker: ${parsed.error.message}`);
+  }
+  if (options.fileName !== void 0 && options.fileName !== `${parsed.data.transactionId}.rollback.json`) {
+    throw new Error("rollback marker filename does not match its id");
+  }
+  const expectedPrefix = `${TRANSACTION_ROOT}/${parsed.data.transactionId}.rollback.quarantines/`;
+  const paths = /* @__PURE__ */ new Set();
+  for (const quarantineRelativePath of parsed.data.quarantineRelativePaths) {
+    if (!quarantineRelativePath.startsWith(expectedPrefix) || !isCodesembleOwnedOutput(
+      quarantineRelativePath.slice(expectedPrefix.length)
+    ) || paths.has(quarantineRelativePath)) {
+      throw new Error("Invalid rollback quarantine path");
+    }
+    paths.add(quarantineRelativePath);
+  }
+}
+function receiptBindsManifest(receipt, binding) {
+  return receipt.planId === binding.planId && receipt.files.filter(
+    ({ relativePath, afterSha256 }) => relativePath === ".codex/codsemble/manifest.json" && afterSha256 === binding.manifestSha256
+  ).length === 1;
+}
+function isCodesembleOwnedOutput(relativePath) {
+  return relativePath === "AGENTS.md" || relativePath === ".codex/config.toml" || relativePath === ".codex/codsemble/manifest.json" || AGENT_PATH_PATTERN.test(relativePath);
+}
+
+// src/manifest.ts
+var digestSchema2 = external_exports.string().regex(/^[a-f0-9]{64}$/);
+var generatedManifestSchema = external_exports.object({
+  schemaVersion: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
+  generator: external_exports.object({ name: external_exports.literal("codsemble"), version: external_exports.string().min(1) }).strict(),
+  catalogVersion: external_exports.string().min(1),
+  planId: external_exports.string().regex(/^[a-f0-9]{24}$/),
+  auditFingerprint: digestSchema2,
+  proposal: external_exports.object({
+    kind: external_exports.enum([
+      "lean",
+      "balanced",
+      "full",
+      "focused",
+      "recommended",
+      "extended"
+    ]),
+    maxConcurrentWorkers: external_exports.number().int().min(1).max(MAX_PROJECT_WORKER_CEILING)
+  }).strict(),
+  capabilities: external_exports.object({
+    configAdapter: external_exports.literal("agents-v1").nullable(),
+    modelCapabilities: external_exports.array(
+      external_exports.object({
+        id: external_exports.string().min(1).max(200).regex(/^[^\s]+$/),
+        supportedReasoningEfforts: external_exports.array(
+          external_exports.string().min(1).max(40).regex(/^[a-z0-9_-]+$/)
+        )
+      }).strict()
+    ),
+    availableTools: external_exports.array(
+      external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/)
+    )
+  }).strict(),
+  roles: external_exports.array(
+    external_exports.object({
+      id: external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/),
+      name: external_exports.string().min(1),
+      modelProfile: external_exports.enum(["inherit", "deep", "balanced", "fast"]),
+      model: external_exports.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
+      reasoningEffort: external_exports.enum(["low", "medium", "high", "xhigh"]).optional(),
+      sandbox: external_exports.enum(["read-only", "workspace-write"]),
+      source: external_exports.enum(["custom", "catalog", "generated"]),
+      workPackageIds: external_exports.array(external_exports.string().regex(/^wp-[a-z0-9-]{1,96}$/)).optional(),
+      evidenceRefs: external_exports.array(external_exports.string().regex(/^(?:ev|goal|context)-[a-f0-9]{16}$/)).optional()
+    }).strict()
+  ),
+  design: external_exports.object({
+    schemaVersion: external_exports.literal(2),
+    designId: external_exports.string().regex(/^[a-f0-9]{24}$/),
+    digest: digestSchema2,
+    capabilityMapDigest: digestSchema2,
+    workPackagesDigest: digestSchema2,
+    policyVersion: external_exports.string().regex(/^\d+\.\d+\.\d+$/)
+  }).strict().optional(),
+  ownership: external_exports.object({
+    agentsBlock: external_exports.object({
+      path: external_exports.literal("AGENTS.md"),
+      start: external_exports.literal("<!-- codsemble:start -->"),
+      end: external_exports.literal("<!-- codsemble:end -->")
+    }).strict(),
+    agentFiles: external_exports.array(external_exports.string().regex(AGENT_PATH_PATTERN)).refine((paths) => new Set(paths).size === paths.length, {
+      message: "agentFiles must be unique"
+    }),
+    agentSha256: external_exports.record(external_exports.string().regex(AGENT_PATH_PATTERN), digestSchema2)
+  }).strict()
+}).strict().superRefine((manifest, context) => {
+  const ownedPaths = [...manifest.ownership.agentFiles].sort();
+  const hashedPaths = Object.keys(manifest.ownership.agentSha256).sort();
+  if (JSON.stringify(ownedPaths) !== JSON.stringify(hashedPaths)) {
+    context.addIssue({
+      code: "custom",
+      message: "agent ownership hashes must exactly match agentFiles"
+    });
+  }
+  if (manifest.schemaVersion === 1) {
+    if (manifest.design !== void 0 || !["lean", "balanced", "full"].includes(manifest.proposal.kind) || manifest.roles.some(
+      (role) => role.source === "generated" || role.workPackageIds !== void 0 || role.evidenceRefs !== void 0
+    )) {
+      context.addIssue({
+        code: "custom",
+        message: "schemaVersion 1 manifest contains v2 team-design fields"
+      });
+    }
+  } else if (manifest.design === void 0 || !["focused", "recommended", "extended"].includes(manifest.proposal.kind) || manifest.roles.some(
+    (role) => role.source === "generated" && (role.workPackageIds === void 0 || role.evidenceRefs === void 0)
+  )) {
+    context.addIssue({
+      code: "custom",
+      message: "schemaVersion 2 manifest is missing admitted team-design bindings"
+    });
+  }
+});
+
 // src/compiler.ts
 var AGENTS_START = "<!-- codsemble:start -->";
 var AGENTS_END = "<!-- codsemble:end -->";
@@ -18098,7 +18384,8 @@ async function compileTeamPlan(workspaceRoot, audit, answers, proposal, roles, e
     validateResolvedModelCapability(role, answers);
   }
   const desiredFiles = /* @__PURE__ */ new Map();
-  const priorOwnedAgents = await readPriorOwnedAgents(root, existingFiles);
+  const priorOwnership = await readPriorOwnedAgents(root, existingFiles);
+  const priorOwnedAgents = priorOwnership.agents;
   for (const role of resolvedRoles) {
     const relativePath = `.codex/agents/${role.id}.toml`;
     const existing = await getExistingContent(root, relativePath, existingFiles);
@@ -18313,6 +18600,7 @@ max_concurrent_threads_per_session = ${answers.maxConcurrentWorkers}
         relativePaths
       }))
     } : {},
+    ...priorOwnership.lineagePreconditions.length > 0 ? { lineagePreconditions: priorOwnership.lineagePreconditions } : {},
     roles: resolvedRoles,
     concurrency,
     preimages,
@@ -18329,7 +18617,9 @@ async function readPriorOwnedAgents(root, existingFiles) {
     ".codex/codsemble/manifest.json",
     existingFiles
   );
-  if (source === void 0) return /* @__PURE__ */ new Map();
+  if (source === void 0) {
+    return { agents: /* @__PURE__ */ new Map(), lineagePreconditions: [] };
+  }
   let parsed;
   try {
     parsed = JSON.parse(source);
@@ -18338,8 +18628,33 @@ async function readPriorOwnedAgents(root, existingFiles) {
       cause: error51
     });
   }
-  if (typeof parsed === "object" && parsed !== null && "schemaVersion" in parsed && parsed.schemaVersion === 2) {
-    await assertV2ManifestLineage(root, source, parsed, existingFiles);
+  const hasOwnershipHashes = typeof parsed === "object" && parsed !== null && "ownership" in parsed && typeof parsed.ownership === "object" && parsed.ownership !== null && "agentSha256" in parsed.ownership;
+  if (hasOwnershipHashes) {
+    const strict = generatedManifestSchema.safeParse(parsed);
+    if (!strict.success) {
+      throw new Error(
+        "Existing hashed Codesemble manifest is not a strict ownership manifest",
+        { cause: strict.error }
+      );
+    }
+    const lineagePreconditions = await assertManifestLineage(
+      root,
+      source,
+      strict.data,
+      existingFiles
+    );
+    return {
+      agents: new Map(
+        strict.data.ownership.agentFiles.map((entry) => [
+          entry,
+          strict.data.ownership.agentSha256[entry]
+        ])
+      ),
+      lineagePreconditions
+    };
+  }
+  if (typeof parsed !== "object" || parsed === null || !("schemaVersion" in parsed) || parsed.schemaVersion !== 1) {
+    throw new Error("Existing Codesemble manifest has invalid agent ownership");
   }
   const ownership = typeof parsed === "object" && parsed !== null && "ownership" in parsed && typeof parsed.ownership === "object" && parsed.ownership !== null ? parsed.ownership : null;
   const owned = ownership !== null && "agentFiles" in ownership && Array.isArray(ownership.agentFiles) ? ownership.agentFiles : null;
@@ -18363,13 +18678,10 @@ async function readPriorOwnedAgents(root, existingFiles) {
   if (hashes !== null && Object.keys(hashes).length !== result.size) {
     throw new Error("Existing Codesemble manifest has unexpected agent ownership hashes");
   }
-  return result;
+  return { agents: result, lineagePreconditions: [] };
 }
-async function assertV2ManifestLineage(root, manifestSource, manifest, existingFiles) {
-  const planId = manifest["planId"];
-  if (typeof planId !== "string" || !/^[a-f0-9]{24}$/.test(planId)) {
-    throw new Error("Existing Codesemble v2 manifest has invalid lineage metadata");
-  }
+async function assertManifestLineage(root, manifestSource, manifest, existingFiles) {
+  const planId = manifest.planId;
   const transactionPrefix = ".codex/codsemble/transactions/";
   let candidates;
   if (existingFiles) {
@@ -18396,18 +18708,34 @@ async function assertV2ManifestLineage(root, manifestSource, manifest, existingF
     if (content === void 0) continue;
     try {
       const receipt = JSON.parse(content);
-      if (typeof receipt !== "object" || receipt === null || !("schemaVersion" in receipt) || receipt.schemaVersion !== 1 || !("planId" in receipt) || receipt.planId !== planId || !("files" in receipt) || !Array.isArray(receipt.files)) {
+      assertValidTransactionRecord(receipt, {
+        fileName: path5.posix.basename(candidate)
+      });
+      const rollbackPath = `${transactionPrefix}${receipt.transactionId}.rollback.json`;
+      if (await getExistingContent(root, rollbackPath, existingFiles) !== void 0) {
         continue;
       }
-      const bound = receipt.files.some(
-        (file2) => typeof file2 === "object" && file2 !== null && "relativePath" in file2 && file2.relativePath === ".codex/codsemble/manifest.json" && "afterSha256" in file2 && file2.afterSha256 === manifestDigest
-      );
-      if (bound) return;
+      if (receiptBindsManifest(receipt, { planId, manifestSha256: manifestDigest })) {
+        return [
+          {
+            relativePath: candidate,
+            exists: true,
+            sha256: sha256(content),
+            mode: null
+          },
+          {
+            relativePath: rollbackPath,
+            exists: false,
+            sha256: null,
+            mode: null
+          }
+        ];
+      }
     } catch {
     }
   }
   throw new Error(
-    "Existing Codesemble v2 manifest is not bound to a canonical apply transaction; refusing automatic ownership adoption"
+    "Existing Codesemble manifest is not bound to an active canonical apply transaction; refusing automatic ownership adoption"
   );
 }
 function computeConfirmationId(plan) {
@@ -18868,7 +19196,7 @@ function describePlanApproval(plan) {
   return {
     schemaVersion: 1,
     planId: plan.planId,
-    confirmationId: plan.confirmationId,
+    confirmationId: applyCapable ? plan.confirmationId : null,
     state: applyCapable ? "ready" : "preview-only",
     applyCapable,
     noChanges: mutatingPaths.length === 0,
@@ -18878,6 +19206,11 @@ function describePlanApproval(plan) {
     freshness: {
       mode: "audit-capability-and-preimage-bound",
       summary: applyCapable ? "Valid only for this exact plan while typed audit evidence, runtime capabilities, and every recorded workspace preimage remain unchanged." : "Preview-only plans have no approval step and must be regenerated in an apply-capable mode."
+    },
+    ownershipLineage: {
+      state: (plan.lineagePreconditions?.length ?? 0) > 0 ? "transaction-bound-update" : "new-or-legacy-preserve-only",
+      preconditionPaths: (plan.lineagePreconditions ?? []).map(({ relativePath }) => relativePath).sort(),
+      summary: (plan.lineagePreconditions?.length ?? 0) > 0 ? "Existing ownership is bound to a strict active local transaction receipt. The receipt and rollback-marker absence must remain unchanged through apply; local lineage is consistency evidence, not external authentication." : "No destructive ownership adoption is inferred from repository metadata. New outputs remain no-clobber and hashless legacy outputs are preserve-only."
     }
   };
 }
@@ -18923,7 +19256,7 @@ function assertConfirmationDigest(plan) {
 }
 
 // src/doctor.ts
-import { access as access2, lstat as lstat5, readFile as readFile4, readdir as readdir4 } from "node:fs/promises";
+import { access as access3, lstat as lstat5, readFile as readFile4, readdir as readdir4 } from "node:fs/promises";
 import path7 from "node:path";
 
 // src/transaction.ts
@@ -18941,10 +19274,9 @@ import {
   unlink
 } from "node:fs/promises";
 import path6 from "node:path";
-var transactionRoot = ".codex/codsemble/transactions";
+var transactionRoot = TRANSACTION_ROOT;
 var projectConfig = ".codex/config.toml";
-var agentPathPattern = /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/;
-var digestSchema = external_exports.string().regex(/^[a-f0-9]{64}$/);
+var agentPathPattern = AGENT_PATH_PATTERN;
 var generatedAgentSchema = external_exports.object({
   name: external_exports.string().min(1).max(128),
   description: external_exports.string().min(1).max(1e3),
@@ -18961,113 +19293,6 @@ var generatedAgentSchema = external_exports.object({
     });
   }
 });
-var transactionIdSchema = external_exports.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/);
-var transactionFileSchema = external_exports.object({
-  relativePath: external_exports.string().min(1),
-  beforeSha256: digestSchema.nullable(),
-  afterSha256: digestSchema.nullable(),
-  backupRelativePath: external_exports.string().min(1).nullable(),
-  quarantineRelativePath: external_exports.string().min(1).nullable(),
-  mode: external_exports.number().int().min(0).max(511).nullable()
-}).strict().refine(
-  ({ beforeSha256, afterSha256 }) => beforeSha256 !== null || afterSha256 !== null,
-  { message: "transaction file must have a preimage or postimage" }
-);
-var transactionRecordSchema = external_exports.object({
-  schemaVersion: external_exports.literal(1),
-  transactionId: transactionIdSchema,
-  planId: external_exports.string().min(1).max(512),
-  createdAt: external_exports.string().datetime({ offset: true }),
-  files: external_exports.array(transactionFileSchema).min(1).max(256)
-}).strict();
-var rollbackMarkerSchema = external_exports.object({
-  schemaVersion: external_exports.literal(1),
-  transactionId: transactionIdSchema,
-  rolledBackAt: external_exports.string().datetime({ offset: true }),
-  quarantineRelativePaths: external_exports.array(external_exports.string().min(1)).max(256)
-}).strict();
-var generatedManifestSchema = external_exports.object({
-  schemaVersion: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
-  generator: external_exports.object({ name: external_exports.literal("codsemble"), version: external_exports.string().min(1) }).strict(),
-  catalogVersion: external_exports.string().min(1),
-  planId: external_exports.string().min(1),
-  auditFingerprint: digestSchema,
-  proposal: external_exports.object({
-    kind: external_exports.enum([
-      "lean",
-      "balanced",
-      "full",
-      "focused",
-      "recommended",
-      "extended"
-    ]),
-    maxConcurrentWorkers: external_exports.number().int().min(1).max(MAX_PROJECT_WORKER_CEILING)
-  }).strict(),
-  capabilities: external_exports.object({
-    configAdapter: external_exports.literal("agents-v1").nullable(),
-    modelCapabilities: external_exports.array(
-      external_exports.object({
-        id: external_exports.string().min(1).max(200).regex(/^[^\s]+$/),
-        supportedReasoningEfforts: external_exports.array(
-          external_exports.string().min(1).max(40).regex(/^[a-z0-9_-]+$/)
-        )
-      }).strict()
-    ),
-    availableTools: external_exports.array(
-      external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/)
-    )
-  }).strict(),
-  roles: external_exports.array(
-    external_exports.object({
-      id: external_exports.string().regex(/^[a-z][a-z0-9-]{1,63}$/),
-      name: external_exports.string().min(1),
-      modelProfile: external_exports.enum(["inherit", "deep", "balanced", "fast"]),
-      model: external_exports.string().min(1).max(200).regex(/^[^\s]+$/).optional(),
-      reasoningEffort: external_exports.enum(["low", "medium", "high", "xhigh"]).optional(),
-      sandbox: external_exports.enum(["read-only", "workspace-write"]),
-      source: external_exports.enum(["custom", "catalog", "generated"]),
-      workPackageIds: external_exports.array(external_exports.string().regex(/^wp-[a-z0-9-]{1,96}$/)).optional(),
-      evidenceRefs: external_exports.array(external_exports.string().regex(/^(?:ev|goal|context)-[a-f0-9]{16}$/)).optional()
-    }).strict()
-  ),
-  design: external_exports.object({
-    schemaVersion: external_exports.literal(2),
-    designId: external_exports.string().regex(/^[a-f0-9]{24}$/),
-    digest: digestSchema,
-    capabilityMapDigest: digestSchema,
-    workPackagesDigest: digestSchema,
-    policyVersion: external_exports.string().regex(/^\d+\.\d+\.\d+$/)
-  }).strict().optional(),
-  ownership: external_exports.object({
-    agentsBlock: external_exports.object({
-      path: external_exports.literal("AGENTS.md"),
-      start: external_exports.literal("<!-- codsemble:start -->"),
-      end: external_exports.literal("<!-- codsemble:end -->")
-    }).strict(),
-    agentFiles: external_exports.array(external_exports.string().regex(agentPathPattern)).refine((paths) => new Set(paths).size === paths.length, {
-      message: "agentFiles must be unique"
-    }),
-    agentSha256: external_exports.record(external_exports.string().regex(agentPathPattern), digestSchema)
-  }).strict()
-}).strict().superRefine((manifest, context) => {
-  if (manifest.schemaVersion === 1) {
-    if (manifest.design !== void 0 || !["lean", "balanced", "full"].includes(manifest.proposal.kind) || manifest.roles.some(
-      (role) => role.source === "generated" || role.workPackageIds !== void 0 || role.evidenceRefs !== void 0
-    )) {
-      context.addIssue({
-        code: "custom",
-        message: "schemaVersion 1 manifest contains v2 team-design fields"
-      });
-    }
-  } else if (manifest.design === void 0 || !["focused", "recommended", "extended"].includes(manifest.proposal.kind) || manifest.roles.some(
-    (role) => role.source === "generated" && (role.workPackageIds === void 0 || role.evidenceRefs === void 0)
-  )) {
-    context.addIssue({
-      code: "custom",
-      message: "schemaVersion 2 manifest is missing admitted team-design bindings"
-    });
-  }
-});
 var PreservedConflictError = class extends Error {
 };
 var CommitArtifactPublishedError = class extends Error {
@@ -19080,6 +19305,7 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
     );
   }
   const root = await resolveSafeWorkspace(workspace);
+  await verifyLineagePreconditionsAtRoot(root, plan);
   const transactionId = randomUUID();
   const prepared = [];
   const verified = [];
@@ -19171,14 +19397,16 @@ async function applyTeamPlan(workspace, plan, hooks = {}) {
       quarantineRelativePath: file2.before === null ? null : file2.quarantineRelativePath
     }))
   };
-  assertValidTransactionRecord(transaction);
+  assertValidTransactionRecord2(transaction);
   const staged = /* @__PURE__ */ new Map();
   const installed = [];
   let releaseLock;
   let pendingPath;
   let committed = false;
   try {
+    await hooks.beforeMutationLock?.();
     releaseLock = await acquireMutationLock(root, "apply", transactionId);
+    await verifyLineagePreconditionsAtRoot(root, plan);
     await revalidateVerifiedFiles(verified);
     for (const file2 of prepared) {
       if (file2.before !== null && file2.backupRelativePath !== null) {
@@ -19359,7 +19587,7 @@ function parsePlannedManifest(plan) {
 async function rollbackTransaction(workspace, transaction, hooks = {}) {
   const root = await resolveSafeWorkspace(workspace);
   const record2 = typeof transaction === "string" ? await loadTransaction(root, transaction) : transaction;
-  assertValidTransactionRecord(record2);
+  assertValidTransactionRecord2(record2);
   const targets = [];
   const rollbackOperationId = `${record2.transactionId}.rollback`;
   for (const file2 of record2.files) {
@@ -19466,7 +19694,7 @@ async function rollbackTransaction(workspace, transaction, hooks = {}) {
         ({ quarantinePath }) => quarantinePath === null ? null : toPosix(path6.relative(root, quarantinePath))
       ).filter((entry) => entry !== null)
     };
-    assertValidRollbackMarker(rollbackMarker);
+    assertValidRollbackMarker2(rollbackMarker);
     await ensureSafeParentDirectories(root, rollbackMarkerPath);
     await atomicCommitWrite(
       rollbackMarkerPath,
@@ -19899,7 +20127,11 @@ async function loadTransaction(root, transactionId) {
     throw new Error(`Transaction receipt not found: ${transactionId}`);
   }
   try {
-    return JSON.parse(decodeUtf8(state.content, receipt));
+    const parsed = JSON.parse(decodeUtf8(state.content, receipt));
+    assertValidTransactionRecord2(parsed, {
+      fileName: `${transactionId}.json`
+    });
+    return parsed;
   } catch (error51) {
     throw new Error(`Invalid transaction receipt: ${transactionId}`, {
       cause: error51
@@ -19907,7 +20139,7 @@ async function loadTransaction(root, transactionId) {
   }
 }
 function assertValidTeamPlan(plan) {
-  if (plan.schemaVersion !== 1 || !plan.planId || !/^[a-f0-9]{32}$/.test(plan.confirmationId) || !Array.isArray(plan.files) || !Array.isArray(plan.preimages) || plan.files.length === 0) {
+  if (plan.schemaVersion !== 1 || !/^[a-f0-9]{24}$/.test(plan.planId) || !/^[a-f0-9]{32}$/.test(plan.confirmationId) || !Array.isArray(plan.files) || !Array.isArray(plan.preimages) || plan.files.length === 0) {
     throw new Error("Invalid team plan");
   }
   if (plan.files.length > 256) {
@@ -19916,10 +20148,19 @@ function assertValidTeamPlan(plan) {
   if (computeConfirmationId(plan) !== plan.confirmationId) {
     throw new Error("Plan confirmation digest mismatch");
   }
+  const lineagePaths = /* @__PURE__ */ new Set();
+  for (const precondition of plan.lineagePreconditions ?? []) {
+    if (!/^\.codex\/codsemble\/transactions\/[A-Za-z0-9][A-Za-z0-9-]{0,127}(?:\.rollback)?\.json$/.test(
+      precondition.relativePath
+    ) || lineagePaths.has(precondition.relativePath) || precondition.exists !== (precondition.sha256 !== null) || precondition.sha256 !== null && !/^[a-f0-9]{64}$/.test(precondition.sha256)) {
+      throw new Error("Invalid ownership-lineage precondition");
+    }
+    lineagePaths.add(precondition.relativePath);
+  }
   const paths = /* @__PURE__ */ new Set();
   let totalContentBytes = 0;
   for (const file2 of plan.files) {
-    if (!isCodesembleOwnedOutput(file2.relativePath)) {
+    if (!isCodesembleOwnedOutput2(file2.relativePath)) {
       throw new Error(
         `Plan contains a non-Codesemble output path: ${file2.relativePath}`
       );
@@ -19967,6 +20208,22 @@ function assertValidTeamPlan(plan) {
     const preimage = preimages.get(file2.relativePath);
     if (preimage === void 0 || preimage.sha256 !== file2.beforeSha256 || preimage.exists !== (file2.beforeSha256 !== null) || file2.beforeSha256 !== null && !/^[a-f0-9]{64}$/.test(file2.beforeSha256)) {
       throw new Error(`Plan preimage metadata mismatch: ${file2.relativePath}`);
+    }
+  }
+}
+async function verifyLineagePreconditions(workspace, plan) {
+  const root = await resolveSafeWorkspace(workspace);
+  await verifyLineagePreconditionsAtRoot(root, plan);
+}
+async function verifyLineagePreconditionsAtRoot(root, plan) {
+  for (const expected of plan.lineagePreconditions ?? []) {
+    const target = await safeTarget(root, expected.relativePath);
+    const current = await readSafeRegularFile(target);
+    const observed = current.content === null ? null : sha256(current.content);
+    if (current.content !== null !== expected.exists || observed !== expected.sha256) {
+      throw new Error(
+        `Ownership lineage changed after planning: ${expected.relativePath}; regenerate and review a new plan`
+      );
     }
   }
 }
@@ -20135,45 +20392,14 @@ async function validateAgentDeletes(root, plan) {
     }
   }
 }
-function assertValidTransactionRecord(record2) {
-  const parsed = transactionRecordSchema.safeParse(record2);
-  if (!parsed.success) {
-    throw new Error(`Invalid transaction record: ${parsed.error.message}`);
-  }
-  const paths = /* @__PURE__ */ new Set();
-  for (const file2 of parsed.data.files) {
-    if (!isCodesembleOwnedOutput(file2.relativePath) || paths.has(file2.relativePath)) {
-      throw new Error("Invalid transaction file record");
-    }
-    const expectedBackup = file2.beforeSha256 === null ? null : `${transactionRoot}/${parsed.data.transactionId}.backups/${file2.relativePath}`;
-    if (file2.backupRelativePath !== expectedBackup) {
-      throw new Error("Transaction backup path is outside its scoped directory");
-    }
-    const expectedQuarantine = file2.beforeSha256 === null ? null : `${transactionRoot}/${parsed.data.transactionId}.quarantines/${file2.relativePath}`;
-    if (file2.quarantineRelativePath !== expectedQuarantine) {
-      throw new Error("Transaction quarantine path is outside its scoped location");
-    }
-    paths.add(file2.relativePath);
-  }
+function assertValidTransactionRecord2(record2, options = {}) {
+  assertValidTransactionRecord(record2, options);
 }
-function assertValidRollbackMarker(marker) {
-  const parsed = rollbackMarkerSchema.safeParse(marker);
-  if (!parsed.success) {
-    throw new Error(`Invalid rollback marker: ${parsed.error.message}`);
-  }
-  const expectedPrefix = `${transactionRoot}/${parsed.data.transactionId}.rollback.quarantines/`;
-  const paths = /* @__PURE__ */ new Set();
-  for (const quarantineRelativePath of parsed.data.quarantineRelativePaths) {
-    if (!quarantineRelativePath.startsWith(expectedPrefix) || !isCodesembleOwnedOutput(
-      quarantineRelativePath.slice(expectedPrefix.length)
-    ) || paths.has(quarantineRelativePath)) {
-      throw new Error("Invalid rollback quarantine path");
-    }
-    paths.add(quarantineRelativePath);
-  }
+function assertValidRollbackMarker2(marker, options = {}) {
+  assertValidRollbackMarker(marker, options);
 }
-function isCodesembleOwnedOutput(relativePath) {
-  return relativePath === "AGENTS.md" || relativePath === ".codex/config.toml" || relativePath === ".codex/codsemble/manifest.json" || /^\.codex\/agents\/[a-z][a-z0-9-]{1,63}\.toml$/.test(relativePath);
+function isCodesembleOwnedOutput2(relativePath) {
+  return isCodesembleOwnedOutput(relativePath);
 }
 function decodeUtf8(content, label) {
   const decoded = content.toString("utf8");
@@ -20192,7 +20418,7 @@ function formatHash(value) {
 // src/doctor.ts
 async function exists(candidate) {
   try {
-    await access2(candidate);
+    await access3(candidate);
     return true;
   } catch {
     return false;
@@ -20447,10 +20673,7 @@ async function inspectTransactions(root) {
         const parsed = JSON.parse(
           (await readRegularFile(path7.join(directory, name), root)).toString("utf8")
         );
-        assertValidTransactionRecord(parsed);
-        if (name !== `${parsed.transactionId}.json`) {
-          throw new Error("transaction receipt filename does not match its id");
-        }
+        assertValidTransactionRecord2(parsed, { fileName: name });
         receipts.push(parsed);
       } catch (error51) {
         invalid.push(
@@ -20467,10 +20690,7 @@ async function inspectTransactions(root) {
         const marker = JSON.parse(
           (await readRegularFile(path7.join(directory, name), root)).toString("utf8")
         );
-        assertValidRollbackMarker(marker);
-        if (name !== `${marker.transactionId}.rollback.json`) {
-          throw new Error("rollback marker filename does not match its id");
-        }
+        assertValidRollbackMarker2(marker, { fileName: name });
         const receipt = receiptsById.get(marker.transactionId);
         if (receipt === void 0) {
           throw new Error("rollback marker has no valid transaction receipt");
@@ -20833,6 +21053,7 @@ async function run(arguments_) {
       assertValidTeamPlan(plan);
       const approvalWorkspace = arguments_.flags.has("--workspace") ? workspace : path8.dirname(path8.resolve(planFile));
       await assertAuditFresh(approvalWorkspace, plan, "Approval");
+      await verifyLineagePreconditions(approvalWorkspace, plan);
       return describePlanApproval(plan);
     }
     case "apply": {
@@ -20852,6 +21073,7 @@ async function run(arguments_) {
         );
       }
       await assertAuditFresh(workspace, plan, "Apply");
+      await verifyLineagePreconditions(workspace, plan);
       const fullConfirmation = flag(arguments_, "--confirm");
       const voiceConfirmation = flag(arguments_, "--confirm-voice");
       if (fullConfirmation === void 0 === (voiceConfirmation === void 0)) {
@@ -20938,6 +21160,12 @@ async function run(arguments_) {
 async function assertAuditFresh(workspace, plan, phase) {
   const current = await auditWorkspace(workspace);
   if (plan.evidencePreconditions === void 0) return;
+  const currentFingerprint = fingerprintProjectCapabilityEvidence(current);
+  if (currentFingerprint !== plan.auditFingerprint) {
+    throw new Error(
+      `${phase} refused: typed workspace capability evidence changed after planning; re-audit, regenerate, and review a new plan`
+    );
+  }
   const currentEvidence = new Map(
     buildRepositoryEvidenceRefs(current).map((ref) => [ref.id, ref])
   );

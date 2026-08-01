@@ -430,11 +430,13 @@ describe.sequential("bundled CLI", { timeout: 15_000 }, () => {
     ) as {
       state: string;
       applyCapable: boolean;
+      confirmationId: string | null;
       voiceChallenge: string | null;
     };
     expect(approval).toMatchObject({
       state: "preview-only",
       applyCapable: false,
+      confirmationId: null,
       voiceChallenge: null,
     });
     const before = await snapshotWorkspace(root);
@@ -677,13 +679,83 @@ describe.sequential("bundled CLI", { timeout: 15_000 }, () => {
       ]),
     ).rejects.toMatchObject({
       stderr: expect.stringContaining(
-        "referenced typed workspace evidence changed after planning",
+        "typed workspace capability evidence changed after planning",
       ),
     });
     expect(await snapshotWorkspace(root)).toEqual(before);
     await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  it("refuses newly added relevant evidence before mutation", async () => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const planFile = path.join(root, "plan.json");
+    const planText = await run([
+      "plan",
+      "--workspace",
+      root,
+      "--answers",
+      answerFile,
+      "--proposal",
+      "recommended",
+    ]);
+    await writeFile(planFile, planText);
+    const plan = JSON.parse(planText) as TeamPlan;
+    await writeFile(path.join(root, "Dockerfile"), "FROM scratch\n");
+    const before = await snapshotWorkspace(root);
+
+    await expect(
+      run(["approval", "--workspace", root, "--plan", planFile]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "typed workspace capability evidence changed after planning",
+      ),
+    });
+
+    await expect(
+      run([
+        "apply",
+        "--workspace",
+        root,
+        "--plan",
+        planFile,
+        "--confirm",
+        plan.confirmationId,
+      ]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "typed workspace capability evidence changed after planning",
+      ),
+    });
+    expect(await snapshotWorkspace(root)).toEqual(before);
+    await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("keeps approval fresh after an irrelevant file is added", async () => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const planFile = path.join(root, "plan.json");
+    const planText = await run([
+      "plan",
+      "--workspace",
+      root,
+      "--answers",
+      answerFile,
+      "--proposal",
+      "recommended",
+    ]);
+    await writeFile(planFile, planText);
+    await writeFile(path.join(root, "notes.txt"), "unrelated prose\n");
+
+    const approval = JSON.parse(
+      await run(["approval", "--workspace", root, "--plan", planFile]),
+    ) as { state: string; voiceChallenge: string };
+    expect(approval.state).toBe("ready");
+    expect(approval.voiceChallenge).toMatch(/^approve team(?: [a-z]+){6}$/);
   });
 
   it("applies and rolls back the confirmed project concurrency ceiling", async () => {

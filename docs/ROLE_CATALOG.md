@@ -111,7 +111,9 @@ authorization at the applicable boundary.
 
 - **Focused** is the minimum generated team covering required Work Packages.
 - **Recommended** adds independent verification only for evidenced high-risk work.
-- **Extended** adds only activated lifecycle capabilities and may equal Recommended.
+- **Extended** currently adds only an evidence-backed optional verifier for
+  requested implementation work with observed tests and no required verification
+  owner; it may equal Recommended.
 
 Installed role count and concurrent worker limit are separate decisions. Having
 The number of available primitives never implies a Codex concurrency value.

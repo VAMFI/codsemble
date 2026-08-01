@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
 import { lstat, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { gzipSync } from "node:zlib";
 
 const pluginRoot = "plugins/codsemble";
-const outputPath = "artifacts/codsemble-0.2.0-plugin.tgz";
+const outputPath = "artifacts/codsemble-0.2.0-plugin.tar";
 const checking = process.argv.includes("--check");
 
 const files = await walk(pluginRoot);
@@ -17,7 +16,7 @@ for (const file of files) {
   chunks.push(Buffer.alloc(padding(content.length)));
 }
 chunks.push(Buffer.alloc(1024));
-const archive = gzipSync(Buffer.concat(chunks), { level: 9, mtime: 0 });
+const archive = Buffer.concat(chunks);
 const digest = createHash("sha256").update(archive).digest("hex");
 
 if (checking) {

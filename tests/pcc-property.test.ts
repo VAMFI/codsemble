@@ -137,6 +137,34 @@ function assertDesignInvariants(design: TeamDesign): void {
   const packageById = new Map(
     design.workPackages.map((workPackage) => [workPackage.id, workPackage]),
   );
+  const capabilityById = new Map(
+    design.capabilityMap.capabilities.map((capability) => [capability.id, capability]),
+  );
+  const requiredImplementationUnits = new Set(
+    design.capabilityMap.capabilities
+      .filter(({ required, kind }) => required && kind === "implementation")
+      .map(({ unitId }) => unitId),
+  );
+  for (const roleId of extended.roleIds.filter(
+    (id) => !recommended.roleIds.includes(id),
+  )) {
+    const role = design.roles.find(({ id }) => id === roleId);
+    if (!role) throw new Error(`extended role missing: ${roleId}`);
+    const owned = role.workPackageIds.map((id) => packageById.get(id));
+    expect(owned.length).toBeGreaterThan(0);
+    expect(
+      owned.every(
+        (workPackage) =>
+          workPackage !== undefined &&
+          !workPackage.required &&
+          workPackage.evidenceRefs.length > 0 &&
+          requiredImplementationUnits.has(workPackage.unitId) &&
+          workPackage.capabilityIds.every(
+            (id) => capabilityById.get(id)?.kind === "verification",
+          ),
+      ),
+    ).toBe(true);
+  }
   const focusedRoles = focused.roleIds.map((id) => {
     const role = design.roles.find(({ id: candidate }) => candidate === id);
     if (!role) throw new Error(`focused role missing: ${id}`);

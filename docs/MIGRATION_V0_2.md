@@ -10,14 +10,15 @@ transaction engine.
 - The bundled catalog becomes a primitive library; project agents may have new
   generated ids and project-specific missions.
 - Manifest schema v2 adds Team Design and evidence provenance.
-- Referenced repository evidence is rechecked before approval and apply.
+- The complete typed capability-evidence fingerprint is rechecked before approval
+  and apply, including relevant additions and truncation.
 - The worker safety ceiling is independent from catalog and installed-role counts.
 
 ## What remains compatible
 
 - Saved TeamPlan and transaction receipt schema stays at version 1.
-- Strict v1 manifests with ownership hashes remain readable by doctor and can
-  be migrated through a reviewed v2 update.
+- Strict v1 manifests with ownership hashes and an active canonical apply receipt
+  remain readable by doctor and can be migrated through a reviewed v2 update.
 - Hashless legacy manifests remain migration-needed and never gain deletion
   authority by inference.
 - Rollback restores byte-exact v1 manifest and agent preimages when their current
@@ -37,6 +38,7 @@ transaction engine.
 6. Run doctor and start a fresh Codex session.
 7. Verify native discovery and one bounded delegation before removing rollback evidence.
 
-Codesemble refuses automatic ownership adoption when a v2 manifest is not bound
-to a canonical apply receipt. Preserve the workspace and use an explicit recovery
-or adoption process instead of forging metadata.
+Codesemble refuses automatic ownership adoption when a hashed v1 or v2 manifest
+is not bound to an active canonical apply receipt. The reviewed plan binds the
+receipt bytes and absence of its rollback marker through apply. Preserve the
+workspace and use an explicit recovery or adoption process instead of forging metadata.

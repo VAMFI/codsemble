@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -119,7 +119,7 @@ describe("v0.1 to v0.2 lifecycle migration", () => {
       legacyProposal,
       [primitive],
     );
-    await applyTeamPlan(workspace, legacyPlan);
+    const legacyTransaction = await applyTeamPlan(workspace, legacyPlan);
 
     const legacyPaths = [
       "AGENTS.md",
@@ -171,6 +171,25 @@ describe("v0.1 to v0.2 lifecycle migration", () => {
         action: "delete",
       }),
     );
+    expect(v2Plan.lineagePreconditions).toHaveLength(2);
+    const legacyReceiptPath = path.join(
+      workspace,
+      `.codex/codsemble/transactions/${legacyTransaction.transactionId}.json`,
+    );
+    const legacyReceipt = await readFile(legacyReceiptPath, "utf8");
+    await writeFile(legacyReceiptPath, `${legacyReceipt.trim()} \n`);
+    await expect(applyTeamPlan(workspace, v2Plan)).rejects.toThrow(
+      "Ownership lineage changed after planning",
+    );
+    await writeFile(legacyReceiptPath, legacyReceipt);
+    await expect(
+      applyTeamPlan(workspace, v2Plan, {
+        beforeMutationLock: async () => {
+          await writeFile(legacyReceiptPath, `${legacyReceipt.trim()} \n`);
+        },
+      }),
+    ).rejects.toThrow("Ownership lineage changed after planning");
+    await writeFile(legacyReceiptPath, legacyReceipt);
     const v2Transaction = await applyTeamPlan(workspace, v2Plan);
 
     const v2Manifest = JSON.parse(

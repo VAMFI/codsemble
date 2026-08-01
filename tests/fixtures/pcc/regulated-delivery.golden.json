@@ -1,6 +1,6 @@
 {
   "scenario": "regulated-delivery",
-  "designId": "89563e9f4dbd192390562ca1",
+  "designId": "570f31820d90f4a468ab77c9",
   "auditFingerprint": "6663f0ae8f3a21a6b35025befbcd154219c642cad320cb7fd3101ad5aff19f8d",
   "capabilities": [
     { "id": "cap-delivery-docker-04dc6a0a43b4", "unitId": ".", "kind": "delivery", "required": false, "risk": "high" },

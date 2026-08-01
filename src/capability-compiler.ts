@@ -1000,7 +1000,7 @@ function proposalRationale(
     extended:
       "the recommended team plus closed-rule activated optional verification without filler roles",
   }[kind];
-  return `${title(kind)} uses ${roles} role${roles === 1 ? "" : "s"}: ${purpose}. Required capabilities left uncovered: ${uncovered}.`;
+  return `${title(kind)} generates ${roles} evidence-bound coverage role${roles === 1 ? "" : "s"}: ${purpose}. Required capabilities left uncovered: ${uncovered}.`;
 }
 
 function maxRisk(

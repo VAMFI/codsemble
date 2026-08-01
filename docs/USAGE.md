@@ -56,6 +56,8 @@ node "<plugin-root>/scripts/codsemble.mjs" plan \
 ```
 
 These commands emit JSON to standard output and do not write workspace files.
+Proposal rationales distinguish evidence-bound coverage roles generated from the
+audit, explicit user-selected roles, and the total proposed team size.
 `capabilities` asks the installed local Codex executable for its version,
 multi-agent feature state, and bounded model metadata. It discards raw provider
 instructions and cannot grant permissions. If probing fails, keep model

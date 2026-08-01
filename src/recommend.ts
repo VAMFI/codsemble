@@ -27,6 +27,9 @@ export function recommendTeams(
     reasons: [`User supplied the specialized role "${custom.name}".`],
     warnings: [],
   }));
+  const explicitRoleIds = new Set(
+    [...requiredScores, ...customScores].map(({ roleId }) => roleId),
+  );
   const proposals: TeamProposal[] = teamDesign.proposals.map((proposal) => {
     const generated = proposal.roleIds.map((roleId, index) => {
       const role = teamDesign.roles.find(({ id }) => id === roleId);
@@ -44,6 +47,9 @@ export function recommendTeams(
     for (const score of [...generated, ...requiredScores, ...customScores]) {
       selected.set(score.roleId, score);
     }
+    const explicitSelected = [...selected.keys()].filter((roleId) =>
+      explicitRoleIds.has(roleId),
+    ).length;
     return {
       kind: proposal.kind,
       roles: [...selected.values()].sort(
@@ -51,7 +57,7 @@ export function recommendTeams(
           right.score - left.score || compare(left.roleId, right.roleId),
       ),
       maxConcurrentWorkers: proposal.maxConcurrentWorkers,
-      rationale: proposal.rationale,
+      rationale: `${proposal.rationale} Explicit user-selected roles: ${explicitSelected}. Total proposed roles: ${selected.size}.`,
       teamDesignId: teamDesign.designId,
       coveredCapabilityIds: proposal.coveredCapabilityIds,
       uncoveredCapabilityIds: proposal.uncoveredCapabilityIds,

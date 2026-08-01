@@ -2214,7 +2214,7 @@ function proposalRationale(kind, roles, uncovered) {
     recommended: "the focused team plus independent verification for evidenced high-risk work",
     extended: "the recommended team plus closed-rule activated optional verification without filler roles"
   }[kind];
-  return `${title(kind)} uses ${roles} role${roles === 1 ? "" : "s"}: ${purpose}. Required capabilities left uncovered: ${uncovered}.`;
+  return `${title(kind)} generates ${roles} evidence-bound coverage role${roles === 1 ? "" : "s"}: ${purpose}. Required capabilities left uncovered: ${uncovered}.`;
 }
 function maxRisk(left, right) {
   const rank = { low: 0, medium: 1, high: 2 };
@@ -20863,6 +20863,9 @@ function recommendTeams(audit, answers, primitives) {
     reasons: [`User supplied the specialized role "${custom2.name}".`],
     warnings: []
   }));
+  const explicitRoleIds = new Set(
+    [...requiredScores, ...customScores].map(({ roleId }) => roleId)
+  );
   const proposals = teamDesign.proposals.map((proposal) => {
     const generated = proposal.roleIds.map((roleId, index) => {
       const role = teamDesign.roles.find(({ id }) => id === roleId);
@@ -20880,13 +20883,16 @@ function recommendTeams(audit, answers, primitives) {
     for (const score of [...generated, ...requiredScores, ...customScores]) {
       selected.set(score.roleId, score);
     }
+    const explicitSelected = [...selected.keys()].filter(
+      (roleId) => explicitRoleIds.has(roleId)
+    ).length;
     return {
       kind: proposal.kind,
       roles: [...selected.values()].sort(
         (left, right) => right.score - left.score || compare(left.roleId, right.roleId)
       ),
       maxConcurrentWorkers: proposal.maxConcurrentWorkers,
-      rationale: proposal.rationale,
+      rationale: `${proposal.rationale} Explicit user-selected roles: ${explicitSelected}. Total proposed roles: ${selected.size}.`,
       teamDesignId: teamDesign.designId,
       coveredCapabilityIds: proposal.coveredCapabilityIds,
       uncoveredCapabilityIds: proposal.uncoveredCapabilityIds

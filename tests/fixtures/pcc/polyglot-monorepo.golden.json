@@ -1,6 +1,6 @@
 {
   "scenario": "polyglot-monorepo",
-  "designId": "7f898a08fe0ca09e80eb40b7",
+  "designId": "2dd385f43f47a0687da4a09c",
   "auditFingerprint": "78b47574fe88e5800f8238d6e171babd22e6582bbe483870c080205815363200",
   "capabilities": [
     { "id": "cap-implementation-engineering-7a26ffa44dd0", "unitId": "services/api", "kind": "implementation", "required": true, "risk": "low" },

@@ -208,6 +208,12 @@ describe("recommendTeams", () => {
       expect(proposal.roles.map(({ roleId }) => roleId)).not.toContain(
         "quality",
       );
+      expect(proposal.rationale).toContain(
+        "Explicit user-selected roles: 2.",
+      );
+      expect(proposal.rationale).toContain(
+        `Total proposed roles: ${proposal.roles.length}.`,
+      );
     }
   });
 

@@ -20,6 +20,7 @@
 8. Inventing unavailable model ids or claiming a configuration is active without runtime proof.
 9. Installing or executing unreviewed third-party code.
 10. Confusing a local release candidate with a public or directory-published plugin.
+11. Treating vague, approximate, replayed, or cross-plan speech as installation approval.
 
 ## Required controls
 
@@ -35,6 +36,19 @@
 - Default read-heavy roles to read-only and reject dangerous generated settings.
 - Bound fan-out, depth, retries, time, and generated file counts.
 - Keep telemetry and network access off in v0.1.0.
+- Keep the full plan digest authoritative for voice approval; derive only a
+  versioned spoken alias, require an exact conservative transcript match, give
+  preview plans no challenge, and recheck capabilities and preimages before writes.
+
+## Voice limitation
+
+The CLI can prove that a transcript exactly matches the alias of the plan being
+applied. It cannot prove who spoke, distinguish live speech from playback, bind
+the phrase to a particular Android device or session, or hide the phrase from a
+same-user process. A trusted voice broker with protected input, expiring signed
+grants, rate limits, and an atomic consumption ledger is required for those
+stronger guarantees. Codesemble therefore treats the phrase as explicit-intent
+UX, not authentication, and retains the full digest and filesystem controls.
 
 ## Filesystem limitation
 

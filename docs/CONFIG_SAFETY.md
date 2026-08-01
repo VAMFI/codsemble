@@ -42,14 +42,17 @@ run applicable Codex diagnostics after apply.
 
 ## Preview and apply
 
-`audit`, `recommend`, `plan`, `doctor`, `catalog`, and rollback preview are
-non-mutating. `plan` emits a content-bound confirmation id, exact intended files, content hashes, and
-configuration changes.
+`audit`, `recommend`, `plan`, `approval`, `doctor`, `catalog`, and rollback
+preview are non-mutating. `plan` emits a content-bound confirmation id, exact
+intended files, content hashes, and configuration changes. `approval` reports
+whether that plan can be applied and derives a voice-friendly alias only for a
+non-preview plan.
 
 Apply requires:
 
 - the reviewed plan file;
-- exact confirmation of that confirmation id;
+- exact confirmation of that confirmation id, or an exact strict match of its
+  complete current voice challenge;
 - unchanged preimage hashes;
 - paths confined to the selected workspace;
 - valid generated TOML and JSON.
@@ -60,6 +63,13 @@ after moving them to quarantine, so a change racing the earlier preflight
 cannot be silently deleted. A file recreated before publication causes a
 no-clobber conflict; both the competing target and quarantined bytes are
 retained. Rollback applies the same checks to confirmed postimages.
+
+The voice challenge keeps the full confirmation digest as the canonical plan
+binding. It accepts no fuzzy or semantic matching and is not an authentication
+secret. Freshness remains state-based: changed preimages invalidate the plan,
+and a successful mutating apply makes an immediate replay fail. See
+[Voice-friendly plan approval](VOICE_APPROVAL.md) for the precise contract and
+its explicitly excluded trusted-broker guarantees.
 
 For every successful update or delete, the transaction receipt records and
 retains the source quarantine. Codesemble does not automatically unlink it:
@@ -82,7 +92,8 @@ crash recovery is deferred beyond v0.1.
 ## Manual mode
 
 Choose `manual` or `unchanged` during intake when project config should not be
-edited. After exact confirmation-id approval, Codesemble may still apply the team
+edited. After exact confirmation-id or strict voice-challenge approval,
+Codesemble may still apply the team
 agents, managed `AGENTS.md` section, and manifest while leaving
 `.codex/config.toml` untouched. `manual` also shows the exact project snippet
 for separate installation; `unchanged` preserves concurrency as-is. Global

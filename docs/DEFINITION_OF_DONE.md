@@ -20,6 +20,9 @@ Codesemble `v0.1.0` is a release candidate only when all applicable items pass.
   without clobbering a racing writer, and is reversible during an uninterrupted
   cooperative transaction.
 - The exact confirmation id is recomputed from the complete plan before apply.
+- Preview-only plans have no approval challenge. Apply-capable plans may expose
+  a strictly matched voice-friendly alias while retaining the full digest as
+  the canonical binding; vague, partial, fuzzy, and cross-plan speech fails.
 - Update deletes only stale agent files owned by the prior Codesemble manifest.
 - No global config, trust, credentials, plugins, MCP servers, hooks, or external systems are changed.
 
@@ -27,6 +30,8 @@ Codesemble `v0.1.0` is a release candidate only when all applicable items pass.
 
 - Type checks, unit tests, fixture tests, golden tests, property tests, and security tests pass.
 - Plugin and every skill pass the official validators.
+- Voice-confirmation tests prove exact plan binding, strict normalization,
+  preview refusal, compatibility with the full ID, and no writes on rejection.
 - The release payload is reproducible and contains no secrets or absolute developer paths.
 - A fresh isolated Codex session discovers the plugin and generated roles.
 - A real separable task produces attributable specialist results and root integration.

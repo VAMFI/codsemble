@@ -23,7 +23,8 @@ not download, install, or substitute another executable.
   credentials, providers, hooks, MCP servers, or third-party skills/plugins.
 - Never push, publish, deploy, release, submit, or message external systems.
 - Do not infer apply approval from a request to initialize. Apply only after
-  showing the final exact diff and receiving its exact confirmation id.
+  showing the final exact diff and receiving its exact confirmation id or the
+  complete current voice challenge.
 - Keep installed role count separate from concurrent spawned workers. The
   worker count excludes the primary/orchestrator thread. Never derive it from
   the catalog size of 111.
@@ -96,21 +97,44 @@ not download, install, or substitute another executable.
    exact diff. State that project config is a persistent default loaded only
    when Codex trusts the project and may require a fresh session.
 
-7. For `preview`, stop after the plan. For `manual`, explain that apply will
+7. Run the read-only approval description:
+
+   ```text
+   node <plugin-root>/scripts/codsemble.mjs approval \
+     --plan <absolute-temporary-plan-json>
+   ```
+
+   For `preview`, require `state: preview-only`, do not display or speak a
+   challenge, do not ask for confirmation, and stop after stating that the plan
+   is read-only and terminal. If the user later wants changes, re-probe and
+   regenerate a new non-preview plan; never promote the old preview. For
+   `manual`, explain that apply will
    write the confirmed team artifacts while leaving `.codex/config.toml`
    untouched, and show the concurrency snippet for the user to install
    separately. For `unchanged`, explain that apply will write the confirmed
    team artifacts without changing concurrency configuration.
 
-8. For any non-preview mode, ask the user to confirm the displayed exact plan
-   confirmation id. Accept only an unambiguous match. Then run:
+8. For any non-preview mode, ask the user to confirm the displayed exact plan.
+   In voice interactions, speak the complete `voiceChallenge` only after the
+   diff and risk summary, then require a later user-originated turn to repeat it
+   exactly. Reject `yes`, `continue`, `go ahead`, `approved`, `do it`, partial
+   phrases, paraphrases, reordered words, and approximate matches. Do not ask a
+   yes/no repair question after a mismatch. Say exactly: `That did not match.
+   Nothing changed. Repeat the exact phrase shown, or say cancel.` If the user
+   says `cancel`, discard the conversational approval step and do not invoke
+   `apply`. Use voice confirmation only when the calling voice layer identifies
+   a later user-originated transcript after assistant speech ends; otherwise
+   require the keyboard confirmation-ID path. Then run:
 
    ```text
    node <plugin-root>/scripts/codsemble.mjs apply \
      --workspace <absolute-workspace> \
      --plan <absolute-temporary-plan-json> \
-     --confirm <exact-confirmation-id>
+     --confirm-voice "<complete-current-voice-challenge>"
    ```
+
+   For keyboard automation, `--confirm <exact-confirmation-id>` remains the
+   byte-exact compatibility path. Use exactly one confirmation method.
 
    Do not alter the plan after confirmation. If any preimage changed, stop and
    regenerate instead of retrying or overwriting.

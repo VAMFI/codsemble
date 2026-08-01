@@ -13,7 +13,8 @@ workspace
   -> deterministic role ranking
   -> Lean / Balanced / Full proposals
   -> exact generated-file and configuration preview
-  -> confirmed, locked no-clobber transaction
+  -> full-digest or strictly matched voice-alias confirmation
+  -> locked no-clobber transaction
   -> doctor and fresh-session validation
 ```
 
@@ -43,6 +44,10 @@ at runtime.
 - Recommendation consumes typed signals, not arbitrary repository prose.
 - Preview has no side effects.
 - Apply requires a content-bound confirmation id and unchanged preimage hashes.
+- Voice approval is a derived presentation alias for that unchanged digest, not
+  a shorter replacement, secret, or speaker-authentication mechanism.
+- Preview-only plans never expose a voice challenge and must be regenerated in
+  an apply-capable mode before confirmation.
 - Plan binds answer-file claims to a live local capability probe; apply
   independently re-probes the requirements encoded in the confirmed plan.
 - Mutations use a cooperative lock, durable pending record, quarantine, and

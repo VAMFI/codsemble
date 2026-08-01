@@ -13,6 +13,12 @@ Codesemble may persist the selected team, generator versions, content hashes,
 and transaction metadata under `.codex/codsemble/`. Transaction records do not
 need to store arbitrary source content or secret values.
 
+The voice-friendly path processes only the transcript string passed to the
+local CLI. Codesemble does not record audio, identify a speaker, or persist the
+spoken challenge or transcript in the workspace or transaction receipt. The
+calling voice surface may have separate data handling that remains outside this
+plugin's boundary.
+
 ## Data excluded
 
 The auditor excludes:

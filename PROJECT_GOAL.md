@@ -8,7 +8,8 @@ Build a clean Apache-2.0, offline-first, open-source Codex plugin that:
 4. Lets the user search, customize, add, or exclude specialist roles.
 5. Generates native `.codex/agents/*.toml`, a bounded managed `AGENTS.md` section,
    and an optional version-aware project concurrency setting.
-6. Shows exact diffs and applies only the confirmed transaction.
+6. Shows exact diffs and applies only the confirmed transaction, using either
+   the full content-bound confirmation ID or its strictly matched voice-friendly alias.
 7. Preserves unrelated content, detects concurrent modification, and supports safe rollback.
 8. Validates models, permissions, tools, configuration, discovery, and real native delegation.
 9. Produces a reproducible `v0.1.0` release candidate with complete open-source documentation.

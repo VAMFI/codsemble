@@ -20,8 +20,8 @@ npm audit --audit-level=high
 The current candidate passes:
 
 - strict TypeScript checking;
-- 87 unit, golden, property, security, fixture, transaction, capability,
-  doctor, compiler, and bundled-CLI tests;
+- 94 unit, golden, property, security, fixture, transaction, capability,
+  voice-confirmation, doctor, compiler, and bundled-CLI tests;
 - deterministic bundle generation;
 - full source-payload checksum verification;
 - exactly 111 schema-valid, uniquely identified role blueprints;
@@ -89,4 +89,7 @@ they referenced local authentication state.
 - CodeQL passed on the same source. See
   [CodeQL run 30624509442](https://github.com/VAMFI/codsemble/actions/runs/30624509442).
 - Real-runtime proof currently covers one macOS arm64 host and Codex 0.145.0.
+- Voice tests use transcript strings. They do not prove Android microphone,
+  realtime echo suppression, speech recognition, speaker identity, or trusted
+  UI channel binding.
 - OpenAI plugin-directory submission is a separate external review boundary.

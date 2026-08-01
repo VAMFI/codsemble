@@ -7,6 +7,13 @@ until a release is explicitly published.
 
 ## Unreleased
 
+### Added
+
+- Voice-friendly plan approval with a strict six-word spoken challenge derived
+  from the unchanged full confirmation digest.
+- A read-only `approval` command that clearly separates terminal preview plans
+  from apply-capable plans.
+
 ## 0.1.0 - 2026-07-31
 
 ### Added

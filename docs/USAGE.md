@@ -59,8 +59,20 @@ These commands emit JSON to standard output and do not write workspace files.
 multi-agent feature state, and bounded model metadata. It discards raw provider
 instructions and cannot grant permissions. If probing fails, keep model
 configuration inherited and use manual or unchanged config mode.
-Save the plan outside the workspace, inspect every proposed path and diff, then
-apply with the exact confirmation id, which is a digest of the complete plan:
+Save the plan outside the workspace and inspect every proposed path and diff.
+Then ask the read-only approval command whether the plan is apply-capable:
+
+```bash
+node "<plugin-root>/scripts/codsemble.mjs" approval \
+  --plan "/temporary/path/plan.json"
+```
+
+A `preview-only` result is terminal: it has no approval challenge and cannot be
+passed to `apply`. To make changes, re-probe and regenerate a new plan using
+`apply-project`, `manual`, or `unchanged` mode, then show its exact diff.
+
+For an apply-capable plan, use either the exact confirmation id, which is a
+digest of the complete plan:
 
 ```bash
 node "<plugin-root>/scripts/codsemble.mjs" apply \
@@ -69,9 +81,24 @@ node "<plugin-root>/scripts/codsemble.mjs" apply \
   --confirm "<exact-confirmation-id>"
 ```
 
+or its complete voice challenge:
+
+```bash
+node "<plugin-root>/scripts/codsemble.mjs" apply \
+  --workspace "/absolute/path/to/workspace" \
+  --plan "/temporary/path/plan.json" \
+  --confirm-voice "approve team <six-word-challenge>"
+```
+
+Voice matching accepts only case, whitespace or hyphen separators, and one
+terminal punctuation mark. `yes`, `continue`, `go ahead`, partial phrases,
+reordered words, approximate matches, and cross-plan challenges are refused.
+See [Voice-friendly plan approval](VOICE_APPROVAL.md).
+
 `apply` is the mutating boundary. Do not infer confirmation from an earlier
-general request; show the final exact diff and ask for confirmation of the plan
-id. In `manual` and `unchanged` modes, apply writes only the confirmed team
+general request, proposal choice, positive feedback, or read-only consent; show
+the final exact diff and ask for the current confirmation ID or complete voice
+challenge. In `manual` and `unchanged` modes, apply writes only the confirmed team
 artifacts and leaves `.codex/config.toml` untouched. `preview` performs no
 writes. An already-identical plan returns `noChanges: true` with no transaction
 receipt and no reload request.

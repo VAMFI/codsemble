@@ -11,6 +11,7 @@
   <a href="docs/USAGE.md">Usage</a> ·
   <a href="docs/ARCHITECTURE.md">How it works</a> ·
   <a href="docs/CONFIG_SAFETY.md">Safety</a> ·
+  <a href="docs/VOICE_APPROVAL.md">Voice approval</a> ·
   <a href="docs/ROLE_CATALOG.md">111-role catalog</a>
 </p>
 
@@ -83,7 +84,8 @@ $initialize-team Set up a balanced Codex team for this workspace.
 ```
 
 Codesemble audits and prepares a side-effect-free plan first. It applies project
-files only after showing the exact diff and receiving the plan's confirmation ID.
+files only after showing the exact diff and receiving the plan's confirmation ID
+or its strictly matched, voice-friendly spoken alias.
 
 ### Keep it healthy
 
@@ -121,6 +123,7 @@ credentials, broaden permissions, or publish anything for you.
 | Install, initialize, update, diagnose, or roll back | [Usage](docs/USAGE.md) |
 | Understand the compiler and native Codex outputs | [Architecture](docs/ARCHITECTURE.md) |
 | Review concurrency, no-clobber apply, and recovery behavior | [Configuration safety](docs/CONFIG_SAFETY.md) |
+| Approve an apply-capable plan from a realtime voice session | [Voice-friendly approval](docs/VOICE_APPROVAL.md) |
 | Browse the 111 specialist blueprints | [Role catalog](docs/ROLE_CATALOG.md) |
 | Understand local data handling | [Privacy](docs/PRIVACY.md) |
 | Review trust boundaries and abuse cases | [Threat model](docs/THREAT_MODEL.md) |

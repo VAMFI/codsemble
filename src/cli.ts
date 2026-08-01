@@ -8,6 +8,10 @@ import {
 } from "./capabilities.js";
 import { loadCatalog } from "./catalog.js";
 import { compileTeamPlan } from "./compiler.js";
+import {
+  describePlanApproval,
+  verifyPlanConfirmation,
+} from "./confirmation.js";
 import { doctorWorkspace } from "./doctor.js";
 import { recommendTeams } from "./recommend.js";
 import { intakeAnswersSchema } from "./schemas.js";
@@ -30,13 +34,15 @@ Usage:
   codsemble capabilities [--workspace PATH]
   codsemble recommend --answers FILE [--workspace PATH] [--catalog FILE]
   codsemble plan --answers FILE --proposal lean|balanced|full [--workspace PATH]
-  codsemble apply --plan FILE --confirm CONFIRMATION_ID [--workspace PATH]
+  codsemble approval --plan FILE
+  codsemble apply --plan FILE (--confirm CONFIRMATION_ID | --confirm-voice "VOICE_CHALLENGE") [--workspace PATH]
   codsemble doctor [--workspace PATH]
   codsemble rollback --transaction TRANSACTION_ID --confirm TRANSACTION_ID [--workspace PATH]
   codsemble catalog [--search TERM] [--catalog FILE]
 
-Audit, capabilities, recommend, plan, catalog, and doctor are read-only. Apply requires the
-exact plan ID printed by plan. Project configuration is never changed globally.
+Audit, capabilities, recommend, plan, approval, catalog, and doctor are read-only. Apply accepts
+only a non-preview plan and either its exact confirmation ID or its complete current voice
+challenge. Generic approval words are never accepted. Project configuration is never changed globally.
 `;
 
 interface ParsedArguments {
@@ -171,28 +177,48 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       assertPlanCapabilities(plan, capabilities, "plan");
       return plan;
     }
-    case "apply": {
-      allowOnly(arguments_, ["--workspace", "--plan", "--confirm"]);
+    case "approval": {
+      allowOnly(arguments_, ["--plan"]);
       const plan = await readJson<TeamPlan>(
         flag(arguments_, "--plan", { required: true }) as string,
       );
       assertValidTeamPlan(plan);
-      const confirmation = flag(arguments_, "--confirm", {
-        required: true,
-      });
-      if (
-        typeof plan.planId !== "string" ||
-        confirmation !== plan.confirmationId
-      ) {
-        throw new Error(
-          "Confirmation refused: --confirm must exactly match plan.confirmationId",
-        );
-      }
+      return describePlanApproval(plan);
+    }
+    case "apply": {
+      allowOnly(arguments_, [
+        "--workspace",
+        "--plan",
+        "--confirm",
+        "--confirm-voice",
+      ]);
+      const plan = await readJson<TeamPlan>(
+        flag(arguments_, "--plan", { required: true }) as string,
+      );
+      assertValidTeamPlan(plan);
       if (plan.concurrency?.configMode === "preview") {
         throw new Error(
           "Apply refused: preview plans are read-only; regenerate with apply-project, manual, or unchanged mode",
         );
       }
+      const fullConfirmation = flag(arguments_, "--confirm");
+      const voiceConfirmation = flag(arguments_, "--confirm-voice");
+      if (
+        (fullConfirmation === undefined) === (voiceConfirmation === undefined)
+      ) {
+        throw new Error(
+          "Apply requires exactly one confirmation method: --confirm or --confirm-voice",
+        );
+      }
+      verifyPlanConfirmation(
+        plan,
+        fullConfirmation !== undefined
+          ? { kind: "full-id", value: fullConfirmation }
+          : {
+              kind: "voice-challenge",
+              value: voiceConfirmation as string,
+            },
+      );
       const capabilities = await detectCodexCapabilities(workspace);
       assertPlanCapabilities(plan, capabilities, "apply");
       if (plan.files.every(({ action }) => action === "verify")) {

@@ -17759,6 +17759,221 @@ async function getExistingFile(root, relativePath, existingFiles) {
   }
 }
 
+// src/confirmation.ts
+var VOICE_CONFIRMATION_VERSION = "voice-v1";
+var VOICE_CONFIRMATION_WORDS = [
+  "acorn",
+  "admiral",
+  "almond",
+  "amber",
+  "anchor",
+  "anthem",
+  "apricot",
+  "arctic",
+  "atlas",
+  "badger",
+  "bamboo",
+  "banjo",
+  "beacon",
+  "beaver",
+  "biscuit",
+  "blossom",
+  "bonnet",
+  "bottle",
+  "bronze",
+  "cactus",
+  "candle",
+  "canyon",
+  "caramel",
+  "cedar",
+  "cello",
+  "cherry",
+  "cobalt",
+  "comet",
+  "copper",
+  "coral",
+  "cotton",
+  "crater",
+  "crystal",
+  "daisy",
+  "denim",
+  "desert",
+  "domino",
+  "dragon",
+  "driftwood",
+  "eagle",
+  "elmwood",
+  "emerald",
+  "falcon",
+  "feather",
+  "festival",
+  "flannel",
+  "forest",
+  "fossil",
+  "galaxy",
+  "garden",
+  "garnet",
+  "ginger",
+  "glacier",
+  "granite",
+  "harbor",
+  "hazel",
+  "helmet",
+  "honey",
+  "horizon",
+  "ivory",
+  "jacket",
+  "jasmine",
+  "kettle",
+  "kiwi",
+  "lantern",
+  "lavender",
+  "lemon",
+  "lilac",
+  "lobster",
+  "maple",
+  "marble",
+  "meadow",
+  "melon",
+  "meteor",
+  "mosaic",
+  "mountain",
+  "mustard",
+  "nectar",
+  "nickel",
+  "ocean",
+  "olive",
+  "orchid",
+  "otter",
+  "panda",
+  "paper",
+  "pebble",
+  "pepper",
+  "piano",
+  "pickle",
+  "planet",
+  "plum",
+  "pocket",
+  "quartz",
+  "rabbit",
+  "radar",
+  "raven",
+  "ribbon",
+  "river",
+  "rocket",
+  "saffron",
+  "sailor",
+  "satin",
+  "shadow",
+  "silver",
+  "socket",
+  "sparrow",
+  "spiral",
+  "spruce",
+  "summit",
+  "sunset",
+  "tablet",
+  "tango",
+  "teapot",
+  "temple",
+  "thunder",
+  "timber",
+  "topaz",
+  "tulip",
+  "velvet",
+  "violet",
+  "walnut",
+  "willow",
+  "window",
+  "winter",
+  "yogurt",
+  "yucca",
+  "zebra",
+  "zephyr"
+];
+var SPOKEN_WORD_COUNT = 6;
+function voiceChallengeForConfirmationId(confirmationId) {
+  if (!/^[a-f0-9]{32}$/.test(confirmationId)) {
+    throw new Error("Cannot derive a voice challenge from an invalid confirmation id");
+  }
+  const digest = sha256(
+    `${VOICE_CONFIRMATION_VERSION}\0${confirmationId}`
+  );
+  const pool = [...VOICE_CONFIRMATION_WORDS];
+  let value = BigInt(`0x${digest}`);
+  const selected = [];
+  for (let index = 0; index < SPOKEN_WORD_COUNT; index += 1) {
+    const selectedIndex = Number(value % BigInt(pool.length));
+    const word = pool.splice(selectedIndex, 1)[0];
+    if (word === void 0) {
+      throw new Error("Voice challenge vocabulary is incomplete");
+    }
+    selected.push(word);
+    value /= BigInt(pool.length + 1);
+  }
+  return `approve team ${selected.join(" ")}`;
+}
+function describePlanApproval(plan) {
+  assertConfirmationDigest(plan);
+  const applyCapable = plan.concurrency.configMode !== "preview";
+  const mutatingPaths = plan.files.filter(({ action }) => action !== "verify").map(({ relativePath }) => relativePath).sort();
+  return {
+    schemaVersion: 1,
+    planId: plan.planId,
+    confirmationId: plan.confirmationId,
+    state: applyCapable ? "ready" : "preview-only",
+    applyCapable,
+    noChanges: mutatingPaths.length === 0,
+    mutatingPaths,
+    voiceChallengeVersion: VOICE_CONFIRMATION_VERSION,
+    voiceChallenge: applyCapable ? voiceChallengeForConfirmationId(plan.confirmationId) : null,
+    freshness: {
+      mode: "plan-and-preimage-bound",
+      summary: applyCapable ? "Valid only for this exact plan while every recorded workspace preimage remains unchanged." : "Preview-only plans have no approval step and must be regenerated in an apply-capable mode."
+    }
+  };
+}
+function verifyPlanConfirmation(plan, confirmation) {
+  assertConfirmationDigest(plan);
+  if (plan.concurrency.configMode === "preview") {
+    throw new Error(
+      "Apply refused: preview plans are read-only; regenerate with apply-project, manual, or unchanged mode"
+    );
+  }
+  if (confirmation.kind === "full-id") {
+    if (confirmation.value !== plan.confirmationId) {
+      throw new Error(
+        "Confirmation refused: --confirm must exactly match plan.confirmationId"
+      );
+    }
+    return;
+  }
+  const expected = voiceChallengeForConfirmationId(plan.confirmationId);
+  const received = normalizeVoiceConfirmation(confirmation.value);
+  if (received === null || received !== expected) {
+    throw new Error(
+      "Voice confirmation refused: repeat the complete current voice challenge exactly; vague, partial, reordered, or approximate speech is not approval"
+    );
+  }
+}
+function normalizeVoiceConfirmation(value) {
+  if (value.length === 0 || value.length > 240 || !/^[\t\n\r\x20-\x7e]+$/.test(value)) {
+    return null;
+  }
+  const trimmed = value.trim().toLowerCase();
+  const withoutTerminalPunctuation = /[.!?]$/.test(trimmed) ? trimmed.slice(0, -1) : trimmed;
+  if (withoutTerminalPunctuation.startsWith("-") || withoutTerminalPunctuation.endsWith("-") || /[^a-z\s-]/.test(withoutTerminalPunctuation)) {
+    return null;
+  }
+  const normalized = withoutTerminalPunctuation.replace(/[\s-]+/g, " ").trim();
+  return /^approve team(?: [a-z]+){6}$/.test(normalized) ? normalized : null;
+}
+function assertConfirmationDigest(plan) {
+  if (!/^[a-f0-9]{32}$/.test(plan.confirmationId) || computeConfirmationId(plan) !== plan.confirmationId) {
+    throw new Error("Plan confirmation digest mismatch");
+  }
+}
+
 // src/doctor.ts
 import { access as access2, lstat as lstat5, readFile as readFile4, readdir as readdir3 } from "node:fs/promises";
 import path6 from "node:path";
@@ -19687,13 +19902,15 @@ Usage:
   codsemble capabilities [--workspace PATH]
   codsemble recommend --answers FILE [--workspace PATH] [--catalog FILE]
   codsemble plan --answers FILE --proposal lean|balanced|full [--workspace PATH]
-  codsemble apply --plan FILE --confirm CONFIRMATION_ID [--workspace PATH]
+  codsemble approval --plan FILE
+  codsemble apply --plan FILE (--confirm CONFIRMATION_ID | --confirm-voice "VOICE_CHALLENGE") [--workspace PATH]
   codsemble doctor [--workspace PATH]
   codsemble rollback --transaction TRANSACTION_ID --confirm TRANSACTION_ID [--workspace PATH]
   codsemble catalog [--search TERM] [--catalog FILE]
 
-Audit, capabilities, recommend, plan, catalog, and doctor are read-only. Apply requires the
-exact plan ID printed by plan. Project configuration is never changed globally.
+Audit, capabilities, recommend, plan, approval, catalog, and doctor are read-only. Apply accepts
+only a non-preview plan and either its exact confirmation ID or its complete current voice
+challenge. Generic approval words are never accepted. Project configuration is never changed globally.
 `;
 function parseArguments(argv) {
   const [command, ...rest] = argv;
@@ -19809,25 +20026,44 @@ async function run(arguments_) {
       assertPlanCapabilities(plan, capabilities, "plan");
       return plan;
     }
-    case "apply": {
-      allowOnly(arguments_, ["--workspace", "--plan", "--confirm"]);
+    case "approval": {
+      allowOnly(arguments_, ["--plan"]);
       const plan = await readJson(
         flag(arguments_, "--plan", { required: true })
       );
       assertValidTeamPlan(plan);
-      const confirmation = flag(arguments_, "--confirm", {
-        required: true
-      });
-      if (typeof plan.planId !== "string" || confirmation !== plan.confirmationId) {
-        throw new Error(
-          "Confirmation refused: --confirm must exactly match plan.confirmationId"
-        );
-      }
+      return describePlanApproval(plan);
+    }
+    case "apply": {
+      allowOnly(arguments_, [
+        "--workspace",
+        "--plan",
+        "--confirm",
+        "--confirm-voice"
+      ]);
+      const plan = await readJson(
+        flag(arguments_, "--plan", { required: true })
+      );
+      assertValidTeamPlan(plan);
       if (plan.concurrency?.configMode === "preview") {
         throw new Error(
           "Apply refused: preview plans are read-only; regenerate with apply-project, manual, or unchanged mode"
         );
       }
+      const fullConfirmation = flag(arguments_, "--confirm");
+      const voiceConfirmation = flag(arguments_, "--confirm-voice");
+      if (fullConfirmation === void 0 === (voiceConfirmation === void 0)) {
+        throw new Error(
+          "Apply requires exactly one confirmation method: --confirm or --confirm-voice"
+        );
+      }
+      verifyPlanConfirmation(
+        plan,
+        fullConfirmation !== void 0 ? { kind: "full-id", value: fullConfirmation } : {
+          kind: "voice-challenge",
+          value: voiceConfirmation
+        }
+      );
       const capabilities = await detectCodexCapabilities(workspace);
       assertPlanCapabilities(plan, capabilities, "apply");
       if (plan.files.every(({ action }) => action === "verify")) {

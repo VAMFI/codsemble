@@ -1,6 +1,6 @@
 ---
 name: initialize-team
-description: Audit a workspace, collect bounded team preferences, recommend Lean, Balanced, and Full Codex teams, and preview or explicitly apply native project-scoped agent configuration. Use when a user asks to initialize, install, create, design, or set up a multi-agent team for a Codex project.
+description: Audit a workspace, compile evidence-bound project capabilities and Work Packages, recommend Focused, Recommended, and Extended Codex teams, and preview or explicitly apply native project-scoped agent configuration. Use when a user asks to initialize, install, create, design, or set up a multi-agent team for a Codex project.
 ---
 
 # Initialize a Codex team
@@ -23,10 +23,11 @@ not download, install, or substitute another executable.
   credentials, providers, hooks, MCP servers, or third-party skills/plugins.
 - Never push, publish, deploy, release, submit, or message external systems.
 - Do not infer apply approval from a request to initialize. Apply only after
-  showing the final exact diff and receiving its exact confirmation id.
+  showing the final exact diff and receiving its exact confirmation id or the
+  complete current voice challenge.
 - Keep installed role count separate from concurrent spawned workers. The
   worker count excludes the primary/orchestrator thread. Never derive it from
-  the catalog size of 111.
+  primitive-library size.
 
 ## Workflow
 
@@ -77,10 +78,11 @@ not download, install, or substitute another executable.
      --answers <absolute-temporary-answers-json>
    ```
 
-5. Present Lean, Balanced, and Full proposals with evidence, overlap warnings,
-   and worker ceilings. Recommend the smallest option that covers the user's
-   goals. Use `catalog --search <term>` only when the user wants another
-   specialist; do not dump all 111 roles into onboarding.
+5. Present Focused, Recommended, and Extended proposals with their Project
+   Capability Map, Work Package coverage, evidence references, gaps, sandboxes,
+   and worker ceilings. Recommend the smallest complete option. Use
+   `catalog --search <term>` only when the user wants to inspect or require a
+   reusable primitive; never dump the whole library into onboarding.
 
 6. After the user selects and customizes one proposal, run:
 
@@ -88,7 +90,7 @@ not download, install, or substitute another executable.
    node <plugin-root>/scripts/codsemble.mjs plan \
      --workspace <absolute-workspace> \
      --answers <absolute-temporary-answers-json> \
-     --proposal <lean|balanced|full>
+     --proposal <focused|recommended|extended>
    ```
 
    Save the JSON plan to a temporary path outside the workspace. Show every
@@ -96,23 +98,49 @@ not download, install, or substitute another executable.
    exact diff. State that project config is a persistent default loaded only
    when Codex trusts the project and may require a fresh session.
 
-7. For `preview`, stop after the plan. For `manual`, explain that apply will
+7. Run the read-only approval description:
+
+   ```text
+   node <plugin-root>/scripts/codsemble.mjs approval \
+     --workspace <absolute-workspace> \
+     --plan <absolute-temporary-plan-json>
+   ```
+
+   For `preview`, require `state: preview-only`, `confirmationId: null`, and
+   `voiceChallenge: null`; do not display or speak an approval token, do not ask
+   for confirmation, and stop after stating that the plan
+   is read-only and terminal. If the user later wants changes, re-probe and
+   regenerate a new non-preview plan; never promote the old preview. For
+   `manual`, explain that apply will
    write the confirmed team artifacts while leaving `.codex/config.toml`
    untouched, and show the concurrency snippet for the user to install
    separately. For `unchanged`, explain that apply will write the confirmed
    team artifacts without changing concurrency configuration.
 
-8. For any non-preview mode, ask the user to confirm the displayed exact plan
-   confirmation id. Accept only an unambiguous match. Then run:
+8. For any non-preview mode, ask the user to confirm the displayed exact plan.
+   In voice interactions, speak the complete `voiceChallenge` only after the
+   diff and risk summary, then require a later user-originated turn to repeat it
+   exactly. Reject `yes`, `continue`, `go ahead`, `approved`, `do it`, partial
+   phrases, paraphrases, reordered words, and approximate matches. Do not ask a
+   yes/no repair question after a mismatch. Say exactly: `That did not match.
+   Nothing changed. Repeat the exact phrase shown, or say cancel.` If the user
+   says `cancel`, discard the conversational approval step and do not invoke
+   `apply`. Use voice confirmation only when the calling voice layer identifies
+   a later user-originated transcript after assistant speech ends; otherwise
+   require the keyboard confirmation-ID path. Then run:
 
    ```text
    node <plugin-root>/scripts/codsemble.mjs apply \
      --workspace <absolute-workspace> \
      --plan <absolute-temporary-plan-json> \
-     --confirm <exact-confirmation-id>
+     --confirm-voice "<complete-current-voice-challenge>"
    ```
 
-   Do not alter the plan after confirmation. If any preimage changed, stop and
+   For keyboard automation, `--confirm <exact-confirmation-id>` remains the
+   byte-exact compatibility path. Use exactly one confirmation method.
+
+   Do not alter the plan after confirmation. If referenced evidence, a required
+   runtime capability, or any preimage changed, stop and
    regenerate instead of retrying or overwriting.
 
 9. Run `doctor --workspace <absolute-workspace>`. Report structural results

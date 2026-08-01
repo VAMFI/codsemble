@@ -1,0 +1,27 @@
+{
+  "scenario": "regulated-delivery",
+  "designId": "570f31820d90f4a468ab77c9",
+  "auditFingerprint": "6663f0ae8f3a21a6b35025befbcd154219c642cad320cb7fd3101ad5aff19f8d",
+  "capabilities": [
+    { "id": "cap-delivery-docker-04dc6a0a43b4", "unitId": ".", "kind": "delivery", "required": false, "risk": "high" },
+    { "id": "cap-delivery-github-actions-847d53590dae", "unitId": ".", "kind": "delivery", "required": false, "risk": "high" },
+    { "id": "cap-delivery-release-811473f604be", "unitId": ".", "kind": "delivery", "required": true, "risk": "high" },
+    { "id": "cap-security-compliance-b24f0d65148b", "unitId": ".", "kind": "security", "required": true, "risk": "high" }
+  ],
+  "workPackages": [
+    { "id": "wp-delivery-907e994f4a49", "unitId": ".", "capabilityIds": ["cap-delivery-docker-04dc6a0a43b4"], "required": false, "risk": "high", "scopes": ["Dockerfile"] },
+    { "id": "wp-delivery-a428b7564748", "unitId": ".", "capabilityIds": ["cap-delivery-github-actions-847d53590dae"], "required": false, "risk": "high", "scopes": [".github/workflows/ci.yml"] },
+    { "id": "wp-delivery-0b02ff7474a1", "unitId": ".", "capabilityIds": ["cap-delivery-release-811473f604be"], "required": true, "risk": "high", "scopes": [".github/workflows/ci.yml", "Dockerfile"] },
+    { "id": "wp-security-ff6622b350cb", "unitId": ".", "capabilityIds": ["cap-security-compliance-b24f0d65148b"], "required": true, "risk": "high", "scopes": [] }
+  ],
+  "roles": [
+    { "id": "github-actions-delivery-specialist-a7c1bd8e", "sandbox": "read-only", "workPackageIds": ["wp-delivery-0b02ff7474a1"], "sourcePrimitives": [] },
+    { "id": "github-actions-independent-verification-validator-35666f9b", "sandbox": "read-only", "workPackageIds": ["wp-delivery-0b02ff7474a1", "wp-security-ff6622b350cb"], "sourcePrimitives": [] },
+    { "id": "regulated-delivery-security-specialist-c3c316ee", "sandbox": "read-only", "workPackageIds": ["wp-security-ff6622b350cb"], "sourcePrimitives": [] }
+  ],
+  "proposals": [
+    { "kind": "focused", "roleIds": ["github-actions-delivery-specialist-a7c1bd8e", "regulated-delivery-security-specialist-c3c316ee"], "workPackageIds": ["wp-delivery-0b02ff7474a1", "wp-security-ff6622b350cb"], "coveredCapabilityIds": ["cap-delivery-release-811473f604be", "cap-security-compliance-b24f0d65148b"], "uncoveredCapabilityIds": [], "maxConcurrentWorkers": 4 },
+    { "kind": "recommended", "roleIds": ["github-actions-delivery-specialist-a7c1bd8e", "github-actions-independent-verification-validator-35666f9b", "regulated-delivery-security-specialist-c3c316ee"], "workPackageIds": ["wp-delivery-0b02ff7474a1", "wp-security-ff6622b350cb"], "coveredCapabilityIds": ["cap-delivery-release-811473f604be", "cap-security-compliance-b24f0d65148b"], "uncoveredCapabilityIds": [], "maxConcurrentWorkers": 4 },
+    { "kind": "extended", "roleIds": ["github-actions-delivery-specialist-a7c1bd8e", "github-actions-independent-verification-validator-35666f9b", "regulated-delivery-security-specialist-c3c316ee"], "workPackageIds": ["wp-delivery-0b02ff7474a1", "wp-security-ff6622b350cb"], "coveredCapabilityIds": ["cap-delivery-release-811473f604be", "cap-security-compliance-b24f0d65148b"], "uncoveredCapabilityIds": [], "maxConcurrentWorkers": 4 }
+  ]
+}

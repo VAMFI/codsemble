@@ -98,10 +98,10 @@ function answers(
 }
 
 describe("recommendTeams", () => {
-  it("loads the validated offline catalog", async () => {
+  it("uses the offline catalog as primitives while generating a project role", async () => {
     const catalog = await loadCatalog();
-    expect(catalog).toHaveLength(111);
-    expect(new Set(catalog.map(({ id }) => id)).size).toBe(111);
+    expect(catalog.length).toBeGreaterThan(0);
+    expect(new Set(catalog.map(({ id }) => id)).size).toBe(catalog.length);
 
     const frameworkAudit: AuditReport = {
       ...audit,
@@ -125,12 +125,20 @@ describe("recommendTeams", () => {
       answers({ desiredRoleCount: 2, goals: ["frontend"] }),
       catalog,
     ).proposals[0];
-    expect(proposal?.roles.map(({ roleId }) => roleId)).toContain(
-      "frontend-engineer",
+    expect(proposal?.kind).toBe("focused");
+    expect(proposal?.roles).toHaveLength(1);
+    expect(proposal?.roles[0]?.roleId).toMatch(/react-implementation-specialist/);
+    const result = recommendTeams(
+      frameworkAudit,
+      answers({ desiredRoleCount: 2, goals: ["frontend"] }),
+      catalog,
     );
+    const generated = result.teamDesign?.roles[0];
+    expect(generated?.sourcePrimitives).toContain("frontend-engineer");
+    expect(generated?.evidenceRefs.length).toBeGreaterThan(1);
   });
 
-  it("produces deterministic lean, balanced, and full evidence-backed teams", () => {
+  it("produces deterministic focused, recommended, and extended coverage teams", () => {
     const roles = [
       role("docs"),
       role("typescript", {
@@ -147,21 +155,20 @@ describe("recommendTeams", () => {
 
     expect(first).toEqual(second);
     expect(first.proposals.map(({ kind }) => kind)).toEqual([
-      "lean",
-      "balanced",
-      "full",
+      "focused",
+      "recommended",
+      "extended",
     ]);
     expect(first.proposals.map(({ roles: selected }) => selected.length)).toEqual([
-      2, 3, 5,
+      1, 1, 1,
     ]);
     expect(first.proposals[0]?.roles[0]?.reasons.join(" ")).toContain(
-      'User goal "quality"',
+      "Bound to evidence references",
     );
-    expect(
-      first.proposals[0]?.roles
-        .find(({ roleId }) => roleId === "typescript")
-        ?.reasons.join(" "),
-    ).toContain("package.json");
+    expect(first.teamDesign?.capabilityMap.capabilities.some(
+      ({ kind, required }) => kind === "verification" && required,
+    )).toBe(true);
+    expect(first.teamDesign?.roles[0]?.workPackageIds.length).toBeGreaterThan(0);
     expect(
       first.proposals.every(
         (proposal) => proposal.maxConcurrentWorkers === 2,
@@ -201,25 +208,30 @@ describe("recommendTeams", () => {
       expect(proposal.roles.map(({ roleId }) => roleId)).not.toContain(
         "quality",
       );
+      expect(proposal.rationale).toContain(
+        "Explicit user-selected roles: 2.",
+      );
+      expect(proposal.rationale).toContain(
+        `Total proposed roles: ${proposal.roles.length}.`,
+      );
     }
   });
 
-  it("penalizes conflicting ownership and rejects contradictory input", () => {
+  it("does not add filler roles and rejects contradictory input", () => {
     const conflictingRoles = [
       role("alpha", { conflicts: ["beta"], goalTags: ["quality"] }),
       role("beta", { conflicts: ["alpha"], goalTags: ["quality"] }),
       role("gamma", { goalTags: ["quality"] }),
     ];
-    const proposal = recommendTeams(
+    const result = recommendTeams(
       audit,
-      answers({ desiredRoleCount: 2 }),
+      answers({ desiredRoleCount: 20 }),
       conflictingRoles,
-    ).proposals[1];
+    );
 
-    expect(proposal?.roles.map(({ roleId }) => roleId)).toEqual([
-      "alpha",
-      "gamma",
-    ]);
+    expect(result.proposals.every(({ roles }) => roles.length === 1)).toBe(true);
+    expect(result.proposals.flatMap(({ roles }) => roles.map(({ roleId }) => roleId)))
+      .not.toContain("alpha");
     expect(() =>
       recommendTeams(
         audit,

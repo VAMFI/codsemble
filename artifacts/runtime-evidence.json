@@ -1,108 +1,196 @@
 {
-  "schemaVersion": 1,
-  "capturedAt": "2026-07-31T10:50:09Z",
+  "schemaVersion": 2,
+  "capturedAt": "2026-08-01T19:08:52Z",
   "source": {
-    "validatedCommit": "a3b15151bd74fd1aabea6de94b21555cdc61d384",
-    "pluginPayloadSha256": "cc182fdea5f0566f6799b01a2fd85824e8dbfe71db2c4cda752f57147e357c91",
-    "pluginPayloadDigestAlgorithm": "sha256(path-nul-length-nul-content-nul)",
+    "validatedCommit": "506d843a627c4fd225109eb6fd3fe082d1f2bd26",
+    "pluginArchiveSha256": "d93fd8a98237933dbac1a93dcca87ce3733cc7d2ffaadd682b1294656942097b",
+    "logicalPluginPayloadSha256": "95c65a6f991fc1300d6af0551bf1934d6a7beb153008220aa9cd5f7f69e3a005",
+    "logicalPluginPayloadDigestAlgorithm": "sha256(path-nul-length-nul-content-nul)",
     "pluginFileCount": 12
   },
   "boundary": {
     "codexVersion": "0.145.0",
-    "operatingSystem": "macOS arm64",
-    "pluginVersion": "0.1.0",
+    "nodeVersion": "26.5.0",
+    "additionalValidationNodeVersion": "24.13.1",
+    "operatingSystem": "Darwin 25.5.0 arm64",
+    "pluginVersion": "0.2.0",
+    "pluginId": "codsemble@codsemble",
     "marketplace": "codsemble",
+    "configAdapter": "agents-v1",
     "isolatedCodexHome": true,
-    "disposableTrustedProject": true
+    "disposableTrustedProject": true,
+    "globalCodexConfigurationChanged": false
   },
   "pluginDiscovery": {
-    "pluginId": "codsemble@codsemble",
-    "availableBeforeInstall": true,
+    "installedFromExactArchive": true,
     "installed": true,
     "enabled": true,
-    "configLoad": "ok"
+    "freshSkillDiscovery": "pass",
+    "configLoad": "pass"
   },
-  "capabilityProbe": {
-    "codexAvailable": true,
-    "codexVersion": "0.145.0",
-    "multiAgentEnabled": true,
-    "configAdapter": "agents-v1",
-    "boundedModelCount": 8,
-    "rawModelInstructionsRetained": false
+  "previewOnlyPlan": {
+    "planId": "9e1ce741e87f831de31788b5",
+    "applyCapable": false,
+    "confirmationChallengeIssued": false,
+    "writesObserved": 0,
+    "result": "pass"
   },
-  "confirmedPlan": {
-    "planId": "c06a2a271c5408f06035167c",
-    "confirmationId": "2e793f26c9f7fdc01579fbe85e3485ba",
-    "transactionId": "167352b9-15f4-4d60-810f-e5a43e22ae17",
+  "initialApply": {
+    "planId": "21e7c47ef95ff586ef8f4a40",
+    "confirmationId": "dd64148528bc94bd5784c376d98bde68",
+    "confirmationMethod": "exact six-word voice-friendly challenge",
+    "confirmationChallengeIncluded": false,
+    "transactionId": "b1984813-86eb-45d1-be19-e91c39b75ba1",
     "configMode": "apply-project",
-    "projectCurrentValue": null,
+    "projectCurrentSpawnedWorkerCeiling": null,
     "requestedSpawnedWorkerCeiling": 2,
-    "configWritePlanned": true,
-    "doctorAfterApply": "pass"
-  },
-  "nativeAgentRun": {
-    "parentThreadId": "019fb7c8-174c-7ec1-babf-627ea318318a",
-    "children": [
+    "configWriteApplied": true,
+    "installedRoleCount": 8,
+    "generatedRoleCount": 6,
+    "explicitRoleCount": 2,
+    "explicitRoles": [
       {
-        "threadId": "019fb7c8-2bfd-7d70-b6a6-506dd48706bc",
-        "agentRole": "delivery_planner",
-        "generatedDeveloperInstructionsObserved": true,
-        "result": "PLAN-OK Independent delivery planning and integration testing are required before readiness is reported."
+        "id": "runtime-master-orchestrator",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "ultra"
       },
       {
-        "threadId": "019fb7c8-38a2-7b82-9a72-2f597cce448e",
-        "agentRole": "integration_test_engineer",
-        "generatedDeveloperInstructionsObserved": true,
-        "result": "TEST-OK Independent delivery planning and integration testing are required before readiness is reported."
+        "id": "runtime-daily-integrator",
+        "model": "gpt-5.6-luna",
+        "reasoningEffort": "max"
       }
     ],
-    "rootIntegratedResult": "ROOT-OK PLAN-OK TEST-OK",
-    "generatedForkGuidanceObserved": true
+    "doctorAfterApply": "pass"
+  },
+  "nativeOrchestrationRun": {
+    "parentThreadId": "019fbe45-0f97-7202-83fa-1bebabe8687f",
+    "orchestrator": {
+      "threadId": "019fbe45-2fe0-7ed1-a00f-286f4dda290c",
+      "agentRole": "runtime-master-orchestrator",
+      "generatedDeveloperInstructionsObserved": true
+    },
+    "specialists": [
+      {
+        "threadId": "019fbe45-55c3-7543-a489-7a3efb0d0aba",
+        "agentRole": "javascript-implementation-specialist-2a9ed216",
+        "source": "generated",
+        "discoveredInFreshPostApplySession": true,
+        "assignment": "source inspection",
+        "result": "SOURCE-OK"
+      },
+      {
+        "threadId": "019fbe45-877a-7640-8582-5d8f56350cf7",
+        "agentRole": "tests-present-verification-specialist-c2eadc5d",
+        "source": "generated",
+        "discoveredInFreshPostApplySession": true,
+        "assignment": "focused test execution",
+        "result": "TEST-OK; one focused test passed"
+      }
+    ],
+    "rootIntegratedResult": "ROOT-OK ORCH-OK SOURCE-OK TEST-OK",
+    "rootRetainedFinalAuthority": true
   },
   "capacityRun": {
-    "parentThreadId": "019fb7c8-a716-7963-8122-f1ee06db2501",
+    "parentThreadId": "019fbe46-5d6e-7441-92e7-c874ded6285d",
     "configuredSpawnedWorkerCeiling": 2,
-    "successfulChildren": 2,
-    "thirdSpawn": "collab spawn failed: agent thread limit reached",
-    "unboundedRetryObserved": false
+    "successfulChildren": [
+      "019fbe46-6d06-71e3-a143-b14128627c71",
+      "019fbe46-7db9-7801-a93c-16d4b759f284"
+    ],
+    "thirdSpawn": "rejected: agent thread limit reached",
+    "unboundedRetryObserved": false,
+    "result": "CAPACITY-OK TWO-ACTIVE THIRD-REJECTED NO-RETRY"
   },
   "trivialRun": {
-    "parentThreadId": "019fb7c9-5234-7b72-9d4d-a993cbddedf6",
-    "result": "TRIVIAL-OK",
-    "subagentActivityEvents": 0
+    "parentThreadId": "019fbe47-0cc9-76e2-a2f7-b995b51bd528",
+    "result": "TRIVIAL-OK 4",
+    "spawnedChildren": 0
+  },
+  "meaningfulUpdate": {
+    "planId": "dd6f15213429d39c796cdb3a",
+    "transactionId": "f670f4af-4408-44ef-b4b9-ed7bf0c65b82",
+    "previousSpawnedWorkerCeiling": 2,
+    "requestedSpawnedWorkerCeiling": 3,
+    "configWriteApplied": true,
+    "doctorAfterApply": "pass"
+  },
+  "convergenceUpdate": {
+    "planId": "44a1438cb506b2d6dc9bbc30",
+    "transactionId": "739d998d-8ca7-4886-8179-0420beadd1ae",
+    "changedFiles": [
+      ".codex/codsemble/manifest.json"
+    ],
+    "doctorAfterApply": "pass"
   },
   "idempotentUpdate": {
-    "convergenceTransactionId": "77f32233-4c6c-475a-8003-1c759222fe62",
-    "convergedPlanId": "fbf0b722a3c9ffd22b8b7a76",
+    "planId": "44a1438cb506b2d6dc9bbc30",
+    "stablePlanIdAcrossConvergence": true,
+    "verifiedManagedFiles": 11,
     "allManagedActions": "verify",
     "noChanges": true,
     "transaction": null,
     "reloadRequired": false,
-    "receiptCountBefore": 2,
-    "receiptCountAfter": 2,
+    "receiptCountBefore": 3,
+    "receiptCountAfter": 3,
     "doctorAfterNoOp": "pass"
   },
   "rollback": {
+    "skillVersion": "0.2.0",
+    "previewedBeforeEachApply": true,
+    "forceUsed": false,
     "transactionsRevertedInReverseOrder": [
-      "77f32233-4c6c-475a-8003-1c759222fe62",
-      "167352b9-15f4-4d60-810f-e5a43e22ae17"
+      "739d998d-8ca7-4886-8179-0420beadd1ae",
+      "f670f4af-4408-44ef-b4b9-ed7bf0c65b82",
+      "b1984813-86eb-45d1-be19-e91c39b75ba1"
     ],
-    "generatedProjectFilesRemaining": 0,
-    "receiptOwnedRecoveryQuarantinesRetainedUnderTransactionHistory": 6,
-    "userReadmePreserved": true,
-    "ordinaryInputArtifactsPreserved": true,
-    "transactionHistoryCheckAfterRollback": "pass",
-    "doctorAfterRollback": "warn-as-uninitialized"
+    "doctorAfterIntermediateRollbacks": "pass",
+    "doctorAfterFinalRollback": "warn-as-uninitialized",
+    "generatedAgentFilesRemaining": 0,
+    "projectConfigPresent": false,
+    "manifestPresent": false,
+    "agentsInstructionsPresent": false,
+    "transactionReceiptCount": 3,
+    "rollbackMarkerCount": 3,
+    "transactionRecoveryHistoryRetained": true,
+    "trackedProjectDiffAfterRollback": "clean",
+    "onlyUntrackedPathAfterRollback": ".codex/ transaction recovery history",
+    "preservedInputSha256": {
+      "README.md": "b037d09a1b7002409f8bbffbaa863ee5d9d4a1c5cbca22eba4b454247806846a",
+      "package.json": "d994c9ac7dadcdc30a25d12de698fb39bd9e2673913aaa747c38c8ed2dc8febe",
+      "Dockerfile": "b849d6cf7136339d0ecfb75b553230c5cde5ac86390c5a56facd7674e0e4f932",
+      "src/service.js": "5258fdccf53070d8df1eda40b801edadd3a84df72ac715c6c3f3140cffdd90a6",
+      "test/service.test.js": "aa2bf92850954dcefaf398ba50a5cca14bfe418c690585ae797ed76f4043a6d1"
+    }
+  },
+  "validation": {
+    "tests": "140/140 pass on Node 26.5.0 and Node 24.13.1",
+    "build": "pass",
+    "typecheck": "pass",
+    "catalogValidation": "pass",
+    "checksumEntries": 120,
+    "sbomComponents": 128,
+    "archiveDeterminism": "pass",
+    "publicCiAtValidatedCommit": {
+      "ubuntuNode22": "pass",
+      "ubuntuNode24": "pass",
+      "macosNode22": "pass",
+      "macosNode24": "pass",
+      "windowsNode22": "pass",
+      "windowsNode24": "pass",
+      "dependencyReview": "pass",
+      "codeql": "pass"
+    }
   },
   "evidencePolicy": {
     "rawSessionFilesIncluded": false,
     "credentialsIncluded": false,
-    "absolutePersonalPathsIncluded": false
+    "absolutePersonalPathsIncluded": false,
+    "confirmationChallengeWordsIncluded": false
   },
   "knownGaps": [
-    "Real-runtime proof was run on one macOS arm64 host and Codex 0.145.0.",
-    "GitHub repository publication and public CI were completed after this runtime capture; OpenAI directory submission was not performed.",
+    "The exact v0.2 runtime boundary was exercised on one Darwin arm64 host with Codex 0.145.0; cross-platform code validation is represented by public CI.",
+    "A physical Android microphone and speech-recognition loop was not exercised; voice approval was validated through the exact CLI challenge semantics.",
     "The raw isolated session directory was intentionally excluded because it referenced local authentication state.",
-    "Repeated icon warnings came from unrelated bundled skills; Codsemble skill metadata does not declare those icons."
+    "Repeated icon warnings came from the separately cached Teams plugin; Codesemble skill metadata does not declare those icons."
   ]
 }

@@ -15,9 +15,9 @@ import {
 import {
   assertValidRollbackMarker,
   assertValidTransactionRecord,
-  generatedManifestSchema,
   type RollbackMarker,
 } from "./transaction.js";
+import { generatedManifestSchema } from "./manifest.js";
 import { runCodexCommand } from "./capabilities.js";
 
 async function exists(candidate: string): Promise<boolean> {
@@ -355,10 +355,7 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
             await readRegularFile(path.join(directory, name), root)
           ).toString("utf8"),
         );
-        assertValidTransactionRecord(parsed);
-        if (name !== `${parsed.transactionId}.json`) {
-          throw new Error("transaction receipt filename does not match its id");
-        }
+        assertValidTransactionRecord(parsed, { fileName: name });
         receipts.push(parsed);
       } catch (error) {
         invalid.push(
@@ -377,10 +374,7 @@ async function inspectTransactions(root: string): Promise<DoctorCheck> {
             await readRegularFile(path.join(directory, name), root)
           ).toString("utf8"),
         );
-        assertValidRollbackMarker(marker);
-        if (name !== `${marker.transactionId}.rollback.json`) {
-          throw new Error("rollback marker filename does not match its id");
-        }
+        assertValidRollbackMarker(marker, { fileName: name });
         const receipt = receiptsById.get(marker.transactionId);
         if (receipt === undefined) {
           throw new Error("rollback marker has no valid transaction receipt");

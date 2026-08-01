@@ -1,92 +1,137 @@
 # Validation evidence
 
-Codesemble separates structural, simulated, and real-runtime evidence. A result
-at one level is not promoted to a broader claim.
+Codesemble reports structural, simulated, native-runtime, operating-system,
+physical-device, publication, and release evidence separately. Passing one
+boundary never promotes a claim at another.
 
-## Structural and simulated checks
+## v0.2 local candidate
 
-The local release-candidate command is:
+Run from a clean locked checkout:
 
 ```bash
 npm ci
 npm run check
+npm run archive:verify
 npm run sbom:verify
+npm run checksums:verify
 node .github/scripts/validate-repository.mjs
 node .github/scripts/check-deterministic-build.mjs
-npm run checksums:verify
 npm audit --audit-level=high
 ```
 
-The current candidate passes:
+Validate the plugin and each skill with the official validators from the active
+Codex installation. Validator locations are environment-owned and are not
+downloaded by the project.
+
+The current local candidate passes:
 
 - strict TypeScript checking;
-- 87 unit, golden, property, security, fixture, transaction, capability,
-  doctor, compiler, and bundled-CLI tests;
-- deterministic bundle generation;
-- full source-payload checksum verification;
-- exactly 111 schema-valid, uniquely identified role blueprints;
-- the official plugin validator;
-- the official skill validator for all four skills;
-- repository metadata and absolute-path leak checks;
-- deterministic, lockfile-complete CycloneDX 1.5 SBOM generation and
-  verification for 128 components;
-- `npm audit` with zero reported vulnerabilities.
-- the complete test check on Linux arm64 in a clean Node 20
-  `bookworm-slim` container with Git installed.
+- 140 automated tests across 20 files, including audit, capability compilation,
+  representative fixtures, semantic golden/property behavior, generated-role
+  admission, evidence freshness, voice confirmation, CLI integration, manifest
+  shared strict lifecycle lineage, trusted-Git PATH refusal, no-clobber
+  transactions, doctor, update convergence, and rollback;
+- the current non-empty 111-entry compatibility primitive library, with no
+  functional count requirement in schema, validation, recommendation, or concurrency;
+- deterministic bundled CLI generation and smoke testing;
+- official plugin validation and official validation of all four bundled skills;
+- repository metadata and absolute developer-path checks;
+- a deterministic complete 12-file uncompressed plugin archive at
+  `artifacts/codsemble-0.2.0-plugin.tar`; the canonical tar bytes avoid
+  Node/zlib-dependent gzip output differences across supported runtimes;
+- deterministic lockfile-complete CycloneDX 1.5 SBOM generation for 128 components
+  at `artifacts/codsemble-0.2.0-rc.sbom.cdx.json`;
+- complete source-payload checksum verification;
+- `npm audit --audit-level=high` with zero reported vulnerabilities.
 
-Ignored secret-like fixture files are created dynamically, so a clean checkout
-does not depend on ignored developer-worktree state. Git audits exclude
-ordinary untracked files by default while still recognizing bounded untracked
-Codex-managed state.
+The test count matching the current primitive count is coincidental. Neither
+number controls generated team size or spawned-worker capacity.
 
-The checked-in SBOM is
-`artifacts/codsemble-0.1.0-rc.sbom.cdx.json`.
+## Representative compiler fixtures
 
-## Real Codex runtime
+The committed corpus currently covers:
 
-The runtime proof used Codex CLI 0.145.0 on macOS arm64, an isolated Codex home,
-and a disposable trusted Git project. Existing authentication was referenced
-without copying or recording credential contents.
+- empty/trivial planning;
+- Next-style TypeScript web work with testing and security goals;
+- Flutter mobile work;
+- Rust CLI work;
+- Python data-service work;
+- documentation-only work;
+- production regulated delivery.
+- a polyglot monorepo with deepest-manifest unit ownership;
+- an evidence-backed optional verification extension without passive-file padding;
+- a legacy service without test evidence;
+- a truncated ambiguous workspace;
+- an existing managed-team update boundary;
+- injected repository prose; and
+- an interrupted apply journal consumed by transaction refusal tests.
 
-The refreshed run is bound to source commit
-`a3b15151bd74fd1aabea6de94b21555cdc61d384` and the reproducible 12-file plugin
-payload digest recorded in `artifacts/runtime-evidence.json`. The digest
-algorithm is implemented by `scripts/plugin-payload-digest.mjs`.
+The current properties prove 64 seeded signal/evidence/goal/primitive
+permutations, atomic evidence, distinct monorepo unit ownership, exact required
+coverage, project-wide goal projection, explicit missing-evidence gaps, Focused
+role-removal minimality, closed-rule Extended inclusion, irrelevant-file
+stability, additive/relevant-evidence identity change, no desired-count padding,
+concurrency independence, strict admission, v1-to-v2 migration, v2 provenance,
+strict receipt/rollback lineage freshness, evidence-drift refusal, trusted-Git
+shim non-execution, update convergence, and rollback.
+Checked-in semantic goldens cover the polyglot and high-risk delivery designs.
 
-The following boundaries passed:
+## Cross-platform CI
 
-1. The local marketplace exposed `codsemble@codsemble`.
-2. The plugin installed and appeared enabled in the isolated home.
-3. A Codesemble plan generated two project-native custom agents and set a
-   spawned-worker ceiling of two.
-4. A fresh ordinary Codex session spawned both generated roles concurrently:
-   `delivery_planner` and `integration_test_engineer`.
-5. Child session metadata identified the expected custom role and included its
-   generated developer instructions.
-6. The root integrated the two attributable child results.
-   Generated guidance caused typed spawns to use a bounded history fork, as
-   required by the tested Codex runtime.
-7. A three-spawn capacity test admitted two children and rejected the third
-   with `agent thread limit reached`; no retry storm occurred.
-8. A trivial turn produced no subagent activity.
-9. A converged update produced five state-bound `verify` actions. Applying that
-   exact plan returned `noChanges: true`, `transaction: null`, and
-   `reloadRequired: false`, while the receipt count remained unchanged.
-10. Both mutating transactions rolled back in reverse order, leaving no
-    generated project files outside receipt-owned transaction history. Six
-    rollback source quarantines remained under transaction history as the
-    documented open-inode recovery boundary.
+The workflow declares Node 22 and 24 on Ubuntu, macOS, and Windows. It runs the
+repository suite, catalog validation, repository validator, bundled-CLI and
+complete-archive reproducibility checks, checksum/SBOM verification, dependency
+audit, and a clean-generated-diff gate.
 
-The sanitized machine-readable record is
-`artifacts/runtime-evidence.json`. Raw session files are not included because
-they referenced local authentication state.
+This declaration is not a passing result. Public cross-platform evidence must
+come from the focused PR at its exact head commit. Windows CI proves the Node and
+filesystem simulation boundary, not native Codex discovery on Windows.
 
-## Public CI and remaining boundaries
+## Native Codex runtime
 
-- The public CI run for the runtime-bound source passed Node.js 20 and 22 on
-  Ubuntu, macOS, and Windows. See
-  [GitHub Actions run 30624509423](https://github.com/VAMFI/codsemble/actions/runs/30624509423).
-- CodeQL passed on the same source. See
-  [CodeQL run 30624509442](https://github.com/VAMFI/codsemble/actions/runs/30624509442).
-- Real-runtime proof currently covers one macOS arm64 host and Codex 0.145.0.
-- OpenAI plugin-directory submission is a separate external review boundary.
+`artifacts/runtime-evidence.json` records the v0.2 Project Capability Compiler
+run against the exact archived plugin in an isolated Codex home and disposable
+trusted project. It records:
+
+- source commit, archive SHA-256, logical payload digest, Codex/Node versions,
+  OS, architecture, and adapter;
+- plugin discovery and one non-catalog project-generated role;
+- preview no-write, exact confirmed apply, and fresh-session role discovery;
+- one attributable separable delegation plus primary-thread integration;
+- bounded capacity rejection without a retry storm and a trivial no-spawn turn;
+- meaningful update, no-op convergence, and reverse rollback preserving user bytes.
+
+The record excludes authentication material, absolute personal paths, raw
+sessions, and confirmation challenge words. The evidence-only commit that adds
+the record does not change the archived plugin payload; final-head CI remains a
+separate required check.
+
+## Voice evidence
+
+Transcript tests prove deterministic challenge derivation, terminal preview
+behavior, conservative normalization, vague/partial/reordered/cross-plan refusal,
+full-ID compatibility, and zero writes on refusal.
+
+They do not prove Android microphone behavior, speech recognition success,
+speaker identity, echo suppression, trusted transcript origin, or physical-device
+usability. Those require separately labeled Android evidence.
+
+## Usefulness evidence
+
+The bounded comparison suite proves structural relevance, coverage, minimality,
+monorepo unit isolation, independent high-risk validation, and no padding against
+compatibility-library and single-primary baselines. See
+[`USEFULNESS_COMPARISON.md`](USEFULNESS_COMPARISON.md).
+
+These checks do not prove better completion quality, cost, latency, or production
+outcomes. Those claims require separately designed task trials.
+
+## Remaining external boundaries
+
+- The Codesemble project workspace still needs its plan-bound orchestrator apply
+  and a fresh native run with the existing specialist team under primary-thread
+  authority.
+- Public PR CI and CodeQL at the final head are pending.
+- Physical Android voice evidence is pending.
+- Merge, tag, signed provenance, GitHub release, marketplace publication, and
+  OpenAI directory submission are separate authorization and external-action boundaries.

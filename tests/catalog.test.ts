@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { roleCatalogSchema } from "../src/schemas.js";
+import { roleBlueprintSchema, roleCatalogSchema } from "../src/schemas.js";
 import type { RoleBlueprint } from "../src/types.js";
 
 const catalogPath = new URL(
@@ -26,19 +26,20 @@ async function loadCatalog(): Promise<RoleBlueprint[]> {
 }
 
 describe("role catalog", () => {
-  it("contains exactly 111 schema-valid roles", async () => {
+  it("keeps the bundled primitive library valid without making its size a product limit", async () => {
     const roles = await loadCatalog();
-    expect(roles).toHaveLength(111);
+    expect(roles.length).toBeGreaterThan(0);
     expect(roles.every((role) => role.catalogVersion === "0.1.0")).toBe(true);
+    expect(roleCatalogSchema.parse([roleBlueprintSchema.parse(roles[0])])).toHaveLength(1);
   });
 
-  it("has the agreed nine-family distribution", async () => {
+  it("keeps all bundled primitive families represented", async () => {
     const roles = await loadCatalog();
     const actual = new Map<string, number>();
     for (const role of roles) {
       actual.set(role.family, (actual.get(role.family) ?? 0) + 1);
     }
-    expect(actual).toEqual(expectedFamilies);
+    expect([...actual.keys()].sort()).toEqual([...expectedFamilies.keys()].sort());
   });
 
   it("keeps identifiers and semantic ownership distinct", async () => {

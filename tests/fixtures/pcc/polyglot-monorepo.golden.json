@@ -1,0 +1,34 @@
+{
+  "scenario": "polyglot-monorepo",
+  "designId": "2dd385f43f47a0687da4a09c",
+  "auditFingerprint": "78b47574fe88e5800f8238d6e171babd22e6582bbe483870c080205815363200",
+  "capabilities": [
+    { "id": "cap-implementation-engineering-7a26ffa44dd0", "unitId": "services/api", "kind": "implementation", "required": true, "risk": "low" },
+    { "id": "cap-implementation-engineering-c4b86cbf1496", "unitId": "apps/web", "kind": "implementation", "required": true, "risk": "low" },
+    { "id": "cap-implementation-rust-aeb16861576f", "unitId": "services/api", "kind": "implementation", "required": false, "risk": "medium" },
+    { "id": "cap-implementation-typescript-39a554cb2670", "unitId": "apps/web", "kind": "implementation", "required": false, "risk": "medium" },
+    { "id": "cap-verification-quality-cb4b3f8efcad", "unitId": "apps/web", "kind": "verification", "required": true, "risk": "low" },
+    { "id": "cap-verification-quality-d033c36be78f", "unitId": "services/api", "kind": "verification", "required": true, "risk": "low" },
+    { "id": "cap-verification-tests-present-82adbd33ffd4", "unitId": "services/api", "kind": "verification", "required": false, "risk": "medium" }
+  ],
+  "workPackages": [
+    { "id": "wp-implementation-ea7ddd899809", "unitId": "services/api", "capabilityIds": ["cap-implementation-engineering-7a26ffa44dd0"], "required": true, "risk": "low", "scopes": ["services/api/Cargo.toml"] },
+    { "id": "wp-implementation-2135cdd22640", "unitId": "apps/web", "capabilityIds": ["cap-implementation-engineering-c4b86cbf1496"], "required": true, "risk": "low", "scopes": ["apps/web/package.json"] },
+    { "id": "wp-implementation-a42de4335563", "unitId": "services/api", "capabilityIds": ["cap-implementation-rust-aeb16861576f"], "required": false, "risk": "medium", "scopes": ["services/api/Cargo.toml"] },
+    { "id": "wp-implementation-97a5958fd83a", "unitId": "apps/web", "capabilityIds": ["cap-implementation-typescript-39a554cb2670"], "required": false, "risk": "medium", "scopes": ["apps/web/package.json"] },
+    { "id": "wp-verification-1c58f7a54b75", "unitId": "apps/web", "capabilityIds": ["cap-verification-quality-cb4b3f8efcad"], "required": true, "risk": "low", "scopes": [] },
+    { "id": "wp-verification-52a077901d8b", "unitId": "services/api", "capabilityIds": ["cap-verification-quality-d033c36be78f"], "required": true, "risk": "low", "scopes": ["services/api/tests/api.rs"] },
+    { "id": "wp-verification-41608ae324b3", "unitId": "services/api", "capabilityIds": ["cap-verification-tests-present-82adbd33ffd4"], "required": false, "risk": "medium", "scopes": ["services/api/tests/api.rs"] }
+  ],
+  "roles": [
+    { "id": "polyglot-monorepo-verification-specialist-890b7f97", "sandbox": "read-only", "workPackageIds": ["wp-verification-1c58f7a54b75"], "sourcePrimitives": ["project-specialist"] },
+    { "id": "rust-implementation-specialist-ced8a5a7", "sandbox": "read-only", "workPackageIds": ["wp-implementation-ea7ddd899809"], "sourcePrimitives": ["project-specialist"] },
+    { "id": "tests-present-verification-specialist-fee1bb36", "sandbox": "read-only", "workPackageIds": ["wp-verification-52a077901d8b"], "sourcePrimitives": ["project-specialist"] },
+    { "id": "typescript-implementation-specialist-4950c3d6", "sandbox": "read-only", "workPackageIds": ["wp-implementation-2135cdd22640"], "sourcePrimitives": ["project-specialist"] }
+  ],
+  "proposals": [
+    { "kind": "focused", "roleIds": ["polyglot-monorepo-verification-specialist-890b7f97", "rust-implementation-specialist-ced8a5a7", "tests-present-verification-specialist-fee1bb36", "typescript-implementation-specialist-4950c3d6"], "workPackageIds": ["wp-implementation-2135cdd22640", "wp-implementation-ea7ddd899809", "wp-verification-1c58f7a54b75", "wp-verification-52a077901d8b"], "coveredCapabilityIds": ["cap-implementation-engineering-7a26ffa44dd0", "cap-implementation-engineering-c4b86cbf1496", "cap-verification-quality-cb4b3f8efcad", "cap-verification-quality-d033c36be78f"], "uncoveredCapabilityIds": [], "maxConcurrentWorkers": 4 },
+    { "kind": "recommended", "roleIds": ["polyglot-monorepo-verification-specialist-890b7f97", "rust-implementation-specialist-ced8a5a7", "tests-present-verification-specialist-fee1bb36", "typescript-implementation-specialist-4950c3d6"], "workPackageIds": ["wp-implementation-2135cdd22640", "wp-implementation-ea7ddd899809", "wp-verification-1c58f7a54b75", "wp-verification-52a077901d8b"], "coveredCapabilityIds": ["cap-implementation-engineering-7a26ffa44dd0", "cap-implementation-engineering-c4b86cbf1496", "cap-verification-quality-cb4b3f8efcad", "cap-verification-quality-d033c36be78f"], "uncoveredCapabilityIds": [], "maxConcurrentWorkers": 4 },
+    { "kind": "extended", "roleIds": ["polyglot-monorepo-verification-specialist-890b7f97", "rust-implementation-specialist-ced8a5a7", "tests-present-verification-specialist-fee1bb36", "typescript-implementation-specialist-4950c3d6"], "workPackageIds": ["wp-implementation-2135cdd22640", "wp-implementation-ea7ddd899809", "wp-verification-1c58f7a54b75", "wp-verification-52a077901d8b"], "coveredCapabilityIds": ["cap-implementation-engineering-7a26ffa44dd0", "cap-implementation-engineering-c4b86cbf1496", "cap-verification-quality-cb4b3f8efcad", "cap-verification-quality-d033c36be78f"], "uncoveredCapabilityIds": [], "maxConcurrentWorkers": 4 }
+  ]
+}

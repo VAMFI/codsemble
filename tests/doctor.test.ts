@@ -120,7 +120,7 @@ describe("doctorWorkspace", () => {
         schemaVersion: 1,
         generator: { name: "codsemble", version: "0.1.0" },
         catalogVersion: "0.1.0",
-        planId: "doctor-plan",
+        planId: "a".repeat(24),
         auditFingerprint,
         proposal: { kind: "balanced", maxConcurrentWorkers: 2 },
         capabilities: {
@@ -150,7 +150,7 @@ describe("doctorWorkspace", () => {
     };
     const unsignedPlan: Omit<TeamPlan, "confirmationId"> = {
       schemaVersion: 1,
-      planId: "doctor-plan",
+      planId: "a".repeat(24),
       auditFingerprint,
       roles: [role],
       concurrency: {
@@ -251,7 +251,7 @@ describe("doctorWorkspace", () => {
         schemaVersion: 1,
         generator: { name: "codsemble", version: "0.0.9" },
         catalogVersion: "0.0.9",
-        planId: "legacy",
+        planId: "b".repeat(24),
         auditFingerprint: "a".repeat(64),
         proposal: { kind: "lean", maxConcurrentWorkers: 1 },
         capabilities: {
@@ -292,7 +292,7 @@ describe("doctorWorkspace", () => {
       `${JSON.stringify({
         schemaVersion: 1,
         transactionId: "forged",
-        planId: "forged-plan",
+        planId: "c".repeat(24),
         createdAt: new Date(0).toISOString(),
         files: [
           {
@@ -330,7 +330,7 @@ describe("doctorWorkspace", () => {
       `${JSON.stringify({
         schemaVersion: 1,
         transactionId: "forged",
-        planId: "forged-plan",
+        planId: "d".repeat(24),
         createdAt: new Date(0).toISOString(),
         files: [{
           relativePath: ".codex/agents/reviewer.toml",
@@ -372,7 +372,7 @@ describe("doctorWorkspace", () => {
       `${JSON.stringify({
         schemaVersion: 1,
         transactionId: "real",
-        planId: "real-plan",
+        planId: "e".repeat(24),
         createdAt: new Date(0).toISOString(),
         files: [{
           relativePath: ".codex/agents/reviewer.toml",
@@ -380,7 +380,7 @@ describe("doctorWorkspace", () => {
           afterSha256: sha256(postimage),
           backupRelativePath: null,
           quarantineRelativePath: null,
-          mode: 0o600,
+          mode: null,
         }],
       })}\n`,
     );

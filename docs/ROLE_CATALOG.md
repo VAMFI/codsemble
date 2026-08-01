@@ -2,9 +2,10 @@
 
 Catalog version: `0.1.0`
 
-Codesemble contains exactly 111 specialist blueprints. The catalog is a search
-space, not a recommended team size: initialization ranks repository evidence
-and user goals, then proposes the smallest team that has distinct ownership.
+The v0.1 compatibility library contains 111 specialist blueprints. Project
+Capability Compiler v1 treats it as an extensible primitive library, not the
+universe of possible roles, a recommended team size, or a concurrency setting.
+A replacement library may contain any non-empty set of unique valid primitives.
 
 ## Routing contract
 
@@ -108,11 +109,11 @@ authorization at the applicable boundary.
 
 ## Selection guidance
 
-- **Lean** chooses only roles needed to cover the strongest independent work
-  packages, normally three to five specialists.
-- **Balanced** adds high-confidence verification or integration ownership,
-  normally four to eight specialists.
-- **Full** covers broader goals but still deduplicates overlapping ownership.
+- **Focused** is the minimum generated team covering required Work Packages.
+- **Recommended** adds independent verification only for evidenced high-risk work.
+- **Extended** currently adds only an evidence-backed optional verifier for
+  requested implementation work with observed tests and no required verification
+  owner; it may equal Recommended.
 
 Installed role count and concurrent worker limit are separate decisions. Having
-111 available blueprints never implies setting Codex concurrency to 111.
+The number of available primitives never implies a Codex concurrency value.

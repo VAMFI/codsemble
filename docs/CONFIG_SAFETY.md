@@ -11,8 +11,8 @@ Codesemble asks two separate questions:
 2. How many spawned workers may be open simultaneously?
 
 The worker value excludes the primary/orchestrator thread. A team with 12
-installed roles may reasonably use a ceiling of 4. The 111-role catalog is a
-search space, never a concurrency recommendation.
+installed roles may reasonably use a ceiling of 4. Primitive-library size is
+unrelated to the concurrency recommendation.
 
 The project-scoped canonical setting is:
 
@@ -42,14 +42,19 @@ run applicable Codex diagnostics after apply.
 
 ## Preview and apply
 
-`audit`, `recommend`, `plan`, `doctor`, `catalog`, and rollback preview are
-non-mutating. `plan` emits a content-bound confirmation id, exact intended files, content hashes, and
-configuration changes.
+`audit`, `recommend`, `plan`, `approval`, `doctor`, `catalog`, and rollback
+preview are non-mutating. `plan` internally carries a content-bound confirmation
+id, exact intended files, content hashes, and configuration changes. `approval` reports
+whether that plan can be applied and derives a voice-friendly alias only for a
+non-preview plan.
+The approval description for a preview-only plan returns `confirmationId: null`
+and `voiceChallenge: null`.
 
 Apply requires:
 
 - the reviewed plan file;
-- exact confirmation of that confirmation id;
+- exact confirmation of that confirmation id, or an exact strict match of its
+  complete current voice challenge;
 - unchanged preimage hashes;
 - paths confined to the selected workspace;
 - valid generated TOML and JSON.
@@ -60,6 +65,13 @@ after moving them to quarantine, so a change racing the earlier preflight
 cannot be silently deleted. A file recreated before publication causes a
 no-clobber conflict; both the competing target and quarantined bytes are
 retained. Rollback applies the same checks to confirmed postimages.
+
+The voice challenge keeps the full confirmation digest as the canonical plan
+binding. It accepts no fuzzy or semantic matching and is not an authentication
+secret. Freshness remains state-based: changed preimages invalidate the plan,
+and a successful mutating apply makes an immediate replay fail. See
+[Voice-friendly plan approval](VOICE_APPROVAL.md) for the precise contract and
+its explicitly excluded trusted-broker guarantees.
 
 For every successful update or delete, the transaction receipt records and
 retains the source quarantine. Codesemble does not automatically unlink it:
@@ -77,12 +89,13 @@ state and later writes refuse to proceed. Do not delete or merge those files
 blindly: preserve the project, inspect the pending record and hashes, copy both
 target and any receipt-recorded quarantine to a safe location, and restore the confirmed preimage
 from the transaction backup only after resolving any competing bytes. Automatic
-crash recovery is deferred beyond v0.1.
+Automatic crash recovery remains outside the v0.2 portable transaction guarantee.
 
 ## Manual mode
 
 Choose `manual` or `unchanged` during intake when project config should not be
-edited. After exact confirmation-id approval, Codesemble may still apply the team
+edited. After exact confirmation-id or strict voice-challenge approval,
+Codesemble may still apply the team
 agents, managed `AGENTS.md` section, and manifest while leaving
 `.codex/config.toml` untouched. `manual` also shows the exact project snippet
 for separate installation; `unchanged` preserves concurrency as-is. Global
@@ -90,9 +103,9 @@ configuration remains outside Codesemble's automatic transaction boundary.
 
 ## Model and effort routing
 
-Catalog roles use capability profiles (`deep`, `balanced`, `fast`, `inherit`).
+Generated roles use capability profiles (`deep`, `balanced`, `fast`, `inherit`).
 Codesemble pins a concrete model only when it is verified for the active
-environment. A catalog reasoning-effort default is emitted only alongside that
+environment. A reasoning-effort default is emitted only alongside that
 verified model; otherwise it inherits. Explicit custom-role choices remain
 user-owned inputs.
 

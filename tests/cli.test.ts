@@ -2,8 +2,10 @@ import { execFile } from "node:child_process";
 import {
   access,
   chmod,
+  lstat,
   mkdir,
   mkdtemp,
+  readFile,
   readdir,
   rm,
   writeFile,
@@ -13,6 +15,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { computeConfirmationId } from "../src/compiler.js";
+import { voiceChallengeForConfirmationId } from "../src/confirmation.js";
 import type { TeamPlan } from "../src/types.js";
 import { sha256 } from "../src/util.js";
 
@@ -98,6 +101,59 @@ async function answers(
   return target;
 }
 
+async function seedExistingWorkspace(root: string): Promise<void> {
+  await mkdir(path.join(root, ".codex", "agents"), { recursive: true });
+  await mkdir(path.join(root, ".codex", "codsemble", "transactions"), {
+    recursive: true,
+  });
+  await writeFile(path.join(root, "AGENTS.md"), "# User-owned guidance\n");
+  await writeFile(
+    path.join(root, ".codex", "config.toml"),
+    "[agents]\nmax_concurrent_threads_per_session = 8\n",
+  );
+  await writeFile(
+    path.join(root, ".codex", "agents", "user-owned.toml"),
+    [
+      'name = "user_owned"',
+      'description = "User-owned agent"',
+      'developer_instructions = "Preserve this file."',
+      'sandbox_mode = "read-only"',
+      "",
+    ].join("\n"),
+  );
+  await writeFile(
+    path.join(root, ".codex", "codsemble", "transactions", "user-note.txt"),
+    "preserve transaction-adjacent user evidence\n",
+  );
+}
+
+async function snapshotWorkspace(root: string): Promise<Record<string, string>> {
+  const snapshot: Record<string, string> = {};
+  async function visit(relativeDirectory: string): Promise<void> {
+    const absoluteDirectory = path.join(root, relativeDirectory);
+    const entries = await readdir(absoluteDirectory, { withFileTypes: true });
+    for (const entry of entries.sort((left, right) =>
+      left.name.localeCompare(right.name),
+    )) {
+      const relativePath = path.posix.join(relativeDirectory, entry.name);
+      const absolutePath = path.join(root, relativePath);
+      const stats = await lstat(absolutePath);
+      if (entry.isDirectory()) {
+        snapshot[relativePath] = `directory:${stats.mode & 0o777}`;
+        await visit(relativePath);
+      } else if (entry.isFile()) {
+        snapshot[relativePath] = `file:${stats.mode & 0o777}:${sha256(
+          await readFile(absolutePath),
+        )}`;
+      } else {
+        snapshot[relativePath] = `other:${stats.mode & 0o777}`;
+      }
+    }
+  }
+  await visit("");
+  return snapshot;
+}
+
 async function run(
   args: string[],
   environment: NodeJS.ProcessEnv = process.env,
@@ -131,7 +187,7 @@ afterEach(async () => {
   );
 });
 
-describe("bundled CLI", () => {
+describe.sequential("bundled CLI", { timeout: 15_000 }, () => {
   it("loads the complete offline catalog", async () => {
     const output = JSON.parse(await run(["catalog", "--search", "frontend"])) as {
       total: number;
@@ -165,6 +221,34 @@ describe("bundled CLI", () => {
     await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  it.each([
+    ["lean", "focused"],
+    ["balanced", "recommended"],
+    ["full", "extended"],
+  ] as const)("maps the legacy %s proposal alias to %s", async (alias, expected) => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const plan = JSON.parse(
+      await run([
+        "plan",
+        "--workspace",
+        root,
+        "--answers",
+        answerFile,
+        "--proposal",
+        alias,
+      ]),
+    ) as TeamPlan;
+    const manifestSource = plan.files.find(
+      ({ relativePath }) =>
+        relativePath === ".codex/codsemble/manifest.json",
+    )?.content;
+    const manifest = JSON.parse(manifestSource ?? "{}") as {
+      proposal?: { kind?: string };
+    };
+    expect(manifest.proposal?.kind).toBe(expected);
   });
 
   it("returns an explicit no-changes result without creating a receipt", async () => {
@@ -328,6 +412,7 @@ describe("bundled CLI", () => {
 
   it("refuses to apply a preview plan", async () => {
     const root = await workspace();
+    await seedExistingWorkspace(root);
     const answerFile = await answers(root, "preview");
     const planFile = path.join(root, "plan.json");
     const plan = await run([
@@ -340,10 +425,24 @@ describe("bundled CLI", () => {
       "balanced",
     ]);
     await writeFile(planFile, plan);
-    const parsed = JSON.parse(plan) as {
-      planId: string;
-      confirmationId: string;
+    const approval = JSON.parse(
+      await run(["approval", "--plan", planFile]),
+    ) as {
+      state: string;
+      applyCapable: boolean;
+      confirmationId: string | null;
+      voiceChallenge: string | null;
     };
+    expect(approval).toMatchObject({
+      state: "preview-only",
+      applyCapable: false,
+      confirmationId: null,
+      voiceChallenge: null,
+    });
+    const before = await snapshotWorkspace(root);
+    const previewVoiceChallenge = voiceChallengeForConfirmationId(
+      JSON.parse(plan).confirmationId as string,
+    );
 
     await expect(
       run([
@@ -352,15 +451,13 @@ describe("bundled CLI", () => {
         root,
         "--plan",
         planFile,
-        "--confirm",
-        parsed.confirmationId,
+        "--confirm-voice",
+        previewVoiceChallenge,
       ]),
     ).rejects.toMatchObject({
       stderr: expect.stringContaining("preview plans are read-only"),
     });
-    await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
-      code: "ENOENT",
-    });
+    expect(await snapshotWorkspace(root)).toEqual(before);
   });
 
   it("applies team artifacts in manual config mode without writing config.toml", async () => {
@@ -381,6 +478,18 @@ describe("bundled CLI", () => {
       planId: string;
       confirmationId: string;
     };
+    const approval = JSON.parse(
+      await run(["approval", "--plan", planFile]),
+    ) as {
+      state: string;
+      applyCapable: boolean;
+      voiceChallenge: string;
+      mutatingPaths: string[];
+    };
+    expect(approval.state).toBe("ready");
+    expect(approval.applyCapable).toBe(true);
+    expect(approval.voiceChallenge).toMatch(/^approve team(?: [a-z]+){6}$/);
+    expect(approval.mutatingPaths.length).toBeGreaterThan(0);
     const applied = JSON.parse(
       await run([
         "apply",
@@ -388,8 +497,8 @@ describe("bundled CLI", () => {
         root,
         "--plan",
         planFile,
-        "--confirm",
-        parsed.confirmationId,
+        "--confirm-voice",
+        approval.voiceChallenge.toUpperCase() + ".",
       ]),
     ) as { transaction: { planId: string; transactionId: string } };
 
@@ -415,8 +524,90 @@ describe("bundled CLI", () => {
     });
   });
 
+  it("rejects vague, cross-plan, and ambiguous confirmation methods without writes", async () => {
+    const firstRoot = await workspace();
+    const secondRoot = await workspace();
+    await seedExistingWorkspace(firstRoot);
+    await seedExistingWorkspace(secondRoot);
+    const firstAnswers = await answers(firstRoot, "manual");
+    const secondAnswers = await answers(secondRoot, "manual");
+    const firstPlanFile = path.join(firstRoot, "plan.json");
+    const secondPlanFile = path.join(secondRoot, "plan.json");
+    const firstPlan = await run([
+      "plan",
+      "--workspace",
+      firstRoot,
+      "--answers",
+      firstAnswers,
+      "--proposal",
+      "balanced",
+    ]);
+    const secondPlan = await run([
+      "plan",
+      "--workspace",
+      secondRoot,
+      "--answers",
+      secondAnswers,
+      "--proposal",
+      "lean",
+    ]);
+    await writeFile(firstPlanFile, firstPlan);
+    await writeFile(secondPlanFile, secondPlan);
+    const firstApproval = JSON.parse(
+      await run(["approval", "--plan", firstPlanFile]),
+    ) as { voiceChallenge: string };
+    const secondParsed = JSON.parse(secondPlan) as TeamPlan;
+    const firstBefore = await snapshotWorkspace(firstRoot);
+    const secondBefore = await snapshotWorkspace(secondRoot);
+
+    await expect(
+      run([
+        "apply",
+        "--workspace",
+        firstRoot,
+        "--plan",
+        firstPlanFile,
+        "--confirm-voice",
+        "yes, continue",
+      ]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining("vague, partial, reordered, or approximate"),
+    });
+    await expect(
+      run([
+        "apply",
+        "--workspace",
+        secondRoot,
+        "--plan",
+        secondPlanFile,
+        "--confirm-voice",
+        firstApproval.voiceChallenge,
+      ]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining("Voice confirmation refused"),
+    });
+    await expect(
+      run([
+        "apply",
+        "--workspace",
+        secondRoot,
+        "--plan",
+        secondPlanFile,
+        "--confirm",
+        secondParsed.confirmationId,
+        "--confirm-voice",
+        firstApproval.voiceChallenge,
+      ]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining("exactly one confirmation method"),
+    });
+    expect(await snapshotWorkspace(firstRoot)).toEqual(firstBefore);
+    expect(await snapshotWorkspace(secondRoot)).toEqual(secondBefore);
+  });
+
   it("re-probes and refuses apply when Codex disappears after planning", async () => {
     const root = await workspace();
+    await seedExistingWorkspace(root);
     const answerFile = await answers(root, "manual");
     const planFile = path.join(root, "plan.json");
     const planText = await run([
@@ -429,7 +620,10 @@ describe("bundled CLI", () => {
       "balanced",
     ]);
     await writeFile(planFile, planText);
-    const plan = JSON.parse(planText) as { confirmationId: string };
+    const approval = JSON.parse(
+      await run(["approval", "--plan", planFile]),
+    ) as { voiceChallenge: string };
+    const before = await snapshotWorkspace(root);
 
     await expect(
       run(
@@ -439,8 +633,8 @@ describe("bundled CLI", () => {
           root,
           "--plan",
           planFile,
-          "--confirm",
-          plan.confirmationId,
+          "--confirm-voice",
+          approval.voiceChallenge,
         ],
         { ...process.env, PATH: "/nonexistent" },
       ),
@@ -449,9 +643,119 @@ describe("bundled CLI", () => {
         "Apply capability check failed: the local Codex runtime is unavailable",
       ),
     });
+    expect(await snapshotWorkspace(root)).toEqual(before);
+  });
+
+  it("refuses referenced evidence drift before mutation", async () => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const planFile = path.join(root, "plan.json");
+    const planText = await run([
+      "plan",
+      "--workspace",
+      root,
+      "--answers",
+      answerFile,
+      "--proposal",
+      "recommended",
+    ]);
+    await writeFile(planFile, planText);
+    const plan = JSON.parse(planText) as TeamPlan;
+    await writeFile(
+      path.join(root, "package.json"),
+      '{"name":"fixture","devDependencies":{"typescript":"2.0.0"}}\n',
+    );
+    const before = await snapshotWorkspace(root);
+
+    await expect(
+      run([
+        "apply",
+        "--workspace",
+        root,
+        "--plan",
+        planFile,
+        "--confirm",
+        plan.confirmationId,
+      ]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "typed workspace capability evidence changed after planning",
+      ),
+    });
+    expect(await snapshotWorkspace(root)).toEqual(before);
     await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  it("refuses newly added relevant evidence before mutation", async () => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const planFile = path.join(root, "plan.json");
+    const planText = await run([
+      "plan",
+      "--workspace",
+      root,
+      "--answers",
+      answerFile,
+      "--proposal",
+      "recommended",
+    ]);
+    await writeFile(planFile, planText);
+    const plan = JSON.parse(planText) as TeamPlan;
+    await writeFile(path.join(root, "Dockerfile"), "FROM scratch\n");
+    const before = await snapshotWorkspace(root);
+
+    await expect(
+      run(["approval", "--workspace", root, "--plan", planFile]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "typed workspace capability evidence changed after planning",
+      ),
+    });
+
+    await expect(
+      run([
+        "apply",
+        "--workspace",
+        root,
+        "--plan",
+        planFile,
+        "--confirm",
+        plan.confirmationId,
+      ]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "typed workspace capability evidence changed after planning",
+      ),
+    });
+    expect(await snapshotWorkspace(root)).toEqual(before);
+    await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("keeps approval fresh after an irrelevant file is added", async () => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const planFile = path.join(root, "plan.json");
+    const planText = await run([
+      "plan",
+      "--workspace",
+      root,
+      "--answers",
+      answerFile,
+      "--proposal",
+      "recommended",
+    ]);
+    await writeFile(planFile, planText);
+    await writeFile(path.join(root, "notes.txt"), "unrelated prose\n");
+
+    const approval = JSON.parse(
+      await run(["approval", "--workspace", root, "--plan", planFile]),
+    ) as { state: string; voiceChallenge: string };
+    expect(approval.state).toBe("ready");
+    expect(approval.voiceChallenge).toMatch(/^approve team(?: [a-z]+){6}$/);
   });
 
   it("applies and rolls back the confirmed project concurrency ceiling", async () => {

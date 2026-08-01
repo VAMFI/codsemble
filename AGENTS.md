@@ -2,9 +2,9 @@
 
 ## Mission
 
-Build and verify Codesemble as an offline-first Codex plugin that audits a workspace,
-recommends a small evidence-backed specialist team from a 111-role catalog, and
-generates native project-scoped Codex configuration safely.
+Build and verify Codesemble as an offline-first Codex plugin that compiles typed
+workspace evidence and explicit user goals into the smallest capable project-specific
+Codex team, then generates native project-scoped configuration safely.
 
 ## Working agreements
 

@@ -5,6 +5,7 @@ coverage/
 *.log
 *.tmp
 *.zip
-*.tgz
+*.tar
+!artifacts/*.tar
 .codex-log/
 tests/.tmp/

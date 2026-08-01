@@ -1,7 +1,7 @@
 {
   "name": "codsemble",
-  "version": "0.1.0",
-  "description": "Audit a workspace and generate the smallest useful native multi-agent team for Codex.",
+  "version": "0.2.0",
+  "description": "Compile workspace evidence into the smallest capable native Codex team.",
   "author": {
     "name": "VAMFI",
     "url": "https://github.com/VAMFI"
@@ -19,12 +19,13 @@
   "interface": {
     "displayName": "Codesemble",
     "shortDescription": "Build the right Codex agent team for any workspace.",
-    "longDescription": "Codesemble audits a workspace, recommends an evidence-backed specialist team, previews native Codex configuration, and applies only the changes you confirm.",
+    "longDescription": "Codesemble compiles typed workspace evidence and explicit goals into project capabilities, Work Packages, and an admitted specialist team, then applies only the exact fresh configuration you confirm.",
     "developerName": "VAMFI",
     "category": "Productivity",
     "capabilities": [
       "Workspace audit",
-      "Agent team recommendations",
+      "Project Capability Compiler",
+      "Evidence-bound generated agents",
       "Native Codex configuration",
       "Rollback"
     ],

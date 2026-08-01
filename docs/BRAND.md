@@ -28,7 +28,7 @@ Preferred short tagline:
 > The repository-aware team builder for Codex.
 
 Codesemble is not an agent swarm, a hosted orchestration runtime, or a promise
-that 111 agents will run simultaneously. The catalog is a search space;
+that a catalog-sized team will run simultaneously. The catalog is a primitive library;
 Codesemble's value is choosing a small, evidence-backed team and compiling it
 into reviewable project configuration.
 

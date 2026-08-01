@@ -39,7 +39,7 @@ describe("patchConcurrencyToml", () => {
       "Invalid TOML",
     );
     expect(() => patchConcurrencyToml("", 0, "agents-v1")).toThrow(
-      "integer from 1 through 111",
+      "integer from 1 through 256",
     );
     expect(() =>
       patchConcurrencyToml(

@@ -1,44 +1,74 @@
 # Definition of Done
 
-Codesemble `v0.1.0` is a release candidate only when all applicable items pass.
+Codesemble `v0.2.0` is complete only when every applicable gate below is proved
+against the exact candidate commit and plugin payload.
 
-## Product
+## Product and compiler
 
-- The catalog contains exactly 111 unique, documented role blueprints.
-- Audit, intake, recommendation, preview, apply, doctor, update, and rollback work.
-- Small projects receive small teams; trivial tasks retain a single-agent path.
-- Every recommendation cites typed workspace evidence or a user answer.
-- Generated roles have distinct ownership, deliverables, permissions, and verification contracts.
+- Audit, capability mapping, Work Packages, Team IR, recommendation, preview,
+  apply, doctor, update, and rollback work together.
+- Every required capability has exactly one primary owner or an explicit gap.
+- Every generated role references typed evidence or a confirmed user goal.
+- Project-wide implementation and verification goals cover every detected
+  implementation unit; missing same-kind evidence becomes an explicit unit gap.
+- Focused has no removable filler role. Recommended adds justified independent
+  verification. Extended adds only closed-rule evidence-backed lifecycle work
+  and no passive-file or role-count padding.
+- The primitive library accepts any non-empty unique valid set; its size never
+  determines team size or concurrency.
+- Installed roles and spawned-worker capacity remain independent.
+- Existing v0.1 manifests and receipts remain readable and rollback-safe.
 
-## Safety
+## Safety and privacy
 
-- Audit remains inside the approved workspace and never follows symlinks.
-- Ignored, untracked-by-default, secret-like, binary, oversized, and generated files are excluded.
-- Repository prompt injection cannot alter policy or execute code.
-- Preview performs no writes.
-- Apply preserves unrelated content, validates preimages, publishes each file
-  without clobbering a racing writer, and is reversible during an uninterrupted
-  cooperative transaction.
-- The exact confirmation id is recomputed from the complete plan before apply.
-- Update deletes only stale agent files owned by the prior Codesemble manifest.
-- No global config, trust, credentials, plugins, MCP servers, hooks, or external systems are changed.
+- Audit remains bounded, offline-first, secret-aware, and inside the workspace.
+- Raw repository prose never enters generated developer instructions or policy.
+- Generated roles fail closed on unknown tools, models, efforts, paths, fields,
+  output locations, or permission widening.
+- Advisory paths are described honestly and never claimed as runtime enforcement.
+- Preview writes nothing. Apply binds the admitted design, complete typed evidence,
+  live requirements, exact outputs, preimages, and selected concurrency.
+- Preview-only approval descriptions expose neither a confirmation id nor a
+  voice challenge. Exact full-ID and conservative
+  voice matching remain plan-bound; vague, partial, reordered, stale, and cross-plan
+  approvals fail without writes.
+- Apply and update refuse additive, removed, changed, or truncated typed-evidence
+  drift, model/effort drift, user-owned collisions, edited managed files, strict
+  ownership-lineage drift, and output-preimage races.
+- Audit never resolves Git from a relative or workspace-contained PATH entry and
+  never enables a repository-configured fsmonitor hook.
+- Hashed v1/v2 ownership requires one shared strict manifest/receipt validator;
+  hashless legacy state remains preserve-only.
+- Rollback restores only unchanged owned postimages and never overwrites later edits.
+- No global config, trust, credentials, hooks, MCP servers, providers, external
+  connectors, deployment, release, or publication is changed automatically.
 
 ## Validation
 
-- Type checks, unit tests, fixture tests, golden tests, property tests, and security tests pass.
-- Plugin and every skill pass the official validators.
-- The release payload is reproducible and contains no secrets or absolute developer paths.
-- A fresh isolated Codex session discovers the plugin and generated roles.
-- A real separable task produces attributable specialist results and root integration.
-- Capacity exhaustion degrades safely and a trivial task causes no unnecessary delegation.
-- Rollback restores the prior project state without overwriting later user
-  edits; interruption is detected and retained for manual recovery.
+- Strict type checks and the complete automated suite pass.
+- Fixtures cover empty, docs-only, TypeScript web, Flutter, Rust CLI, Python data,
+  monorepo, optional evidenced lifecycle, legacy, high-risk delivery, truncated,
+  injected, and managed-team cases.
+- Semantic golden, permutation/property, policy-adversarial, migration, transaction,
+  voice-transcript, and usefulness comparisons pass.
+- Node 22 and 24 pass on Ubuntu, macOS, and Windows; platform-specific limitations
+  remain explicitly labeled.
+- Official plugin and every bundled skill validator pass against the extracted payload.
+- A fresh isolated Codex session discovers at least one project-generated role,
+  completes a separable delegation with root integration, respects capacity, avoids
+  a trivial spawn, converges on no-op update, and rolls back safely.
+- Transcript tests and physical Android voice evidence are reported separately.
 
-## Open source
+## Distribution and open source
 
-- Apache-2.0 license, README, architecture, threat model, privacy statement,
-  contribution guide, code of conduct, security policy, support policy,
-  changelog, roadmap, CI, SBOM, and checksums are ready. Signed release
-  provenance remains a separately reported publication boundary.
-- Local proof, public GitHub release, marketplace exposure, OpenAI submission,
-  and universal publication are reported as separate boundaries.
+- README, mission, vision, architecture, usage, configuration safety, privacy,
+  threat model, validation, migration, usefulness comparison, contribution,
+  support, changelog, and roadmap
+  describe the exact implemented boundary.
+- The complete plugin artifact is deterministic, secret/path scanned, and bound to
+  a reproducible CycloneDX SBOM and checksum manifest.
+- CI and runtime records identify the exact commit, archive digest, plugin payload,
+  Codex version, Node version, OS, and architecture.
+- A focused branch is inspected, committed, pushed, and opened as a PR with green CI.
+- Merge, release, signing, marketplace publication, and directory submission remain
+  separately authorized external actions.

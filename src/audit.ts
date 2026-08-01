@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
-import { lstat, open, readdir, realpath } from "node:fs/promises";
+import { access, lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -13,7 +13,13 @@ import type {
   AuditSkipSummary,
   ExistingCodexState,
 } from "./types.js";
-import { assertContainedPath, assertWorkspaceRoot, toPosix } from "./util.js";
+import {
+  assertContainedPath,
+  assertWorkspaceRoot,
+  sha256,
+  stableStringify,
+  toPosix,
+} from "./util.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -29,6 +35,7 @@ const GENERATED_DIRECTORIES = new Set([
   ".cache",
   ".dart_tool",
   ".gradle",
+  ".git",
   ".next",
   ".nuxt",
   ".output",
@@ -209,6 +216,8 @@ export interface AuditOptions {
   maxFiles?: number;
   maxFileBytes?: number;
   maxDepth?: number;
+  /** Testable trust input; only absolute directories outside the workspace qualify. */
+  gitPathValue?: string;
 }
 
 interface ResolvedAuditOptions {
@@ -223,6 +232,7 @@ interface Candidate {
 }
 
 interface GitContext {
+  executable: string;
   topLevel: string;
   workspacePrefix: string;
 }
@@ -246,7 +256,7 @@ export async function auditWorkspace(
   const skips = new Map<string, number>();
   const warnings: string[] = [];
   const signals = new Map<string, SignalAccumulator>();
-  const git = await detectGit(root);
+  const git = await detectGit(root, warnings, options.gitPathValue);
   let dirtyWorktree: boolean | null = null;
   let candidates: Candidate[];
 
@@ -263,6 +273,7 @@ export async function auditWorkspace(
   }
 
   const inspectedFiles: string[] = [];
+  const inspectedFileDigests: Array<{ path: string; sha256: string }> = [];
   let truncated = false;
   for (const candidate of candidates) {
     if (inspectedFiles.length >= limits.maxFiles) {
@@ -337,6 +348,7 @@ export async function auditWorkspace(
     }
 
     inspectedFiles.push(relativePath);
+    inspectedFileDigests.push({ path: relativePath, sha256: sha256(content) });
     detectPathSignals(relativePath, signals);
     if (isPackageJson(relativePath)) {
       detectPackageSignals(content, relativePath, signals, warnings);
@@ -359,12 +371,52 @@ export async function auditWorkspace(
     gitRepository: git !== null,
     dirtyWorktree,
     inspectedFiles: sortedInspectedFiles,
+    inspectedFileDigests: inspectedFileDigests.sort((left, right) =>
+      compareText(left.path, right.path),
+    ),
     skipped: toSkipSummary(skips),
     truncated,
     signals: materializeSignals(signals),
     existingCodex,
     warnings: [...new Set(warnings)].sort(compareText),
   };
+}
+
+export function fingerprintAuditReport(audit: AuditReport): string {
+  const compare = (left: string, right: string) =>
+    left < right ? -1 : left > right ? 1 : 0;
+  const canonical = {
+    ...audit,
+    inspectedFiles: [...audit.inspectedFiles].sort(compare),
+    ...(audit.inspectedFileDigests
+      ? {
+          inspectedFileDigests: [...audit.inspectedFileDigests].sort((left, right) =>
+            compare(left.path, right.path),
+          ),
+        }
+      : {}),
+    skipped: [...audit.skipped].sort((left, right) =>
+      compare(`${left.reason}:${left.count}`, `${right.reason}:${right.count}`),
+    ),
+    signals: [...audit.signals]
+      .map((signal) => ({
+        ...signal,
+        values: [...signal.values].sort(compare),
+        evidence: [...signal.evidence].sort((left, right) =>
+          compare(
+            `${left.path}:${left.detector}:${left.detail}`,
+            `${right.path}:${right.detector}:${right.detail}`,
+          ),
+        ),
+      }))
+      .sort((left, right) => compare(left.key, right.key)),
+    existingCodex: {
+      ...audit.existingCodex,
+      agentFiles: [...audit.existingCodex.agentFiles].sort(compare),
+    },
+    warnings: [...audit.warnings].sort(compare),
+  };
+  return sha256(stableStringify(canonical));
 }
 
 function isAuxiliaryEvidencePath(relativePath: string): boolean {
@@ -405,9 +457,25 @@ function boundedInteger(
   return value;
 }
 
-async function detectGit(root: string): Promise<GitContext | null> {
+async function detectGit(
+  root: string,
+  warnings: string[],
+  pathValue?: string,
+): Promise<GitContext | null> {
+  let executable: string;
   try {
-    const result = await runGit(root, ["rev-parse", "--show-toplevel"]);
+    executable = await resolveGitExecutable(
+      root,
+      pathValue === undefined ? {} : { pathValue },
+    );
+  } catch {
+    warnings.push(
+      "Trusted Git was unavailable; Git repository state is unverified and a bounded filesystem scan was used.",
+    );
+    return null;
+  }
+  try {
+    const result = await runGit(executable, root, ["rev-parse", "--show-toplevel"]);
     const topLevel = await realpath(result.trim());
     const relative = path.relative(topLevel, root);
     if (
@@ -418,6 +486,7 @@ async function detectGit(root: string): Promise<GitContext | null> {
       return null;
     }
     return {
+      executable,
       topLevel,
       workspacePrefix: toPosix(relative),
     };
@@ -434,8 +503,8 @@ async function enumerateGitCandidates(
   const pathspec = git.workspacePrefix || ".";
   try {
     const [trackedOutput, untrackedOutput, statusOutput] = await Promise.all([
-      runGit(git.topLevel, ["ls-files", "-z", "--cached", "--", pathspec]),
-      runGit(git.topLevel, [
+      runGit(git.executable, git.topLevel, ["ls-files", "-z", "--cached", "--", pathspec]),
+      runGit(git.executable, git.topLevel, [
         "ls-files",
         "-z",
         "--others",
@@ -443,7 +512,7 @@ async function enumerateGitCandidates(
         "--",
         pathspec,
       ]),
-      runGit(git.topLevel, [
+      runGit(git.executable, git.topLevel, [
         "status",
         "--porcelain=v1",
         "-z",
@@ -535,9 +604,65 @@ function isCodexStateCandidate(relativePath: string): boolean {
   );
 }
 
-async function runGit(cwd: string, args: string[]): Promise<string> {
-  const result = await execFileAsync("git", ["-c", "core.quotepath=false", ...args], {
+export async function resolveGitExecutable(
+  workspace: string,
+  options: { pathValue?: string } = {},
+): Promise<string> {
+  const root = await realpath(workspace);
+  const executableName = process.platform === "win32" ? "git.exe" : "git";
+  for (const rawDirectory of (options.pathValue ?? process.env.PATH ?? "").split(
+    path.delimiter,
+  )) {
+    const directory = rawDirectory.replace(/^"|"$/g, "");
+    if (directory === "" || !path.isAbsolute(directory)) continue;
+    try {
+      if (isWithinPath(root, path.resolve(directory))) continue;
+      const resolvedDirectory = await realpath(directory);
+      if (isWithinPath(root, resolvedDirectory)) continue;
+      const candidate = await realpath(path.join(resolvedDirectory, executableName));
+      if (isWithinPath(root, candidate)) continue;
+      const metadata = await lstat(candidate);
+      if (!metadata.isFile() || metadata.isSymbolicLink()) continue;
+      if (process.platform !== "win32") await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(
+    "Git executable was not found in a trusted absolute PATH directory outside the workspace",
+  );
+}
+
+function isWithinPath(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return (
+    relative === "" ||
+    (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${path.sep}`))
+  );
+}
+
+async function runGit(
+  executable: string,
+  cwd: string,
+  args: string[],
+): Promise<string> {
+  const environment = Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) => !key.toUpperCase().startsWith("GIT_"),
+    ),
+  );
+  environment.GIT_OPTIONAL_LOCKS = "0";
+  environment.GIT_TERMINAL_PROMPT = "0";
+  const result = await execFileAsync(executable, [
+    "-c",
+    "core.quotepath=false",
+    "-c",
+    "core.fsmonitor=false",
+    ...args,
+  ], {
     cwd,
+    env: environment,
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
     timeout: 10_000,

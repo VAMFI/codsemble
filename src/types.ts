@@ -1,8 +1,22 @@
 export type ModelProfile = "inherit" | "deep" | "balanced" | "fast";
-export type ReasoningEffort = "inherit" | "low" | "medium" | "high" | "xhigh";
+export type ReasoningEffort =
+  | "inherit"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max"
+  | "ultra";
 export type SandboxProfile = "read-only" | "workspace-write";
 export type OptimizeFor = "balanced" | "quality" | "speed" | "cost";
 export type ConfigMode = "preview" | "apply-project" | "manual" | "unchanged";
+export type ProposalKind =
+  | "focused"
+  | "recommended"
+  | "extended"
+  | "lean"
+  | "balanced"
+  | "full";
 
 export interface RoleBlueprint {
   id: string;
@@ -64,10 +78,123 @@ export interface AuditReport {
   gitRepository: boolean;
   dirtyWorktree: boolean | null;
   inspectedFiles: string[];
+  inspectedFileDigests?: Array<{ path: string; sha256: string }>;
   skipped: AuditSkipSummary[];
   truncated: boolean;
   signals: AuditSignal[];
   existingCodex: ExistingCodexState;
+  warnings: string[];
+}
+
+export type EvidenceKind =
+  | "repository-signal"
+  | "repository-path"
+  | "user-goal"
+  | "user-context";
+
+export interface EvidenceRef {
+  id: string;
+  kind: EvidenceKind;
+  detector: string;
+  value: string;
+  confidence: "low" | "medium" | "high";
+  relativePaths: string[];
+  contentDigest?: string | null;
+  digest: string;
+}
+
+export type CapabilityKind =
+  | "implementation"
+  | "verification"
+  | "security"
+  | "delivery"
+  | "documentation"
+  | "operations"
+  | "coordination";
+
+export interface ProjectCapability {
+  id: string;
+  unitId: string;
+  name: string;
+  kind: CapabilityKind;
+  required: boolean;
+  risk: "low" | "medium" | "high";
+  evidenceRefs: string[];
+  goalRefs: string[];
+}
+
+export interface ProjectCapabilityMap {
+  schemaVersion: 1;
+  projectName: string;
+  auditFingerprint: string;
+  evidence: EvidenceRef[];
+  capabilities: ProjectCapability[];
+  gaps: string[];
+  warnings: string[];
+}
+
+export interface WorkPackage {
+  id: string;
+  unitId: string;
+  title: string;
+  outcome: string;
+  capabilityIds: string[];
+  required: boolean;
+  risk: "low" | "medium" | "high";
+  scopes: string[];
+  evidenceRefs: string[];
+  goalRefs: string[];
+  dependsOn: string[];
+  validation: string[];
+}
+
+export interface GeneratedRoleSpec {
+  id: string;
+  name: string;
+  summary: string;
+  mission: string;
+  responsibilities: string[];
+  deliverables: string[];
+  qualityGates: string[];
+  allowedPaths: string[];
+  prohibitedActions: string[];
+  requiredTools: string[];
+  optionalTools: string[];
+  modelProfile: ModelProfile;
+  reasoningEffort: ReasoningEffort;
+  sandbox: SandboxProfile;
+  workPackageIds: string[];
+  evidenceRefs: string[];
+  sourcePrimitives: string[];
+  permissionProfile: string;
+  externalWritePolicy: "forbidden";
+  costClass: "low" | "medium" | "high";
+}
+
+export interface TeamDesignProposal {
+  kind: "focused" | "recommended" | "extended";
+  roleIds: string[];
+  workPackageIds: string[];
+  coveredCapabilityIds: string[];
+  uncoveredCapabilityIds: string[];
+  maxConcurrentWorkers: number;
+  rationale: string;
+}
+
+export interface TeamDesign {
+  schemaVersion: 2;
+  designId: string;
+  auditFingerprint: string;
+  compiler: {
+    name: "codsemble-project-capability-compiler";
+    version: "1.0.0";
+    mode: "deterministic";
+  };
+  capabilityMap: ProjectCapabilityMap;
+  workPackages: WorkPackage[];
+  roles: GeneratedRoleSpec[];
+  proposals: TeamDesignProposal[];
+  uncoveredRequirements: string[];
   warnings: string[];
 }
 
@@ -112,16 +239,20 @@ export interface RoleScore {
 }
 
 export interface TeamProposal {
-  kind: "lean" | "balanced" | "full";
+  kind: ProposalKind;
   roles: RoleScore[];
   maxConcurrentWorkers: number;
   rationale: string;
+  teamDesignId?: string;
+  coveredCapabilityIds?: string[];
+  uncoveredCapabilityIds?: string[];
 }
 
 export interface RecommendationResult {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   auditFingerprint: string;
   proposals: TeamProposal[];
+  teamDesign?: TeamDesign;
 }
 
 export interface ResolvedRole {
@@ -133,7 +264,9 @@ export interface ResolvedRole {
   model?: string;
   reasoningEffort?: Exclude<ReasoningEffort, "inherit">;
   sandbox: SandboxProfile;
-  source: "catalog" | "custom";
+  source: "catalog" | "custom" | "generated";
+  workPackageIds?: string[];
+  evidenceRefs?: string[];
 }
 
 export interface FilePreimage {
@@ -166,6 +299,14 @@ export interface TeamPlan {
   planId: string;
   confirmationId: string;
   auditFingerprint: string;
+  teamDesignId?: string;
+  teamDesignDigest?: string;
+  evidencePreconditions?: Array<{
+    id: string;
+    digest: string;
+    relativePaths: string[];
+  }>;
+  lineagePreconditions?: FilePreimage[];
   roles: ResolvedRole[];
   concurrency: ConcurrencyPlan;
   preimages: FilePreimage[];

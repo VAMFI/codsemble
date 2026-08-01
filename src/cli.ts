@@ -2,12 +2,20 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { auditWorkspace } from "./audit.js";
 import {
+  buildRepositoryEvidenceRefs,
+  fingerprintProjectCapabilityEvidence,
+} from "./capability-compiler.js";
+import {
   assertPlanCapabilities,
   bindIntakeCapabilities,
   detectCodexCapabilities,
 } from "./capabilities.js";
 import { loadCatalog } from "./catalog.js";
 import { compileTeamPlan } from "./compiler.js";
+import {
+  describePlanApproval,
+  verifyPlanConfirmation,
+} from "./confirmation.js";
 import { doctorWorkspace } from "./doctor.js";
 import { recommendTeams } from "./recommend.js";
 import { intakeAnswersSchema } from "./schemas.js";
@@ -15,6 +23,7 @@ import {
   applyTeamPlan,
   assertValidTeamPlan,
   rollbackTransaction,
+  verifyLineagePreconditions,
   verifyNoChangesPlan,
 } from "./transaction.js";
 import type {
@@ -29,14 +38,16 @@ Usage:
   codsemble audit [--workspace PATH]
   codsemble capabilities [--workspace PATH]
   codsemble recommend --answers FILE [--workspace PATH] [--catalog FILE]
-  codsemble plan --answers FILE --proposal lean|balanced|full [--workspace PATH]
-  codsemble apply --plan FILE --confirm CONFIRMATION_ID [--workspace PATH]
+  codsemble plan --answers FILE --proposal focused|recommended|extended [--workspace PATH]
+  codsemble approval --plan FILE [--workspace PATH]
+  codsemble apply --plan FILE (--confirm CONFIRMATION_ID | --confirm-voice "VOICE_CHALLENGE") [--workspace PATH]
   codsemble doctor [--workspace PATH]
   codsemble rollback --transaction TRANSACTION_ID --confirm TRANSACTION_ID [--workspace PATH]
   codsemble catalog [--search TERM] [--catalog FILE]
 
-Audit, capabilities, recommend, plan, catalog, and doctor are read-only. Apply requires the
-exact plan ID printed by plan. Project configuration is never changed globally.
+Audit, capabilities, recommend, plan, approval, catalog, and doctor are read-only. Apply accepts
+only a non-preview plan and either its exact confirmation ID or its complete current voice
+challenge. Generic approval words are never accepted. Project configuration is never changed globally.
 `;
 
 interface ParsedArguments {
@@ -146,11 +157,22 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       );
       const capabilities = await detectCodexCapabilities(workspace);
       const boundAnswers = bindIntakeCapabilities(answers, capabilities);
-      const kind = flag(arguments_, "--proposal", {
+      const requestedKind = flag(arguments_, "--proposal", {
         required: true,
-      }) as "lean" | "balanced" | "full";
-      if (!["lean", "balanced", "full"].includes(kind)) {
-        throw new Error("--proposal must be lean, balanced, or full");
+      }) as string;
+      const aliases: Record<string, "focused" | "recommended" | "extended"> = {
+        focused: "focused",
+        recommended: "recommended",
+        extended: "extended",
+        lean: "focused",
+        balanced: "recommended",
+        full: "extended",
+      };
+      const kind = aliases[requestedKind];
+      if (!kind) {
+        throw new Error(
+          "--proposal must be focused, recommended, or extended (legacy lean/balanced/full aliases remain accepted)",
+        );
       }
       const roles = await loadCatalog(flag(arguments_, "--catalog"));
       const audit = await auditWorkspace(workspace);
@@ -167,32 +189,62 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
         boundAnswers,
         proposal,
         roles,
+        undefined,
+        recommendation.teamDesign,
       );
       assertPlanCapabilities(plan, capabilities, "plan");
       return plan;
     }
+    case "approval": {
+      allowOnly(arguments_, ["--workspace", "--plan"]);
+      const planFile = flag(arguments_, "--plan", { required: true }) as string;
+      const plan = await readJson<TeamPlan>(
+        planFile,
+      );
+      assertValidTeamPlan(plan);
+      const approvalWorkspace = arguments_.flags.has("--workspace")
+        ? workspace
+        : path.dirname(path.resolve(planFile));
+      await assertAuditFresh(approvalWorkspace, plan, "Approval");
+      await verifyLineagePreconditions(approvalWorkspace, plan);
+      return describePlanApproval(plan);
+    }
     case "apply": {
-      allowOnly(arguments_, ["--workspace", "--plan", "--confirm"]);
+      allowOnly(arguments_, [
+        "--workspace",
+        "--plan",
+        "--confirm",
+        "--confirm-voice",
+      ]);
       const plan = await readJson<TeamPlan>(
         flag(arguments_, "--plan", { required: true }) as string,
       );
       assertValidTeamPlan(plan);
-      const confirmation = flag(arguments_, "--confirm", {
-        required: true,
-      });
-      if (
-        typeof plan.planId !== "string" ||
-        confirmation !== plan.confirmationId
-      ) {
-        throw new Error(
-          "Confirmation refused: --confirm must exactly match plan.confirmationId",
-        );
-      }
       if (plan.concurrency?.configMode === "preview") {
         throw new Error(
           "Apply refused: preview plans are read-only; regenerate with apply-project, manual, or unchanged mode",
         );
       }
+      await assertAuditFresh(workspace, plan, "Apply");
+      await verifyLineagePreconditions(workspace, plan);
+      const fullConfirmation = flag(arguments_, "--confirm");
+      const voiceConfirmation = flag(arguments_, "--confirm-voice");
+      if (
+        (fullConfirmation === undefined) === (voiceConfirmation === undefined)
+      ) {
+        throw new Error(
+          "Apply requires exactly one confirmation method: --confirm or --confirm-voice",
+        );
+      }
+      verifyPlanConfirmation(
+        plan,
+        fullConfirmation !== undefined
+          ? { kind: "full-id", value: fullConfirmation }
+          : {
+              kind: "voice-challenge",
+              value: voiceConfirmation as string,
+            },
+      );
       const capabilities = await detectCodexCapabilities(workspace);
       assertPlanCapabilities(plan, capabilities, "apply");
       if (plan.files.every(({ action }) => action === "verify")) {
@@ -268,6 +320,38 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
     }
     default:
       throw new Error(`Unknown command: ${arguments_.command ?? "(none)"}`);
+  }
+}
+
+async function assertAuditFresh(
+  workspace: string,
+  plan: TeamPlan,
+  phase: "Approval" | "Apply",
+): Promise<void> {
+  const current = await auditWorkspace(workspace);
+  if (plan.evidencePreconditions === undefined) return;
+  const currentFingerprint = fingerprintProjectCapabilityEvidence(current);
+  if (currentFingerprint !== plan.auditFingerprint) {
+    throw new Error(
+      `${phase} refused: typed workspace capability evidence changed after planning; re-audit, regenerate, and review a new plan`,
+    );
+  }
+  const currentEvidence = new Map(
+    buildRepositoryEvidenceRefs(current).map((ref) => [ref.id, ref]),
+  );
+  const stale = plan.evidencePreconditions.find((expected) => {
+    const observed = currentEvidence.get(expected.id);
+    return (
+      observed === undefined ||
+      observed.digest !== expected.digest ||
+      stableStringify(observed.relativePaths) !==
+        stableStringify(expected.relativePaths)
+    );
+  });
+  if (stale !== undefined) {
+    throw new Error(
+      `${phase} refused: referenced typed workspace evidence changed after planning (${stale.id}); re-audit, regenerate, and review a new plan`,
+    );
   }
 }
 

@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+  merge_group:
   push:
     branches:
       - main
@@ -25,8 +26,8 @@ jobs:
           - macos-latest
           - windows-latest
         node:
-          - 20
           - 22
+          - 24
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
@@ -50,11 +51,18 @@ jobs:
       - name: Verify deterministic bundled CLI
         run: node .github/scripts/check-deterministic-build.mjs
 
+      - name: Verify deterministic complete plugin archive
+        run: npm run archive:verify
+
       - name: Verify source payload checksums
         run: npm run checksums:verify
 
       - name: Verify deterministic SBOM
         run: npm run sbom:verify
+
+      - name: Confirm generated artifacts are clean
+        shell: bash
+        run: git diff --exit-code
 
       - name: Audit locked dependencies
         run: npm audit --audit-level=high

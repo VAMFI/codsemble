@@ -8,8 +8,9 @@ for inspection, automation, and troubleshooting.
 - Select the exact workspace root.
 - Preserve uncommitted work; Codesemble does not require a clean worktree.
 - Use an isolated Codex environment for pre-release testing.
-- Do not place answer or plan files inside the audited workspace unless you
-  intentionally want them treated as project files.
+- Answer and plan files may be saved outside the workspace. If an approval plan
+  is saved inside the workspace, it is treated as an unrelated artifact and does
+  not change the typed capability-evidence fingerprint.
 
 The bundled executable is:
 
@@ -25,13 +26,13 @@ They do not rely on a global environment variable.
 Invoke:
 
 ```text
-$initialize-team Set up a balanced team for this workspace.
+$initialize-team Build the recommended team for this workspace.
 ```
 
 The skill runs a read-only audit, asks only for missing intent, and presents
-Lean, Balanced, and Full options. It asks separately for:
+Focused, Recommended, and Extended options. It asks separately for:
 
-- desired installed role count;
+- desired role count as a soft preference, never a padding target;
 - maximum concurrent spawned workers, excluding the primary thread;
 - preview, project apply, manual snippet, or unchanged configuration mode.
 
@@ -51,16 +52,31 @@ node "<plugin-root>/scripts/codsemble.mjs" recommend \
 node "<plugin-root>/scripts/codsemble.mjs" plan \
   --workspace "/absolute/path/to/workspace" \
   --answers "/temporary/path/answers.json" \
-  --proposal balanced
+  --proposal recommended
 ```
 
 These commands emit JSON to standard output and do not write workspace files.
+Proposal rationales distinguish evidence-bound coverage roles generated from the
+audit, explicit user-selected roles, and the total proposed team size.
 `capabilities` asks the installed local Codex executable for its version,
 multi-agent feature state, and bounded model metadata. It discards raw provider
 instructions and cannot grant permissions. If probing fails, keep model
 configuration inherited and use manual or unchanged config mode.
-Save the plan outside the workspace, inspect every proposed path and diff, then
-apply with the exact confirmation id, which is a digest of the complete plan:
+Save the plan outside the workspace and inspect every proposed path and diff.
+Then ask the read-only approval command whether the plan is apply-capable:
+
+```bash
+node "<plugin-root>/scripts/codsemble.mjs" approval \
+  --workspace "/absolute/path/to/workspace" \
+  --plan "/temporary/path/plan.json"
+```
+
+A `preview-only` result is terminal: it has no approval challenge and cannot be
+passed to `apply`. To make changes, re-probe and regenerate a new plan using
+`apply-project`, `manual`, or `unchanged` mode, then show its exact diff.
+
+For an apply-capable plan, use either the exact confirmation id, which is a
+digest of the complete plan:
 
 ```bash
 node "<plugin-root>/scripts/codsemble.mjs" apply \
@@ -69,9 +85,24 @@ node "<plugin-root>/scripts/codsemble.mjs" apply \
   --confirm "<exact-confirmation-id>"
 ```
 
+or its complete voice challenge:
+
+```bash
+node "<plugin-root>/scripts/codsemble.mjs" apply \
+  --workspace "/absolute/path/to/workspace" \
+  --plan "/temporary/path/plan.json" \
+  --confirm-voice "approve team <six-word-challenge>"
+```
+
+Voice matching accepts only case, whitespace or hyphen separators, and one
+terminal punctuation mark. `yes`, `continue`, `go ahead`, partial phrases,
+reordered words, approximate matches, and cross-plan challenges are refused.
+See [Voice-friendly plan approval](VOICE_APPROVAL.md).
+
 `apply` is the mutating boundary. Do not infer confirmation from an earlier
-general request; show the final exact diff and ask for confirmation of the plan
-id. In `manual` and `unchanged` modes, apply writes only the confirmed team
+general request, proposal choice, positive feedback, or read-only consent; show
+the final exact diff and ask for the current confirmation ID or complete voice
+challenge. In `manual` and `unchanged` modes, apply writes only the confirmed team
 artifacts and leaves `.codex/config.toml` untouched. `preview` performs no
 writes. An already-identical plan returns `noChanges: true` with no transaction
 receipt and no reload request.
@@ -83,8 +114,12 @@ node "<plugin-root>/scripts/codsemble.mjs" catalog
 node "<plugin-root>/scripts/codsemble.mjs" catalog --search "security"
 ```
 
-The catalog contains 111 options. Initialization normally installs a small,
-non-overlapping subset.
+The bundled catalog currently contains reusable primitives. Initialization does
+not select a team by catalog count: it generates project roles from evidence-bound
+Work Packages and uses matching primitives only as deterministic ingredients.
+
+Legacy `lean`, `balanced`, and `full` CLI proposal names remain accepted as aliases
+for `focused`, `recommended`, and `extended` during v0.1 migration.
 
 ## Update a team
 
@@ -170,11 +205,14 @@ Codesemble never changes trust.
 Reduce fan-out or wait for existing workers. Do not retry in a tight loop. The
 ceiling counts spawned threads, not installed roles.
 
-### Plan changed before apply
+### Plan or evidence changed before apply
 
-Rerun audit and plan. Preimage drift invalidates the prior confirmation.
+Rerun audit and plan. Referenced-evidence drift, capability drift, or output
+preimage drift invalidates the prior confirmation. Unrelated files do not.
 
 ### Unsupported model or effort
 
 Regenerate using inherited model configuration or a model verified for the
-active Codex environment.
+active Codex environment. Codesemble accepts `max` and `ultra` only when the
+selected live model reports that exact effort; it never silently downgrades an
+agent's requested reasoning level.

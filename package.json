@@ -1,6 +1,6 @@
 {
   "name": "codsemble",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Repository-aware multi-agent team generation for Codex.",
   "private": true,
   "license": "Apache-2.0",
@@ -19,6 +19,8 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "archive": "node scripts/plugin-archive.mjs",
+    "archive:verify": "node scripts/plugin-archive.mjs --check",
     "check": "npm run typecheck && npm run test && npm run build && node scripts/validate-catalog.mjs",
     "checksums": "node scripts/checksums.mjs",
     "checksums:verify": "node scripts/checksums.mjs --check",

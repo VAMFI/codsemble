@@ -1,6 +1,7 @@
 import { parse } from "smol-toml";
 
 import type { ConcurrencyPlan } from "./types.js";
+import { MAX_PROJECT_WORKER_CEILING } from "./schemas.js";
 
 export interface CodexConfigAdapter {
   readonly id: NonNullable<ConcurrencyPlan["adapter"]>;
@@ -49,8 +50,14 @@ export function patchConcurrencyToml(
   workers: number,
   adapter: CodexConfigAdapter | NonNullable<ConcurrencyPlan["adapter"]>,
 ): ConcurrencyPatch {
-  if (!Number.isSafeInteger(workers) || workers < 1 || workers > 111) {
-    throw new Error("Worker concurrency must be an integer from 1 through 111");
+  if (
+    !Number.isSafeInteger(workers) ||
+    workers < 1 ||
+    workers > MAX_PROJECT_WORKER_CEILING
+  ) {
+    throw new Error(
+      `Worker concurrency must be an integer from 1 through ${MAX_PROJECT_WORKER_CEILING}`,
+    );
   }
 
   const selected =

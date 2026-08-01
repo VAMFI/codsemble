@@ -6,6 +6,7 @@ import { parse as parseToml } from "smol-toml";
 import { describe, expect, it } from "vitest";
 
 import { compileTeamPlan } from "../src/compiler.js";
+import { intakeAnswersSchema } from "../src/schemas.js";
 import { sha256 } from "../src/util.js";
 import type {
   AuditReport,
@@ -160,6 +161,114 @@ describe("compileTeamPlan", () => {
     expect(inheritedRole).not.toHaveProperty("model");
     expect(pinnedRole?.model).toBe("gpt-verified-deep");
     expect(pinnedRole?.reasoningEffort).toBe("high");
+  });
+
+  it("admits max and ultra only through a live model capability", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codsemble-ultra-effort-"));
+    const ultraAnswers = intakeAnswersSchema.parse(
+      answers({
+        customRoles: [
+          {
+            id: "master-orchestrator",
+            name: "Master Orchestrator",
+            jobToBeDone:
+              "Delegate bounded work and reconcile specialist evidence for the primary thread.",
+            successCriteria: ["The primary thread retains final authority."],
+            allowedPaths: [],
+            prohibitedActions: ["Do not approve your own plan."],
+            modelProfile: "deep",
+            reasoningEffort: "ultra",
+            sandbox: "read-only",
+          },
+        ],
+        modelCapabilities: [
+          {
+            id: "gpt-verified-ultra",
+            supportedReasoningEfforts: ["max", "ultra"],
+          },
+        ],
+        verifiedModels: { deep: "gpt-verified-ultra" },
+      }),
+    ) as IntakeAnswers;
+    expect(
+      intakeAnswersSchema.parse({
+        ...ultraAnswers,
+        customRoles: ultraAnswers.customRoles.map((role) => ({
+          ...role,
+          reasoningEffort: "max",
+        })),
+      }).customRoles[0]?.reasoningEffort,
+    ).toBe("max");
+    const customProposal: TeamProposal = {
+      ...proposal,
+      roles: [
+        {
+          roleId: "master-orchestrator",
+          score: 100,
+          reasons: ["user-required"],
+          warnings: [],
+        },
+      ],
+    };
+    const plan = await compileTeamPlan(
+      root,
+      audit,
+      ultraAnswers,
+      customProposal,
+      [blueprint],
+      {},
+    );
+    const agent = plan.files.find(
+      ({ relativePath }) =>
+        relativePath === ".codex/agents/master-orchestrator.toml",
+    );
+    expect(parseToml(agent?.content ?? "")).toMatchObject({
+      model: "gpt-verified-ultra",
+      model_reasoning_effort: "ultra",
+    });
+    await expect(
+      compileTeamPlan(
+        root,
+        audit,
+        { ...ultraAnswers, verifiedModels: {} },
+        customProposal,
+        [blueprint],
+        {},
+      ),
+    ).rejects.toThrow(
+      "requests ultra reasoning but profile deep has no verified live model mapping",
+    );
+    await expect(
+      compileTeamPlan(
+        root,
+        audit,
+        {
+          ...ultraAnswers,
+          modelCapabilities: [
+            {
+              id: "gpt-verified-ultra",
+              supportedReasoningEfforts: ["max"],
+            },
+          ],
+        },
+        customProposal,
+        [blueprint],
+        {},
+      ),
+    ).rejects.toThrow("does not report reasoning effort ultra");
+
+    await expect(
+      compileTeamPlan(
+        root,
+        audit,
+        answers(),
+        proposal,
+        [{ ...blueprint, defaultReasoningEffort: "max" }],
+        {},
+      ),
+    ).rejects.toThrow(
+      "requests max reasoning but profile deep has no verified live model mapping",
+    );
   });
 
   it("rejects a model not present in the bounded capability result", async () => {
@@ -366,7 +475,7 @@ describe("compileTeamPlan", () => {
     ).rejects.toThrow("reserved on Windows");
   });
 
-  it("deletes only stale agents owned by the prior manifest", async () => {
+  it("refuses stale-agent deletion from an unreceipted partial manifest", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "codsemble-stale-agent-"));
     const staleAgent = 'name = "stale_role"\n';
     const manifest = JSON.stringify({
@@ -379,26 +488,12 @@ describe("compileTeamPlan", () => {
         },
       },
     });
-    const plan = await compileTeamPlan(
-      root,
-      audit,
-      answers(),
-      proposal,
-      [blueprint],
-      {
+    await expect(
+      compileTeamPlan(root, audit, answers(), proposal, [blueprint], {
         ".codex/codsemble/manifest.json": manifest,
         ".codex/agents/stale-role.toml": staleAgent,
-      },
-    );
-
-    expect(plan.files).toContainEqual(
-      expect.objectContaining({
-        relativePath: ".codex/agents/stale-role.toml",
-        action: "delete",
-        afterSha256: null,
-        content: null,
       }),
-    );
+    ).rejects.toThrow("not a strict ownership manifest");
   });
 
   it("safely upgrades legacy ownership by hashing unchanged agents and preserving stale ones", async () => {

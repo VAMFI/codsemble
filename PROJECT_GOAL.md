@@ -1,28 +1,60 @@
-# Codesemble Goal
+# Codesemble v0.2 Goal
 
-Build a clean Apache-2.0, offline-first, open-source Codex plugin that:
+## Mission
 
-1. Audits a selected workspace without mutating it or reading sensitive material.
-2. Interviews the user only for information the audit cannot determine.
-3. Recommends Lean, Balanced, and Full teams from exactly 111 versioned role blueprints.
-4. Lets the user search, customize, add, or exclude specialist roles.
-5. Generates native `.codex/agents/*.toml`, a bounded managed `AGENTS.md` section,
-   and an optional version-aware project concurrency setting.
-6. Shows exact diffs and applies only the confirmed transaction.
-7. Preserves unrelated content, detects concurrent modification, and supports safe rollback.
-8. Validates models, permissions, tools, configuration, discovery, and real native delegation.
-9. Produces a reproducible `v0.1.0` release candidate with complete open-source documentation.
+Turn repository evidence and explicit human goals into the smallest capable,
+tested, project-specific native Codex team.
+
+## Vision
+
+Every Codex project can assemble trustworthy specialist agents as naturally as
+it configures tests: adaptive to the work, understandable to people,
+least-privileged by default, and continuously maintainable as the project
+changes.
+
+## Master goal
+
+Deliver Project Capability Compiler v1: a deterministic, offline-first pipeline
+that converts a bounded audit into typed evidence, a Project Capability Map,
+Work Packages, an admitted Team IR, and coverage-driven Focused, Recommended,
+and Extended team proposals.
 
 ## Product promise
 
-> Audit the work. Build the smallest useful Codex team. Keep every change reviewable.
+> Audit the work. Generate the smallest capable team. Keep every change reviewable.
 
-## Non-goals for v0.1.0
+## Required outcomes
 
-- Replacing Codex's native agent runtime.
-- Persistent remote scheduling, dashboards, or hosted state.
-- Editing global Codex configuration automatically.
-- Marking projects trusted.
-- Installing third-party plugins, skills, hooks, MCP servers, or credentials.
-- Telemetry, remote repository uploads, or account creation.
-- Publishing code or submitting to the OpenAI plugin directory without explicit authorization.
+1. Repository prose remains untrusted data and never becomes persistent policy.
+2. Every installed role is bound to typed repository evidence or an explicit user goal.
+3. Generated roles have bounded ownership, deliverables, verification contracts,
+   model profiles, and least-privilege sandboxes.
+4. Focused is the minimum complete capability cover. Recommended adds independent
+   verification only for justified risk. Extended adds only evidenced lifecycle work.
+5. The bundled role catalog remains an extensible primitive library and fallback,
+   not a team-size or product-output ceiling.
+6. Installed role count and concurrent workers remain independent. High concurrency
+   requires a human-visible, digest-bound acknowledgement.
+7. Preview, evidence freshness, capability freshness, exact full-ID or voice-safe
+   confirmation, no-clobber apply, doctor, update, and rollback remain mandatory.
+8. v0.1 manifests and transaction receipts remain diagnosable and rollback-safe.
+9. Representative fixtures, semantic goldens, properties, adversarial tests,
+   three-OS CI, and fresh-session runtime evidence remain separate proof levels.
+10. The plugin bundle, SBOM, checksums, documentation, and PR evidence bind to the
+    exact v0.2 candidate.
+
+## Governance
+
+The user is final authority. The primary Codex thread owns scope, integration,
+approvals, external writes, and completion claims. The project orchestrator may
+coordinate bounded specialists but cannot merge, release, publish, handle
+credentials, alter trust, or modify global Codex configuration.
+
+## Non-goals
+
+- Replacing the native Codex runtime or creating a remote scheduler.
+- Executing repository scripts during audit.
+- Treating generated prompt guidance as filesystem enforcement.
+- Installing third-party plugins, hooks, MCP servers, providers, or credentials.
+- Silent global configuration, trust, deployment, publication, or release actions.
+- Telemetry or repository upload in deterministic mode.

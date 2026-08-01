@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 
 const lockPath = "package-lock.json";
-const outputPath = "artifacts/codsemble-0.1.0-rc.sbom.cdx.json";
+const outputPath = "artifacts/codsemble-0.2.0-rc.sbom.cdx.json";
 const checking = process.argv.includes("--check");
 const lockBytes = await readFile(lockPath);
 const lock = JSON.parse(lockBytes.toString("utf8"));

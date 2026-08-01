@@ -30,46 +30,44 @@ const audit: AuditReport = {
 };
 
 describe("generated team golden", () => {
-  it("keeps the lean empty-project team and owned output hashes stable", async () => {
+  it("keeps the semantic focused team design stable and plan-bound", async () => {
     const workspace = await mkdtemp(path.join(os.tmpdir(), "codsemble-golden-"));
     const answers = intakeAnswersSchema.parse(
       JSON.parse(await readFile("examples/intake.preview.json", "utf8")),
     ) as IntakeAnswers;
     const catalog = await loadCatalog();
     const recommendation = recommendTeams(audit, answers, catalog);
-    const lean = recommendation.proposals.find(({ kind }) => kind === "lean");
-    if (!lean) throw new Error("lean proposal missing");
+    const focused = recommendation.proposals.find(({ kind }) => kind === "focused");
+    if (!focused || !recommendation.teamDesign) {
+      throw new Error("focused team design missing");
+    }
 
     const plan = await compileTeamPlan(
       workspace,
       audit,
       answers,
-      lean,
+      focused,
       catalog,
       {},
+      recommendation.teamDesign,
     );
-    const hashes = Object.fromEntries(
-      plan.files
-        .filter(
-          ({ relativePath }) =>
-            relativePath !== ".codex/codsemble/manifest.json",
-        )
-        .map(({ relativePath, afterSha256 }) => [relativePath, afterSha256]),
-    );
-
-    expect(plan.roles.map(({ id }) => id)).toEqual([
-      "delivery-planner",
-      "end-to-end-test-engineer",
+    expect(recommendation.teamDesign.capabilityMap.capabilities
+      .filter(({ required }) => required)
+      .map(({ kind }) => kind)).toEqual([
+      "implementation",
+      "implementation",
+      "verification",
     ]);
-    expect(hashes).toEqual({
-      ".codex/agents/delivery-planner.toml":
-        "cccaae61ddd6dab3890baafe0b071831ebae9818a10c1cb827ab2772c4c87bf5",
-      ".codex/agents/end-to-end-test-engineer.toml":
-        "1888af36587dac3dade90ce463b269c4fb0432899f226dfe0017d518a0a9b59d",
-      ".codex/config.toml":
-        "94df6d9753a820e91b6795b30d77be256a0cf849d789b1f0313c07d27439440f",
-      "AGENTS.md":
-        "7bd7ec9fce7e0cf223f15d316d9e8db5121a767311f6fe532c460173f09fd1aa",
-    });
+    expect(recommendation.teamDesign.proposals[0]?.uncoveredCapabilityIds).toEqual([]);
+    expect(plan.roles.every(({ source }) => source === "generated")).toBe(true);
+    expect(plan.teamDesignId).toBe(recommendation.teamDesign.designId);
+    expect(plan.teamDesignDigest).toMatch(/^[a-f0-9]{64}$/);
+    const manifest = JSON.parse(
+      plan.files.find(({ relativePath }) =>
+        relativePath === ".codex/codsemble/manifest.json")?.content ?? "{}",
+    ) as { schemaVersion?: number; design?: { designId?: string; digest?: string } };
+    expect(manifest.schemaVersion).toBe(2);
+    expect(manifest.design?.designId).toBe(plan.teamDesignId);
+    expect(manifest.design?.digest).toBe(plan.teamDesignDigest);
   });
 });

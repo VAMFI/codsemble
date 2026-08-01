@@ -6,7 +6,7 @@ import { stableStringify } from "../src/util.js";
 
 describe("generated configuration properties", () => {
   it("round-trips every supported worker ceiling without disturbing unrelated data", () => {
-    for (let workers = 1; workers <= 111; workers += 1) {
+    for (let workers = 1; workers <= 256; workers += 1) {
       const source =
         '# owner\nmodel = "inherit"\n\n[agents]\nother = "preserve"\n';
       const result = patchConcurrencyToml(source, workers, "agents-v1");

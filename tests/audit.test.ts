@@ -59,6 +59,9 @@ describe("auditWorkspace", () => {
     expect(first.workspace).toBe(".");
     expect(first.gitRepository).toBe(false);
     expect(first.dirtyWorktree).toBeNull();
+    expect(first.inspectedFileDigests).toHaveLength(first.inspectedFiles.length);
+    expect(first.inspectedFileDigests?.every(({ sha256 }) =>
+      /^[a-f0-9]{64}$/.test(sha256))).toBe(true);
     expect(signalValues(first, "stack")).toEqual(
       expect.arrayContaining(["nodejs", "typescript"]),
     );

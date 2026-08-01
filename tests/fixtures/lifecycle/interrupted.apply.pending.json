@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "operation": "apply",
+  "state": "staged-but-not-committed",
+  "planId": "fixture-interrupted-plan"
+}

@@ -1,39 +1,57 @@
 # Roadmap
 
-The roadmap describes intent, not a compatibility or delivery promise.
+The roadmap describes intent and evidence gates, not a compatibility promise.
 
-## v0.1 — initial public release
+## v0.2 — Project Capability Compiler v1
 
-- Bounded, offline-first workspace audit.
-- Exact 111-role catalog with evidence-backed recommendations.
-- Lean, Balanced, and Full proposals.
-- Native project agent and managed `AGENTS.md` generation.
-- Separate role-count and spawned-worker decisions.
-- Side-effect-free previews, locked no-clobber project apply, doctor, update,
-  and rollback.
-- Cross-platform fixtures, adversarial tests, official validators, and isolated
-  fresh-session runtime evidence.
+### 1. Foundations
 
-## v0.2 — hardening and portability
+- Remove every functional dependency on the bundled primitive count.
+- Keep installed roles independent from spawned-worker capacity.
+- Probe native Codex behavior and fail closed when required capabilities disappear.
+- Install and fresh-session verify a project-local orchestrator under primary authority.
 
-- Catalog and generated-schema migrations from real-world feedback.
-- Broader monorepo and non-code project fixtures.
-- Stronger configuration adapters across supported Codex versions.
-- Accessibility review of interactive onboarding.
-- Idempotent automatic recovery for interrupted mutation journals.
-- Signed release artifacts, SBOM, provenance, and reproducibility reporting.
+### 2. Capability model
 
-## Later, only with a new threat model
+- Compile atomic typed EvidenceRefs from bounded audit facts.
+- Derive a Project Capability Map without treating passive files as work requests.
+- Build bounded Work Packages with risk, scope guidance, dependencies, and validation.
+- Canonicalize Team IR v2 and bind it to the audit and human-confirmed plan.
 
-- Optional visual team topology editor.
-- Organization-managed role and policy packs.
-- Cross-harness export.
-- Workflow effectiveness evaluation using explicitly opted-in local data.
-- Optional integrations that remain separately reviewed and confirmed.
+### 3. Synthesis and admission
 
-## Explicitly not planned for v0.1
+- Generate project-specific roles from Work Packages and reusable catalog primitives.
+- Admit roles through strict path, tool, model, permission, and output policies.
+- Produce coverage-driven Focused, Recommended, and Extended options with no filler.
+
+### 4. Human experience
+
+- Show what was found, what can be generated, why each role exists, and what changes.
+- Keep customization natural-language friendly while freezing admitted structured data.
+- Preserve full-digest and exact voice-friendly approval for apply-capable plans.
+
+### 5. Lifecycle
+
+- Recheck referenced evidence and live Codex capabilities before mutation.
+- Preserve manifest ownership, no-clobber updates, drift refusal, doctor, and rollback.
+- Maintain strict v0.1 manifest and transaction compatibility.
+
+### 6. Validation and delivery
+
+- Add representative, golden, property, adversarial, migration, and usefulness suites.
+- Pass Node 22 and 24 on Ubuntu, macOS, and Windows.
+- Build deterministic plugin artifacts, SBOM, checksums, and exact-payload runtime proof.
+- Open a focused PR with CI evidence. Merge, release, and publication remain separate.
+
+## Later, only with a new threat and privacy review
+
+- Optional assisted semantic synthesis with an exact redacted egress preview.
+- Visual team-topology editing.
+- Organization-managed policy and primitive packs.
+- Hosted evaluation or integrations with explicit opt-in and separate authority.
+
+## Explicitly out of scope
 
 - A replacement agent runtime or persistent remote scheduler.
-- Silent edits to global Codex configuration or project trust.
-- Automatic third-party installation.
-- Credentials, telemetry, repository uploads, deployment, or publication.
+- Silent edits to user-level Codex configuration or project trust.
+- Automatic connectors, credentials, deployment, release, or publication.

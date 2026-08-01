@@ -19,6 +19,7 @@ const requiredDocs = [
   "docs/CONFIG_SAFETY.md",
   "docs/USAGE.md",
   "docs/VALIDATION.md",
+  "docs/USEFULNESS_COMPARISON.md",
 ];
 
 const requiredFiles = [

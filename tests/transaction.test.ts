@@ -500,7 +500,10 @@ describe("project transactions", () => {
     await mkdir(transactions, { recursive: true });
     await writeFile(
       path.join(transactions, "stale.apply.pending.json"),
-      '{"schemaVersion":1}\n',
+      await readFile(
+        "tests/fixtures/lifecycle/interrupted.apply.pending.json",
+        "utf8",
+      ),
     );
 
     await expect(

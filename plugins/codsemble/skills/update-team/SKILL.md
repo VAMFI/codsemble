@@ -23,8 +23,8 @@ reconstruct ownership from guesses or download replacement tooling.
 - Never edit global configuration, project trust, credentials, managed policy,
   third-party components, or external systems.
 - Ask separately for installed role count and concurrent spawned workers. The
-  worker count excludes the primary thread; never set it from 111 catalog
-  entries.
+  worker count excludes the primary thread; never set it from primitive-library
+  size or installed role count.
 - Apply only the exact reviewed plan after exact confirmation-id approval or a
   strict match of the complete current voice challenge.
 
@@ -66,13 +66,14 @@ reconstruct ownership from guesses or download replacement tooling.
    node <plugin-root>/scripts/codsemble.mjs plan \
      --workspace <absolute-workspace> \
      --answers <absolute-temporary-answers-json> \
-     --proposal <lean|balanced|full>
+     --proposal <focused|recommended|extended>
    ```
 
    Save the emitted plan outside the workspace. Show the exact diff and identify
    any user edits that cause a refusal or require resolution.
 
-6. Run `approval --plan <absolute-temporary-plan-json>`. Stop after the plan for
+6. Run `approval --workspace <absolute-workspace> --plan <absolute-temporary-plan-json>`.
+   Stop after the plan for
    `preview`: require `state: preview-only`, expose no challenge, ask for no
    confirmation, and never promote that plan. If the user later wants changes,
    re-probe and regenerate a non-preview plan. For `manual`, state that the confirmed
@@ -99,7 +100,7 @@ reconstruct ownership from guesses or download replacement tooling.
    Keyboard automation may instead use the byte-exact
    `--confirm <exact-confirmation-id>` path. Never provide both flags.
 
-   Abort on preimage drift. Do not force, merge around, or overwrite a
+   Abort on referenced-evidence, capability, or preimage drift. Do not force, merge around, or overwrite a
    concurrent change.
 
 7. Run `doctor` again. Tell the user when a fresh Codex session is needed and

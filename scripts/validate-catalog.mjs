@@ -4,8 +4,8 @@ const path = new URL("../plugins/codsemble/catalog/roles.json", import.meta.url)
 const roles = JSON.parse(await readFile(path, "utf8"));
 const ids = new Set(roles.map((role) => role.id));
 
-if (roles.length !== 111) {
-  throw new Error(`Expected exactly 111 roles, found ${roles.length}`);
+if (roles.length === 0) {
+  throw new Error("Expected a non-empty role primitive library");
 }
 if (ids.size !== roles.length) {
   throw new Error("Role ids must be unique");

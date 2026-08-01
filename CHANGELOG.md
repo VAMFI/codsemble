@@ -13,6 +13,21 @@ until a release is explicitly published.
   from the unchanged full confirmation digest.
 - A read-only `approval` command that clearly separates terminal preview plans
   from apply-capable plans.
+- Project Capability Compiler v1 with atomic typed EvidenceRefs, a Project
+  Capability Map, bounded Work Packages, generated-role admission, and Team IR v2.
+- Coverage-driven Focused, Recommended, and Extended proposals with no
+  desired-count filler.
+- Referenced-evidence freshness checks at approval and apply.
+- Strict v2 manifest provenance while retaining v1 plan, receipt, doctor, and
+  rollback compatibility.
+
+### Changed
+
+- The bundled 111-role catalog is now an extensible primitive library, not a
+  recommendation ceiling, installed-team target, or concurrency limit.
+- Concurrency uses an independently named safety ceiling and retains the
+  explicit acknowledgement gate above 16 workers.
+- CI targets Node 22 and 24 on Ubuntu, macOS, and Windows.
 
 ## 0.1.0 - 2026-07-31
 

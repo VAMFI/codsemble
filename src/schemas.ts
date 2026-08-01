@@ -34,7 +34,14 @@ export const roleBlueprintSchema = z
   })
   .strict();
 
-export const roleCatalogSchema = z.array(roleBlueprintSchema).length(111);
+export const roleCatalogSchema = z
+  .array(roleBlueprintSchema)
+  .min(1)
+  .refine((roles) => new Set(roles.map(({ id }) => id)).size === roles.length, {
+    message: "role catalog ids must be unique",
+  });
+
+export const MAX_PROJECT_WORKER_CEILING = 256;
 
 export const customRoleInputSchema = z
   .object({
@@ -55,7 +62,11 @@ export const intakeAnswersSchema = z
     goals: z.array(z.string().regex(/^[a-z0-9:_-]+$/)).min(1),
     projectStage: z.enum(["idea", "prototype", "active", "production", "legacy"]),
     desiredRoleCount: z.number().int().min(1).max(40),
-    maxConcurrentWorkers: z.number().int().min(1).max(111),
+    maxConcurrentWorkers: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_PROJECT_WORKER_CEILING),
     optimizeFor: z.enum(["balanced", "quality", "speed", "cost"]),
     configMode: z.enum(["preview", "apply-project", "manual", "unchanged"]),
     configAdapter: z.literal("agents-v1").nullable(),

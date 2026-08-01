@@ -13,7 +13,13 @@ import type {
   AuditSkipSummary,
   ExistingCodexState,
 } from "./types.js";
-import { assertContainedPath, assertWorkspaceRoot, toPosix } from "./util.js";
+import {
+  assertContainedPath,
+  assertWorkspaceRoot,
+  sha256,
+  stableStringify,
+  toPosix,
+} from "./util.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -263,6 +269,7 @@ export async function auditWorkspace(
   }
 
   const inspectedFiles: string[] = [];
+  const inspectedFileDigests: Array<{ path: string; sha256: string }> = [];
   let truncated = false;
   for (const candidate of candidates) {
     if (inspectedFiles.length >= limits.maxFiles) {
@@ -337,6 +344,7 @@ export async function auditWorkspace(
     }
 
     inspectedFiles.push(relativePath);
+    inspectedFileDigests.push({ path: relativePath, sha256: sha256(content) });
     detectPathSignals(relativePath, signals);
     if (isPackageJson(relativePath)) {
       detectPackageSignals(content, relativePath, signals, warnings);
@@ -359,12 +367,52 @@ export async function auditWorkspace(
     gitRepository: git !== null,
     dirtyWorktree,
     inspectedFiles: sortedInspectedFiles,
+    inspectedFileDigests: inspectedFileDigests.sort((left, right) =>
+      compareText(left.path, right.path),
+    ),
     skipped: toSkipSummary(skips),
     truncated,
     signals: materializeSignals(signals),
     existingCodex,
     warnings: [...new Set(warnings)].sort(compareText),
   };
+}
+
+export function fingerprintAuditReport(audit: AuditReport): string {
+  const compare = (left: string, right: string) =>
+    left < right ? -1 : left > right ? 1 : 0;
+  const canonical = {
+    ...audit,
+    inspectedFiles: [...audit.inspectedFiles].sort(compare),
+    ...(audit.inspectedFileDigests
+      ? {
+          inspectedFileDigests: [...audit.inspectedFileDigests].sort((left, right) =>
+            compare(left.path, right.path),
+          ),
+        }
+      : {}),
+    skipped: [...audit.skipped].sort((left, right) =>
+      compare(`${left.reason}:${left.count}`, `${right.reason}:${right.count}`),
+    ),
+    signals: [...audit.signals]
+      .map((signal) => ({
+        ...signal,
+        values: [...signal.values].sort(compare),
+        evidence: [...signal.evidence].sort((left, right) =>
+          compare(
+            `${left.path}:${left.detector}:${left.detail}`,
+            `${right.path}:${right.detector}:${right.detail}`,
+          ),
+        ),
+      }))
+      .sort((left, right) => compare(left.key, right.key)),
+    existingCodex: {
+      ...audit.existingCodex,
+      agentFiles: [...audit.existingCodex.agentFiles].sort(compare),
+    },
+    warnings: [...audit.warnings].sort(compare),
+  };
+  return sha256(stableStringify(canonical));
 }
 
 function isAuxiliaryEvidencePath(relativePath: string): boolean {

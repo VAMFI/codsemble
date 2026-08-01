@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { auditWorkspace } from "./audit.js";
+import { buildRepositoryEvidenceRefs } from "./capability-compiler.js";
 import {
   assertPlanCapabilities,
   bindIntakeCapabilities,
@@ -33,8 +34,8 @@ Usage:
   codsemble audit [--workspace PATH]
   codsemble capabilities [--workspace PATH]
   codsemble recommend --answers FILE [--workspace PATH] [--catalog FILE]
-  codsemble plan --answers FILE --proposal lean|balanced|full [--workspace PATH]
-  codsemble approval --plan FILE
+  codsemble plan --answers FILE --proposal focused|recommended|extended [--workspace PATH]
+  codsemble approval --plan FILE [--workspace PATH]
   codsemble apply --plan FILE (--confirm CONFIRMATION_ID | --confirm-voice "VOICE_CHALLENGE") [--workspace PATH]
   codsemble doctor [--workspace PATH]
   codsemble rollback --transaction TRANSACTION_ID --confirm TRANSACTION_ID [--workspace PATH]
@@ -152,11 +153,22 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
       );
       const capabilities = await detectCodexCapabilities(workspace);
       const boundAnswers = bindIntakeCapabilities(answers, capabilities);
-      const kind = flag(arguments_, "--proposal", {
+      const requestedKind = flag(arguments_, "--proposal", {
         required: true,
-      }) as "lean" | "balanced" | "full";
-      if (!["lean", "balanced", "full"].includes(kind)) {
-        throw new Error("--proposal must be lean, balanced, or full");
+      }) as string;
+      const aliases: Record<string, "focused" | "recommended" | "extended"> = {
+        focused: "focused",
+        recommended: "recommended",
+        extended: "extended",
+        lean: "focused",
+        balanced: "recommended",
+        full: "extended",
+      };
+      const kind = aliases[requestedKind];
+      if (!kind) {
+        throw new Error(
+          "--proposal must be focused, recommended, or extended (legacy lean/balanced/full aliases remain accepted)",
+        );
       }
       const roles = await loadCatalog(flag(arguments_, "--catalog"));
       const audit = await auditWorkspace(workspace);
@@ -173,16 +185,23 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
         boundAnswers,
         proposal,
         roles,
+        undefined,
+        recommendation.teamDesign,
       );
       assertPlanCapabilities(plan, capabilities, "plan");
       return plan;
     }
     case "approval": {
-      allowOnly(arguments_, ["--plan"]);
+      allowOnly(arguments_, ["--workspace", "--plan"]);
+      const planFile = flag(arguments_, "--plan", { required: true }) as string;
       const plan = await readJson<TeamPlan>(
-        flag(arguments_, "--plan", { required: true }) as string,
+        planFile,
       );
       assertValidTeamPlan(plan);
+      const approvalWorkspace = arguments_.flags.has("--workspace")
+        ? workspace
+        : path.dirname(path.resolve(planFile));
+      await assertAuditFresh(approvalWorkspace, plan, "Approval");
       return describePlanApproval(plan);
     }
     case "apply": {
@@ -201,6 +220,7 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
           "Apply refused: preview plans are read-only; regenerate with apply-project, manual, or unchanged mode",
         );
       }
+      await assertAuditFresh(workspace, plan, "Apply");
       const fullConfirmation = flag(arguments_, "--confirm");
       const voiceConfirmation = flag(arguments_, "--confirm-voice");
       if (
@@ -294,6 +314,32 @@ async function run(arguments_: ParsedArguments): Promise<unknown> {
     }
     default:
       throw new Error(`Unknown command: ${arguments_.command ?? "(none)"}`);
+  }
+}
+
+async function assertAuditFresh(
+  workspace: string,
+  plan: TeamPlan,
+  phase: "Approval" | "Apply",
+): Promise<void> {
+  const current = await auditWorkspace(workspace);
+  if (plan.evidencePreconditions === undefined) return;
+  const currentEvidence = new Map(
+    buildRepositoryEvidenceRefs(current).map((ref) => [ref.id, ref]),
+  );
+  const stale = plan.evidencePreconditions.find((expected) => {
+    const observed = currentEvidence.get(expected.id);
+    return (
+      observed === undefined ||
+      observed.digest !== expected.digest ||
+      stableStringify(observed.relativePaths) !==
+        stableStringify(expected.relativePaths)
+    );
+  });
+  if (stale !== undefined) {
+    throw new Error(
+      `${phase} refused: referenced typed workspace evidence changed after planning (${stale.id}); re-audit, regenerate, and review a new plan`,
+    );
   }
 }
 

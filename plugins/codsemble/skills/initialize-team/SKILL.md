@@ -1,6 +1,6 @@
 ---
 name: initialize-team
-description: Audit a workspace, collect bounded team preferences, recommend Lean, Balanced, and Full Codex teams, and preview or explicitly apply native project-scoped agent configuration. Use when a user asks to initialize, install, create, design, or set up a multi-agent team for a Codex project.
+description: Audit a workspace, compile evidence-bound project capabilities and Work Packages, recommend Focused, Recommended, and Extended Codex teams, and preview or explicitly apply native project-scoped agent configuration. Use when a user asks to initialize, install, create, design, or set up a multi-agent team for a Codex project.
 ---
 
 # Initialize a Codex team
@@ -27,7 +27,7 @@ not download, install, or substitute another executable.
   complete current voice challenge.
 - Keep installed role count separate from concurrent spawned workers. The
   worker count excludes the primary/orchestrator thread. Never derive it from
-  the catalog size of 111.
+  primitive-library size.
 
 ## Workflow
 
@@ -78,10 +78,11 @@ not download, install, or substitute another executable.
      --answers <absolute-temporary-answers-json>
    ```
 
-5. Present Lean, Balanced, and Full proposals with evidence, overlap warnings,
-   and worker ceilings. Recommend the smallest option that covers the user's
-   goals. Use `catalog --search <term>` only when the user wants another
-   specialist; do not dump all 111 roles into onboarding.
+5. Present Focused, Recommended, and Extended proposals with their Project
+   Capability Map, Work Package coverage, evidence references, gaps, sandboxes,
+   and worker ceilings. Recommend the smallest complete option. Use
+   `catalog --search <term>` only when the user wants to inspect or require a
+   reusable primitive; never dump the whole library into onboarding.
 
 6. After the user selects and customizes one proposal, run:
 
@@ -89,7 +90,7 @@ not download, install, or substitute another executable.
    node <plugin-root>/scripts/codsemble.mjs plan \
      --workspace <absolute-workspace> \
      --answers <absolute-temporary-answers-json> \
-     --proposal <lean|balanced|full>
+     --proposal <focused|recommended|extended>
    ```
 
    Save the JSON plan to a temporary path outside the workspace. Show every
@@ -101,6 +102,7 @@ not download, install, or substitute another executable.
 
    ```text
    node <plugin-root>/scripts/codsemble.mjs approval \
+     --workspace <absolute-workspace> \
      --plan <absolute-temporary-plan-json>
    ```
 
@@ -136,7 +138,8 @@ not download, install, or substitute another executable.
    For keyboard automation, `--confirm <exact-confirmation-id>` remains the
    byte-exact compatibility path. Use exactly one confirmation method.
 
-   Do not alter the plan after confirmation. If any preimage changed, stop and
+   Do not alter the plan after confirmation. If referenced evidence, a required
+   runtime capability, or any preimage changed, stop and
    regenerate instead of retrying or overwriting.
 
 9. Run `doctor --workspace <absolute-workspace>`. Report structural results

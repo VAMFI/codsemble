@@ -1,6 +1,6 @@
 # Privacy
 
-Codesemble v0.1.0 is offline-first. It does not include telemetry, analytics,
+Codesemble v0.2.0 deterministic mode is offline-first. It does not include telemetry, analytics,
 account creation, hosted storage, or repository upload.
 
 ## Data processed
@@ -9,9 +9,10 @@ The auditor derives bounded, typed signals such as languages, frameworks,
 package boundaries, build/test tooling, CI metadata, and existing Codex project
 files. Evidence uses workspace-relative paths.
 
-Codesemble may persist the selected team, generator versions, content hashes,
-and transaction metadata under `.codex/codsemble/`. Transaction records do not
-need to store arbitrary source content or secret values.
+Codesemble may persist typed evidence identifiers, relative allowlisted paths,
+capabilities, Work Packages, admitted team provenance, generator versions,
+content hashes, and transaction metadata under `.codex/codsemble/`. Repository
+excerpts are not persisted in generated role instructions or receipts.
 
 The voice-friendly path processes only the transcript string passed to the
 local CLI. Codesemble does not record audio, identify a speaker, or persist the
@@ -37,7 +38,7 @@ evaluating unfamiliar repositories.
 
 ## Network behavior
 
-The bundled v0.1.0 auditor and configuration compiler require no network access.
+The bundled v0.2.0 deterministic auditor and capability compiler require no network access.
 Codex itself and user-enabled tools may have separate network behavior governed
 by their own settings and policies. Codesemble does not widen those settings.
 
@@ -63,5 +64,5 @@ separate user decision and can reduce rollback capability.
 
 ## Future changes
 
-Any telemetry, hosted analysis, remote catalog, or connector feature requires a
+Any assisted synthesis, telemetry, hosted analysis, remote catalog, or connector feature requires a
 new privacy review, explicit opt-in, documented data flow, and separate consent.

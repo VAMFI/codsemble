@@ -187,7 +187,7 @@ afterEach(async () => {
   );
 });
 
-describe("bundled CLI", () => {
+describe.sequential("bundled CLI", { timeout: 15_000 }, () => {
   it("loads the complete offline catalog", async () => {
     const output = JSON.parse(await run(["catalog", "--search", "frontend"])) as {
       total: number;
@@ -221,6 +221,34 @@ describe("bundled CLI", () => {
     await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  it.each([
+    ["lean", "focused"],
+    ["balanced", "recommended"],
+    ["full", "extended"],
+  ] as const)("maps the legacy %s proposal alias to %s", async (alias, expected) => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const plan = JSON.parse(
+      await run([
+        "plan",
+        "--workspace",
+        root,
+        "--answers",
+        answerFile,
+        "--proposal",
+        alias,
+      ]),
+    ) as TeamPlan;
+    const manifestSource = plan.files.find(
+      ({ relativePath }) =>
+        relativePath === ".codex/codsemble/manifest.json",
+    )?.content;
+    const manifest = JSON.parse(manifestSource ?? "{}") as {
+      proposal?: { kind?: string };
+    };
+    expect(manifest.proposal?.kind).toBe(expected);
   });
 
   it("returns an explicit no-changes result without creating a receipt", async () => {
@@ -614,6 +642,48 @@ describe("bundled CLI", () => {
       ),
     });
     expect(await snapshotWorkspace(root)).toEqual(before);
+  });
+
+  it("refuses referenced evidence drift before mutation", async () => {
+    const root = await workspace();
+    const answerFile = await answers(root, "manual");
+    const planFile = path.join(root, "plan.json");
+    const planText = await run([
+      "plan",
+      "--workspace",
+      root,
+      "--answers",
+      answerFile,
+      "--proposal",
+      "recommended",
+    ]);
+    await writeFile(planFile, planText);
+    const plan = JSON.parse(planText) as TeamPlan;
+    await writeFile(
+      path.join(root, "package.json"),
+      '{"name":"fixture","devDependencies":{"typescript":"2.0.0"}}\n',
+    );
+    const before = await snapshotWorkspace(root);
+
+    await expect(
+      run([
+        "apply",
+        "--workspace",
+        root,
+        "--plan",
+        planFile,
+        "--confirm",
+        plan.confirmationId,
+      ]),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "referenced typed workspace evidence changed after planning",
+      ),
+    });
+    expect(await snapshotWorkspace(root)).toEqual(before);
+    await expect(access(path.join(root, ".codex"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("applies and rolls back the confirmed project concurrency ceiling", async () => {

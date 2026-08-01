@@ -151,7 +151,7 @@ export interface PlanApprovalDescription {
   voiceChallengeVersion: typeof VOICE_CONFIRMATION_VERSION;
   voiceChallenge: string | null;
   freshness: {
-    mode: "plan-and-preimage-bound";
+    mode: "audit-capability-and-preimage-bound";
     summary: string;
   };
 }
@@ -202,9 +202,9 @@ export function describePlanApproval(
       ? voiceChallengeForConfirmationId(plan.confirmationId)
       : null,
     freshness: {
-      mode: "plan-and-preimage-bound",
+      mode: "audit-capability-and-preimage-bound",
       summary: applyCapable
-        ? "Valid only for this exact plan while every recorded workspace preimage remains unchanged."
+        ? "Valid only for this exact plan while typed audit evidence, runtime capabilities, and every recorded workspace preimage remain unchanged."
         : "Preview-only plans have no approval step and must be regenerated in an apply-capable mode.",
     },
   };

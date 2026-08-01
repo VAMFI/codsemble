@@ -8,8 +8,9 @@ for inspection, automation, and troubleshooting.
 - Select the exact workspace root.
 - Preserve uncommitted work; Codesemble does not require a clean worktree.
 - Use an isolated Codex environment for pre-release testing.
-- Do not place answer or plan files inside the audited workspace unless you
-  intentionally want them treated as project files.
+- Answer and plan files may be saved outside the workspace. If an approval plan
+  is saved inside the workspace, it is treated as an unrelated artifact and does
+  not invalidate already referenced evidence.
 
 The bundled executable is:
 
@@ -25,13 +26,13 @@ They do not rely on a global environment variable.
 Invoke:
 
 ```text
-$initialize-team Set up a balanced team for this workspace.
+$initialize-team Build the recommended team for this workspace.
 ```
 
 The skill runs a read-only audit, asks only for missing intent, and presents
-Lean, Balanced, and Full options. It asks separately for:
+Focused, Recommended, and Extended options. It asks separately for:
 
-- desired installed role count;
+- desired role count as a soft preference, never a padding target;
 - maximum concurrent spawned workers, excluding the primary thread;
 - preview, project apply, manual snippet, or unchanged configuration mode.
 
@@ -51,7 +52,7 @@ node "<plugin-root>/scripts/codsemble.mjs" recommend \
 node "<plugin-root>/scripts/codsemble.mjs" plan \
   --workspace "/absolute/path/to/workspace" \
   --answers "/temporary/path/answers.json" \
-  --proposal balanced
+  --proposal recommended
 ```
 
 These commands emit JSON to standard output and do not write workspace files.
@@ -64,6 +65,7 @@ Then ask the read-only approval command whether the plan is apply-capable:
 
 ```bash
 node "<plugin-root>/scripts/codsemble.mjs" approval \
+  --workspace "/absolute/path/to/workspace" \
   --plan "/temporary/path/plan.json"
 ```
 
@@ -110,8 +112,12 @@ node "<plugin-root>/scripts/codsemble.mjs" catalog
 node "<plugin-root>/scripts/codsemble.mjs" catalog --search "security"
 ```
 
-The catalog contains 111 options. Initialization normally installs a small,
-non-overlapping subset.
+The bundled catalog currently contains reusable primitives. Initialization does
+not select a team by catalog count: it generates project roles from evidence-bound
+Work Packages and uses matching primitives only as deterministic ingredients.
+
+Legacy `lean`, `balanced`, and `full` CLI proposal names remain accepted as aliases
+for `focused`, `recommended`, and `extended` during v0.1 migration.
 
 ## Update a team
 
@@ -197,9 +203,10 @@ Codesemble never changes trust.
 Reduce fan-out or wait for existing workers. Do not retry in a tight loop. The
 ceiling counts spawned threads, not installed roles.
 
-### Plan changed before apply
+### Plan or evidence changed before apply
 
-Rerun audit and plan. Preimage drift invalidates the prior confirmation.
+Rerun audit and plan. Referenced-evidence drift, capability drift, or output
+preimage drift invalidates the prior confirmation. Unrelated files do not.
 
 ### Unsupported model or effort
 

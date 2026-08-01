@@ -21,6 +21,9 @@
 9. Installing or executing unreviewed third-party code.
 10. Confusing a local release candidate with a public or directory-published plugin.
 11. Treating vague, approximate, replayed, or cross-plan speech as installation approval.
+12. Letting generated candidates invent tools, models, instructions, output paths,
+    sandboxes, or external authority.
+13. Applying a role after its referenced evidence leaf changed.
 
 ## Required controls
 
@@ -35,7 +38,12 @@
   no-clobber publication, post-write validation, and rollback receipts.
 - Default read-heavy roles to read-only and reject dangerous generated settings.
 - Bound fan-out, depth, retries, time, and generated file counts.
-- Keep telemetry and network access off in v0.1.0.
+- Keep telemetry and network access off in deterministic v0.2.0 mode.
+- Accept only structured generated role fields. Compile instructions from fixed
+  templates; candidates cannot supply TOML, commands, concrete models, output
+  paths, global settings, or external-write grants.
+- Treat generated path scopes as advisory. They do not narrow native workspace-write.
+- Bind referenced atomic evidence into the plan and re-audit it at approval and apply.
 - Keep the full plan digest authoritative for voice approval; derive only a
   versioned spoken alias, require an exact conservative transcript match, give
   preview plans no challenge, and recheck capabilities and preimages before writes.
@@ -55,7 +63,7 @@ UX, not authentication, and retains the full digest and filesystem controls.
 Codesemble does not claim atomic multi-file visibility or power-loss-safe
 automatic recovery. Portable Node APIs do not provide an atomic
 compare-and-swap replacement for an existing path, and directory durability is
-weaker on some Windows filesystems. v0.1 therefore preserves conflicting bytes,
+weaker on some Windows filesystems. v0.2 therefore preserves conflicting bytes,
 fails closed on an incomplete lock or pending record, and requires manual
 recovery after interruption. A malicious same-user process that deliberately
 races inside Codesemble's private quarantine namespace remains outside the

@@ -11,8 +11,8 @@ Codesemble asks two separate questions:
 2. How many spawned workers may be open simultaneously?
 
 The worker value excludes the primary/orchestrator thread. A team with 12
-installed roles may reasonably use a ceiling of 4. The 111-role catalog is a
-search space, never a concurrency recommendation.
+installed roles may reasonably use a ceiling of 4. Primitive-library size is
+unrelated to the concurrency recommendation.
 
 The project-scoped canonical setting is:
 
@@ -87,7 +87,7 @@ state and later writes refuse to proceed. Do not delete or merge those files
 blindly: preserve the project, inspect the pending record and hashes, copy both
 target and any receipt-recorded quarantine to a safe location, and restore the confirmed preimage
 from the transaction backup only after resolving any competing bytes. Automatic
-crash recovery is deferred beyond v0.1.
+Automatic crash recovery remains outside the v0.2 portable transaction guarantee.
 
 ## Manual mode
 
@@ -101,9 +101,9 @@ configuration remains outside Codesemble's automatic transaction boundary.
 
 ## Model and effort routing
 
-Catalog roles use capability profiles (`deep`, `balanced`, `fast`, `inherit`).
+Generated roles use capability profiles (`deep`, `balanced`, `fast`, `inherit`).
 Codesemble pins a concrete model only when it is verified for the active
-environment. A catalog reasoning-effort default is emitted only alongside that
+environment. A reasoning-effort default is emitted only alongside that
 verified model; otherwise it inherits. Explicit custom-role choices remain
 user-owned inputs.
 

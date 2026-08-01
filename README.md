@@ -3,110 +3,156 @@
 </p>
 
 <p align="center">
-  <strong>Audit your repository. Assemble the smallest capable Codex team. Apply it safely.</strong>
+  <strong>Build the right Codex agent team for this repository and goal.</strong>
+</p>
+
+<p align="center">
+  Codesemble audits bounded project evidence, generates only the specialists
+  your work needs, and shows every project-local change before applying it.
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
-  <a href="docs/USAGE.md">Usage</a> ·
-  <a href="docs/PROJECT_CAPABILITY_COMPILER.md">Compiler</a> ·
-  <a href="docs/ARCHITECTURE.md">How it works</a> ·
+  <a href="#how-it-works">How it works</a> ·
   <a href="docs/CONFIG_SAFETY.md">Safety</a> ·
-  <a href="docs/VOICE_APPROVAL.md">Voice approval</a> ·
-  <a href="docs/ROLE_CATALOG.md">Primitive library</a> ·
-  <a href="docs/USEFULNESS_COMPARISON.md">Comparison</a>
+  <a href="#documentation">Documentation</a>
 </p>
 
 ---
 
-## What is Codesemble?
+## Why Codesemble?
 
-Codesemble is an open-source, repository-aware team builder for Codex.
+- **Project-specific** — agents are derived from your repository and intended outcome.
+- **Small by design** — every proposed role must cover justified project work.
+- **Native and reversible** — Codesemble configures Codex project files with exact preview, Doctor, and rollback support.
 
-It reads bounded project signals, asks what outcome you want, and compiles a
-Project Capability Map, Work Packages, and the smallest capable set of
-project-specific specialists. Every role explains why it exists before
-Codesemble generates native project configuration.
-
-Codesemble configures Codex. It does not replace the Codex runtime.
-
-## Who is it for?
-
-Codesemble is for people working in real repositories who want specialized help
-without installing a generic army of agents.
-
-- **Solo builders** who want the right specialists without designing a team by hand.
-- **Maintainers** who need reviewable, reversible project configuration.
-- **Product teams** whose work spans engineering, testing, design, docs, growth, or operations.
-- **Organizations** that want project-local defaults without silently changing personal Codex settings.
-
-## How does it work?
-
-```text
-Typed evidence → Capability map → Work packages → Admitted team → Exact preview → Confirmed apply
-```
-
-1. **Audit** — reads bounded, typed project signals offline.
-2. **Compile** — derives capabilities and independently delegable Work Packages.
-3. **Generate** — proposes Focused, Recommended, and Extended teams with coverage evidence.
-4. **Preview** — shows every agent, sandbox, instruction, and configuration change.
-5. **Apply** — writes only the fresh exact plan you confirm, with doctor and rollback support.
-
-[Read the complete workflow →](docs/USAGE.md)
-
-## Why is it different?
-
-Most agent packs start with a fixed roster. Codesemble starts with your goal and
-the typed evidence that can safely specialize it.
-
-The bundled catalog is an extensible primitive library, not the set of teams
-Codesemble can produce. Project roles are generated and admitted from Work
-Packages. Installed roles and live concurrency stay separate, so a project may
-install 12 specialists while allowing only 4 spawned workers at once.
-
-> **Evidence in. Native team out.**
-
-[Explore the primitive library →](docs/ROLE_CATALOG.md)
-
-[See the architecture →](docs/ARCHITECTURE.md)
+Codesemble is an open-source, repository-aware team builder for native Codex
+multi-agent orchestration. It configures Codex; it does not replace the Codex
+runtime.
 
 ## Quick start
 
-### Install
+### Install the v0.2 candidate
 
 ```bash
-codex plugin marketplace add VAMFI/codsemble --ref <reviewed-release-or-commit>
+codex plugin marketplace add VAMFI/codsemble --ref fc247152961c25e79b525a969806991f499a2bac
 codex plugin add codsemble@codsemble
 ```
 
-Start a fresh Codex session so the plugin and project agents are reloaded.
+The pinned commit is the merged, validated v0.2 candidate. Start a fresh Codex
+session after installation so the plugin skills are discovered.
 
 ### Build your team
 
 ```text
-$initialize-team Build the recommended Codex team for this workspace.
+$codsemble:initialize-team Build the recommended Codex team for this workspace.
 ```
 
-Codesemble audits and prepares a side-effect-free plan first. It applies project
-files only after showing the exact diff and receiving the plan's confirmation ID
-or its strictly matched, voice-friendly spoken alias.
+Codesemble audits the workspace and presents Focused, Recommended, and Extended
+options. It prepares a side-effect-free exact plan before writing any project
+file.
 
-### Keep it healthy
+### Use your agents
+
+After you approve and apply the team, work normally in the primary Codex thread:
 
 ```text
-$update-team Re-audit this workspace and preview team changes.
-$team-doctor Check this project's generated team and configuration.
-$rollback-team Preview rollback of the latest Codesemble transaction.
+Review the checkout flow, fix the highest-risk issue, and validate the result.
+```
+
+Start another fresh Codex session after apply or configuration changes so the
+generated project agents are discovered.
+
+The primary agent remains user-facing and accountable. Project-local
+orchestration guidance delegates bounded, separable work to installed
+specialists when useful, reconciles their evidence, and keeps final decisions
+with the primary thread.
+
+Installed roles are available capabilities, not always-running processes. The
+project worker ceiling limits simultaneous spawned workers, excludes the primary
+thread, and is independent of installed role count.
+
+### Keep the team healthy
+
+```text
+$codsemble:update-team Re-audit this workspace and preview team changes.
+$codsemble:team-doctor Check this project's generated team and configuration.
+$codsemble:rollback-team Preview rollback of the latest Codesemble transaction.
 ```
 
 [Open the step-by-step guide →](docs/USAGE.md)
+
+> **You stay in control.** Audit and preview are read-only. Codesemble writes
+> project files only after you approve the exact current plan, refuses stale or
+> changed plans, preserves transaction history, and previews rollback before
+> restoring managed files. It does not change personal Codex settings or
+> publish anything.
+
+## How it works
+
+```text
+Repository evidence + your goal → Work Packages → Project team → Preview → Apply
+```
+
+1. **Audit** bounded, typed project signals locally.
+2. **Compile** the capabilities and separable work the goal requires.
+3. **Generate** evidence-backed Focused, Recommended, and Extended teams.
+4. **Preview** every role, sandbox, instruction, and configuration change.
+5. **Apply** only the exact fresh plan you confirm, with Doctor and rollback support.
+
+### Example output
+
+```text
+Repository evidence
+  GitHub Actions + delivery goal + security requirement
+
+Recommended Codex team
+  Delivery specialist       owns the delivery Work Package
+  Security specialist       reviews the security boundary
+  Independent validator     verifies the high-risk delivery path
+
+Spawned-worker ceiling: 4
+```
+
+The names and number of agents change with the repository evidence and confirmed
+goal. Codesemble explains the evidence and Work Package behind every generated
+role before apply.
+
+[Read the compiler contract →](docs/PROJECT_CAPABILITY_COMPILER.md) ·
+[See the architecture →](docs/ARCHITECTURE.md)
+
+## Dynamic teams, not 111 installed agents
+
+Codesemble does not install a fixed team of 111 agents.
+
+The current 111-entry catalog is a reusable primitive library—not a roster,
+recommendation ceiling, team-size target, or concurrency limit. For each
+workspace, the compiler derives Work Packages from bounded evidence and explicit
+goals, then generates only justified project-specific roles.
+
+- **Focused** is the smallest complete team covering required Work Packages.
+- **Recommended** adds independent verification only for evidenced high-risk work.
+- **Extended** adds only closed-rule, evidence-backed optional lifecycle work and may equal Recommended.
+
+Catalog size, installed roles, and active workers remain separate. A project may
+install 12 useful specialists while allowing only 4 workers to run concurrently.
+
+[Explore the primitive library →](docs/ROLE_CATALOG.md) ·
+[See the bounded comparison →](docs/USEFULNESS_COMPARISON.md)
+
+## Who is it for?
+
+- **Solo builders** who want useful specialists without designing a team by hand.
+- **Maintainers** who need reviewable, reversible project configuration.
+- **Product teams** whose work spans engineering, testing, design, docs, growth, or operations.
+- **Organizations** that want project-local defaults without silently changing personal Codex settings.
 
 ## What can it create?
 
 ```text
 AGENTS.md                         bounded orchestration guidance
 .codex/agents/<role>.toml         native specialist definitions
-.codex/config.toml                optional project concurrency default
+.codex/config.toml                optional project worker ceiling
 .codex/codsemble/manifest.json    ownership and selected-team record
 .codex/codsemble/transactions/    reversible transaction history
 ```
@@ -114,10 +160,8 @@ AGENTS.md                         bounded orchestration guidance
 Codesemble does not edit `~/.codex/config.toml`, mark a project trusted, collect
 credentials, broaden permissions, or publish anything for you.
 
-[Understand configuration safety →](docs/CONFIG_SAFETY.md)
-
-[Read the privacy boundary →](docs/PRIVACY.md)
-
+[Understand configuration safety →](docs/CONFIG_SAFETY.md) ·
+[Read the privacy boundary →](docs/PRIVACY.md) ·
 [Review the threat model →](docs/THREAT_MODEL.md)
 
 ## Documentation
@@ -126,34 +170,42 @@ credentials, broaden permissions, or publish anything for you.
 | --- | --- |
 | Install, initialize, update, diagnose, or roll back | [Usage](docs/USAGE.md) |
 | Understand the compiler and native Codex outputs | [Architecture](docs/ARCHITECTURE.md) |
-| Inspect the EvidenceRef, capability, Work Package, and admission contracts | [Project Capability Compiler](docs/PROJECT_CAPABILITY_COMPILER.md) |
+| Inspect EvidenceRef, capability, Work Package, and admission contracts | [Project Capability Compiler](docs/PROJECT_CAPABILITY_COMPILER.md) |
 | Migrate a v0.1 team safely | [v0.2 migration](docs/MIGRATION_V0_2.md) |
-| Review concurrency, no-clobber apply, and recovery behavior | [Configuration safety](docs/CONFIG_SAFETY.md) |
-| Approve an apply-capable plan from a realtime voice session | [Voice-friendly approval](docs/VOICE_APPROVAL.md) |
-| Understand reusable role primitives and dynamic generation | [Primitive library](docs/ROLE_CATALOG.md) |
+| Review concurrency, no-clobber apply, and recovery | [Configuration safety](docs/CONFIG_SAFETY.md) |
+| Approve from a realtime voice session | [Voice-friendly approval](docs/VOICE_APPROVAL.md) |
+| Understand reusable primitives and dynamic generation | [Primitive library](docs/ROLE_CATALOG.md) |
 | Understand local data handling | [Privacy](docs/PRIVACY.md) |
 | Review trust boundaries and abuse cases | [Threat model](docs/THREAT_MODEL.md) |
 | See what has actually been tested | [Validation evidence](docs/VALIDATION.md) |
-| Compare the compiler with catalog-surface and single-primary baselines | [Bounded usefulness comparison](docs/USEFULNESS_COMPARISON.md) |
+| Compare Codesemble with simpler baselines | [Bounded usefulness comparison](docs/USEFULNESS_COMPARISON.md) |
 | Understand the project promise and release gate | [Definition of Done](docs/DEFINITION_OF_DONE.md) |
 | Reuse the visual identity correctly | [Brand guide](docs/BRAND.md) |
 
 ## Project status
 
-Codesemble v0.2.0 is the Project Capability Compiler candidate. It is not merged,
-released, or published by this branch. Structural and simulated checks never
-prove that every Codex version, policy, model, or operating system will accept a
-generated team; runtime claims remain tied to the exact tested payload and host.
+Codesemble v0.2.0 is merged on `main` as the Project Capability Compiler
+candidate. Its merge-head CI passed on Node 22 and 24 across Ubuntu, macOS, and
+Windows, with CodeQL and dependency review also passing. It has not been tagged,
+released, or marketplace-published; v0.1.0 remains the latest release.
 
-[See validation evidence →](docs/VALIDATION.md)
+Runtime and physical-device claims remain tied to the exact tested payload and
+boundary. Structural checks never prove that every Codex version, policy, model,
+operating system, or voice device will accept a generated team.
 
+[See validation evidence →](docs/VALIDATION.md) ·
 [View the roadmap →](ROADMAP.md)
 
 ## Contributing
 
-Contributions are welcome. Start with the [contribution guide](CONTRIBUTING.md),
-use [support guidance](SUPPORT.md) for reproducible questions, and report
-vulnerabilities through the private process in [SECURITY.md](SECURITY.md).
+Try Codesemble in an isolated repository and report where its audit, proposed
+roles, or explanations were incomplete. Contributors can add representative
+fixtures, improve compiler policies, strengthen lifecycle tests, or refine the
+documentation.
 
-Codesemble is an independent open-source project, licensed under
+Start with the [contribution guide](CONTRIBUTING.md), use [support guidance](SUPPORT.md)
+for reproducible questions, and report vulnerabilities through the private
+process in [SECURITY.md](SECURITY.md).
+
+Codesemble is an independent open-source project licensed under the
 [Apache License 2.0](LICENSE).

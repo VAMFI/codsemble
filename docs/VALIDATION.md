@@ -89,11 +89,9 @@ filesystem simulation boundary, not native Codex discovery on Windows.
 
 ## Native Codex runtime
 
-`artifacts/runtime-evidence.json` is historical v0.1 evidence. It does not bind
-the v0.2 Project Capability Compiler payload and cannot prove v0.2 completion.
-
-Before v0.2 completion, a fresh isolated session must install the exact archived
-plugin into an isolated Codex home and disposable trusted project, then record:
+`artifacts/runtime-evidence.json` records the v0.2 Project Capability Compiler
+run against the exact archived plugin in an isolated Codex home and disposable
+trusted project. It records:
 
 - source commit, archive SHA-256, logical payload digest, Codex/Node versions,
   OS, architecture, and adapter;
@@ -103,7 +101,10 @@ plugin into an isolated Codex home and disposable trusted project, then record:
 - bounded capacity rejection without a retry storm and a trivial no-spawn turn;
 - meaningful update, no-op convergence, and reverse rollback preserving user bytes.
 
-The record must be sanitized and regenerated for the exact final candidate.
+The record excludes authentication material, absolute personal paths, raw
+sessions, and confirmation challenge words. The evidence-only commit that adds
+the record does not change the archived plugin payload; final-head CI remains a
+separate required check.
 
 ## Voice evidence
 
@@ -127,7 +128,9 @@ outcomes. Those claims require separately designed task trials.
 
 ## Remaining external boundaries
 
-- Fresh v0.2 native runtime evidence is pending.
+- The Codesemble project workspace still needs its plan-bound orchestrator apply
+  and a fresh native run with the existing specialist team under primary-thread
+  authority.
 - Public PR CI and CodeQL at the final head are pending.
 - Physical Android voice evidence is pending.
 - Merge, tag, signed provenance, GitHub release, marketplace publication, and

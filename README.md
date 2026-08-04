@@ -18,6 +18,10 @@
   <a href="#documentation">Documentation</a>
 </p>
 
+<p align="center">
+  <a href="https://vamfi.github.io/codsemble/">Open the interactive project guide →</a>
+</p>
+
 ---
 
 ## Why Codesemble?

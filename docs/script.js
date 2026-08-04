@@ -1,49 +1,67 @@
-const evidenceCopy = {
-  delivery: "A delivery goal activates a delivery work package and makes its evidence traceable.",
-  security: "A security requirement justifies a specialist review instead of a generic extra agent.",
-  tests: "An existing test boundary gives the compiler a concrete validation owner to cover.",
+const signalCopy = {
+  tests: "An existing test boundary gives the compiler a concrete validation owner.",
+  security: "A security requirement justifies specialist review instead of a generic extra agent.",
+  delivery: "GitHub Actions evidence makes the delivery work visible and traceable.",
+};
+const coverageLabel = {
+  recommended: "Recommended · required work plus independent verification",
+  focused: "Focused · the smallest complete coverage",
+  extended: "Extended · required work plus optional lifecycle support",
 };
 
 const menuToggle = document.querySelector(".menu-toggle");
 const siteNav = document.querySelector(".site-nav");
+const closeMenu = (returnFocus = false) => {
+  if (!menuToggle || !siteNav) return;
+  menuToggle.setAttribute("aria-expanded", "false");
+  siteNav.classList.remove("is-open");
+  if (returnFocus) menuToggle.focus();
+};
 menuToggle?.addEventListener("click", () => {
   const open = menuToggle.getAttribute("aria-expanded") === "true";
   menuToggle.setAttribute("aria-expanded", String(!open));
   siteNav?.classList.toggle("is-open", !open);
 });
-siteNav?.querySelectorAll("a").forEach((link) => {
-  link.addEventListener("click", () => {
-    menuToggle?.setAttribute("aria-expanded", "false");
-    siteNav.classList.remove("is-open");
+siteNav?.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => closeMenu()));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeMenu(true);
+});
+document.addEventListener("click", (event) => {
+  if (siteNav?.classList.contains("is-open") && !siteNav.contains(event.target) && !menuToggle?.contains(event.target)) closeMenu();
+});
+
+const signalText = document.querySelector("#signal-copy");
+document.querySelectorAll("[data-signal]").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("[data-signal]").forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+    if (signalText) signalText.textContent = signalCopy[button.dataset.signal] ?? "";
   });
 });
 
 const tabs = [...document.querySelectorAll('[role="tab"]')];
-const panels = [...document.querySelectorAll("[data-team-panel]")];
-function selectTeam(team, focus = false) {
+const panels = [...document.querySelectorAll("[data-coverage-panel]")];
+const demoStatus = document.querySelector(".demo-status");
+function selectCoverage(coverage, focus = false) {
   tabs.forEach((tab) => {
-    const selected = tab.dataset.team === team;
-    tab.setAttribute("aria-selected", String(selected));
-    tab.tabIndex = selected ? 0 : -1;
+    const active = tab.dataset.coverage === coverage;
+    tab.setAttribute("aria-selected", String(active));
+    tab.tabIndex = active ? 0 : -1;
   });
-  panels.forEach((panel) => { panel.hidden = panel.dataset.teamPanel !== team; });
-  if (focus) tabs.find((tab) => tab.dataset.team === team)?.focus();
+  panels.forEach((panel) => { panel.hidden = panel.dataset.coveragePanel !== coverage; });
+  if (demoStatus) demoStatus.textContent = coverageLabel[coverage] ?? "";
+  if (focus) tabs.find((tab) => tab.dataset.coverage === coverage)?.focus();
 }
 tabs.forEach((tab, index) => {
-  tab.addEventListener("click", () => selectTeam(tab.dataset.team));
+  tab.addEventListener("click", () => selectCoverage(tab.dataset.coverage));
   tab.addEventListener("keydown", (event) => {
     if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
-    selectTeam(tabs[next].dataset.team, true);
-  });
-});
-
-const evidenceDetail = document.querySelector("#evidence-detail-text");
-document.querySelectorAll("[data-evidence]").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    document.querySelectorAll("[data-evidence]").forEach((item) => item.classList.toggle("is-active", item === chip));
-    if (evidenceDetail) evidenceDetail.textContent = evidenceCopy[chip.dataset.evidence] ?? "This signal contributes to a bounded work package.";
+    selectCoverage(tabs[next].dataset.coverage, true);
   });
 });
 
@@ -52,12 +70,13 @@ document.querySelectorAll("[data-copy-target]").forEach((button) => {
     const target = document.getElementById(button.dataset.copyTarget);
     const status = button.closest(".command-box")?.querySelector(".copy-status");
     if (!target) return;
+    const text = target.innerText.replace(/\\n/g, "\n");
     try {
-      await navigator.clipboard.writeText(target.textContent.trim());
+      await navigator.clipboard.writeText(text);
       button.textContent = "Copied";
-      if (status) status.textContent = "Install commands copied to your clipboard.";
+      if (status) status.textContent = "Commands copied.";
     } catch {
-      if (status) status.textContent = "Copy is unavailable here; select the commands above instead.";
+      if (status) status.textContent = "Copy unavailable; select the commands above.";
     }
     window.setTimeout(() => { button.textContent = "Copy"; }, 1800);
   });
@@ -74,6 +93,4 @@ if (!reduceMotion && "IntersectionObserver" in window) {
     });
   }, { threshold: .12 });
   document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
-} else {
-  document.querySelectorAll(".reveal").forEach((element) => element.classList.add("is-visible"));
 }

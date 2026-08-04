@@ -3,114 +3,89 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Codesemble audits your repository and assembles the smallest capable native Codex team." />
-    <meta name="theme-color" content="#071326" />
+    <meta name="description" content="Codesemble audits your repository and assembles the smallest useful native Codex team." />
+    <meta name="theme-color" content="#f5f7fb" />
+    <meta property="og:title" content="Codesemble — the repository-aware team builder for Codex" />
+    <meta property="og:description" content="Audit your project, review the roles, and approve the exact project-local change." />
+    <meta property="og:image" content="https://vamfi.github.io/codsemble/assets/codsemble-flow-v2.webp" />
+    <meta property="og:url" content="https://vamfi.github.io/codsemble/" />
+    <meta name="twitter:card" content="summary_large_image" />
     <title>Codesemble — the repository-aware team builder for Codex</title>
     <link rel="icon" href="./assets/codsemble-concept-native-compiler.webp" />
     <link rel="stylesheet" href="./styles.css" />
+    <script>document.documentElement.classList.add("js");</script>
     <script type="module" src="./script.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="brand" href="#top" aria-label="Codesemble home">
-          <span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Codesemble</span>
-        </a>
-        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
-          <span class="sr-only">Toggle navigation</span><span aria-hidden="true">☰</span>
-        </button>
+        <a class="brand" href="#top" aria-label="Codesemble home"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Codesemble</span></a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span><span aria-hidden="true">☰</span></button>
         <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
-          <a href="#how-it-works">How it works</a><a href="#team-explorer">Team options</a><a href="#control">Control</a><a href="#docs">Docs</a><a class="nav-cta" href="#install">Install</a>
+          <a href="#how-it-works">How it works</a><a href="#safety">Safety</a><a href="#install">Get started</a><a href="https://github.com/VAMFI/codsemble" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
         </nav>
       </div>
     </header>
+
     <main id="main-content">
-      <section id="top" class="hero shell section-grid">
-        <div class="hero-copy reveal">
-          <p class="eyebrow"><span class="pulse-dot"></span> Open source · project-scoped · preview before apply</p>
-          <h1>Audit your repository.<br /><span>Assemble the smallest capable Codex team.</span></h1>
-          <p class="hero-lede">Codesemble turns repository evidence and your goal into a reviewable, native Codex team—without asking you to design every role by hand.</p>
-          <div class="hero-actions"><a class="button button-primary" href="#install">Install Codesemble <span aria-hidden="true">↗</span></a><a class="button button-quiet" href="#how-it-works">See how it works <span aria-hidden="true">↓</span></a></div>
-          <div class="hero-proof" aria-label="Product principles"><span>Evidence-led</span><span>Native output</span><span>Human approval</span></div>
+      <section id="top" class="hero shell">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span>Open source · project-scoped · preview before apply</p>
+          <h1>Get the right Codex team <em>for this repository.</em></h1>
+          <p class="hero-lede">Codesemble audits your project, proposes a small evidence-backed team, and shows the exact project diff before anything changes.</p>
+          <div class="hero-actions"><a class="button button-primary" href="#install">Try Codesemble <span aria-hidden="true">↓</span></a><a class="button button-quiet" href="#how-it-works">See the 60-second loop</a></div>
+          <div class="proof-row" aria-label="Codesemble principles"><span>Read-only audit</span><span>Human approval</span><span>Rollbackable</span></div>
         </div>
-        <div class="hero-art reveal reveal-delay">
-          <div class="art-glow" aria-hidden="true"></div>
-          <img src="./assets/codsemble-prism-flow.webp" width="1672" height="941" alt="A glass prism transforms repository fragments into a small team of colorful project outputs." />
-          <p class="art-caption"><span>01</span> Evidence in <i></i> Native team out</p>
-        </div>
-      </section>
-
-      <section id="how-it-works" class="shell section-block">
-        <div class="section-heading reveal"><p class="eyebrow">The compiler loop</p><h2>From a messy project to a useful team in three clear moves.</h2><p>Codesemble keeps the reasoning visible, so the team is explainable before it is ever written.</p></div>
-        <div class="flow-grid">
-          <article class="flow-card reveal"><span class="card-index">01</span><div class="flow-icon icon-scan" aria-hidden="true"><span></span><span></span><span></span></div><h3>Audit</h3><p>Read bounded, typed project signals locally and pair them with the goal you state.</p><code>repository + goal</code></article>
-          <article class="flow-card reveal reveal-delay"><span class="card-index">02</span><div class="flow-icon icon-compile" aria-hidden="true"><span></span><span></span><span></span></div><h3>Compile</h3><p>Translate required work into the smallest complete set of evidence-backed roles.</p><code>work packages → roles</code></article>
-          <article class="flow-card reveal reveal-delay-2"><span class="card-index">03</span><div class="flow-icon icon-approve" aria-hidden="true"><span></span><span></span><span></span></div><h3>Review &amp; apply</h3><p>See the exact project diff, approve a fresh plan, then use Doctor and rollback when needed.</p><code>preview → apply → verify</code></article>
-        </div>
-      </section>
-
-      <section id="team-explorer" class="shell section-block explorer-section">
-        <div class="section-heading reveal"><p class="eyebrow">A team that fits the evidence</p><h2>Pick the level of coverage your project actually needs.</h2><p>The names and count change with the repository. These options show the decision, not a fixed roster.</p></div>
-        <div class="explorer-layout reveal">
-          <div class="evidence-panel">
-            <div class="panel-label"><span class="status-dot"></span> Example project signal</div>
-            <h3>Release a payment flow safely</h3>
-            <p>Codesemble found evidence for delivery, security review, and an existing test boundary.</p>
-            <div class="evidence-chips" role="list" aria-label="Project evidence">
-              <button type="button" role="listitem" class="evidence-chip is-active" data-evidence="delivery">GitHub Actions</button>
-              <button type="button" role="listitem" class="evidence-chip" data-evidence="security">Security requirement</button>
-              <button type="button" role="listitem" class="evidence-chip" data-evidence="tests">Test boundary</button>
-            </div>
-            <div class="evidence-detail" aria-live="polite"><span class="detail-kicker">Why this matters</span><p id="evidence-detail-text">A delivery goal activates a delivery work package and makes its evidence traceable.</p></div>
-          </div>
-          <div class="team-panel">
-            <div class="tabs" role="tablist" aria-label="Team coverage options">
-              <button role="tab" id="tab-focused" aria-controls="panel-focused" aria-selected="true" tabindex="0" data-team="focused">Focused</button>
-              <button role="tab" id="tab-recommended" aria-controls="panel-recommended" aria-selected="false" tabindex="-1" data-team="recommended">Recommended</button>
-              <button role="tab" id="tab-extended" aria-controls="panel-extended" aria-selected="false" tabindex="-1" data-team="extended">Extended</button>
-            </div>
-            <div class="team-panel-content">
-              <section id="panel-focused" role="tabpanel" aria-labelledby="tab-focused" tabindex="0" data-team-panel="focused"><div class="panel-topline"><span>Smallest complete coverage</span><strong>3 roles</strong></div><div class="role-list"><div><b>Delivery specialist</b><span>owns the release work</span></div><div><b>Security specialist</b><span>reviews the security boundary</span></div><div><b>Test specialist</b><span>checks the payment flow</span></div></div></section>
-              <section id="panel-recommended" role="tabpanel" aria-labelledby="tab-recommended" tabindex="0" data-team-panel="recommended" hidden><div class="panel-topline"><span>Required work plus high-risk verification</span><strong>4 roles</strong></div><div class="role-list"><div><b>Delivery specialist</b><span>owns the release work</span></div><div><b>Security specialist</b><span>reviews the security boundary</span></div><div><b>Test specialist</b><span>checks the payment flow</span></div><div><b>Independent validator</b><span>verifies the high-risk path</span></div></div></section>
-              <section id="panel-extended" role="tabpanel" aria-labelledby="tab-extended" tabindex="0" data-team-panel="extended" hidden><div class="panel-topline"><span>Evidence-backed optional lifecycle work</span><strong>4 roles</strong></div><div class="role-list"><div><b>Delivery specialist</b><span>owns the release work</span></div><div><b>Security specialist</b><span>reviews the security boundary</span></div><div><b>Test specialist</b><span>checks the payment flow</span></div><div><b>Independent validator</b><span>verifies the high-risk path</span></div></div></section>
-              <div class="ceiling-note"><span aria-hidden="true">⌁</span> Spawned-worker ceiling: <strong>4</strong> <small>primary thread excluded</small></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="control" class="shell section-block control-section">
-        <div class="control-copy reveal"><p class="eyebrow">You keep the wheel</p><h2>The primary thread coordinates. You decide.</h2><p>Generated specialists are available capabilities, not an always-running swarm. The primary Codex thread delegates bounded work, reconciles evidence, and owns the final result.</p><div class="control-list"><div><span>01</span><p><b>Preview first.</b> Audit and planning are read-only.</p></div><div><span>02</span><p><b>Confirm exactly.</b> Apply requires a fresh plan and human approval.</p></div><div><span>03</span><p><b>Recover cleanly.</b> Doctor and rollback preserve project-local control.</p></div></div><a class="text-link" href="https://github.com/VAMFI/codsemble/blob/main/docs/CONFIG_SAFETY.md" target="_blank" rel="noopener noreferrer">Read the safety boundary <span aria-hidden="true">↗</span></a></div>
-        <figure class="control-figure reveal reveal-delay">
-          <svg role="img" aria-labelledby="control-title control-desc" viewBox="0 0 620 360" xmlns="http://www.w3.org/2000/svg"><title id="control-title">Codesemble control flow</title><desc id="control-desc">You direct the primary Codex thread. The primary delegates bounded work to specialists and integrates their evidence.</desc><defs><linearGradient id="line" x1="0" x2="1"><stop stop-color="#65e3ff"/><stop offset="1" stop-color="#9b7bff"/></linearGradient></defs><path d="M92 180h137M303 180h98M467 180h62" stroke="url(#line)" stroke-width="3" stroke-linecap="round" stroke-dasharray="7 8"/><circle cx="70" cy="180" r="42" fill="#0d2441" stroke="#65e3ff"/><circle cx="266" cy="180" r="54" fill="#14244b" stroke="#9b7bff"/><circle cx="441" cy="180" r="42" fill="#201d45" stroke="#ff9b8e"/><circle cx="558" cy="180" r="32" fill="#102e3e" stroke="#65e3ff"/><path d="M250 157l16-15 16 15-8 25h-16z" fill="#65e3ff" opacity=".9"/><path d="M429 166h24v24h-24zM435 160h12v6h-12z" fill="#ff9b8e"/><path d="M548 180h20M558 170v20" stroke="#65e3ff" stroke-width="3" stroke-linecap="round"/><g fill="#edf5ff" font-family="system-ui, sans-serif" text-anchor="middle"><text x="70" y="247" font-size="14" font-weight="700">You</text><text x="266" y="260" font-size="14" font-weight="700">Primary thread</text><text x="441" y="247" font-size="14" font-weight="700">Specialists</text><text x="558" y="235" font-size="14" font-weight="700">Result</text></g><g fill="#94aac8" font-family="system-ui, sans-serif" text-anchor="middle" font-size="11"><text x="168" y="161">direct</text><text x="352" y="161">delegates</text><text x="504" y="161">integrates</text></g></svg>
-          <figcaption>You → primary Codex thread → bounded specialists → integrated result</figcaption>
+        <figure class="hero-visual">
+          <div class="visual-number" aria-hidden="true">01</div>
+          <img src="./assets/codsemble-flow-v2.webp" width="1672" height="941" alt="A repository's file signals flow through a compiler into three project role cards." />
+          <figcaption>Repository clues <span aria-hidden="true">→</span> options <span aria-hidden="true">→</span> approved team</figcaption>
         </figure>
       </section>
 
-      <section id="outputs" class="shell section-block outputs-section">
-        <div class="section-heading reveal"><p class="eyebrow">Project-local output</p><h2>Useful files, visible before they land.</h2><p>Codesemble configures the project boundary. It does not edit personal Codex settings, trust, credentials, or runtime permissions.</p></div>
-        <div class="outputs-grid reveal">
-          <div class="file-stack" aria-label="Generated project files"><div class="file-row"><span class="file-icon">A</span><code>AGENTS.md</code><span>orchestration guidance</span></div><div class="file-row"><span class="file-icon">T</span><code>.codex/agents/&lt;role&gt;.toml</code><span>native specialists</span></div><div class="file-row"><span class="file-icon">C</span><code>.codex/config.toml</code><span>optional ceiling</span></div><div class="file-row"><span class="file-icon">M</span><code>.codex/codsemble/manifest.json</code><span>team ownership</span></div><div class="file-row"><span class="file-icon">↺</span><code>.codex/codsemble/transactions/</code><span>rollback history</span></div></div>
-          <details class="diff-card"><summary><span class="summary-icon">⌁</span><span><b>What does “preview” mean?</b><small>Expand the review boundary</small></span><span class="summary-arrow" aria-hidden="true">＋</span></summary><div class="diff-content"><p>Before apply, the plan names the roles, instructions, sandbox/profile requests, worker ceiling, and every managed path. Apply rechecks the current plan, relevant evidence, and output preimages.</p><div class="diff-line diff-add">+ .codex/agents/security.toml</div><div class="diff-line diff-add">+ .codex/codsemble/manifest.json</div><div class="diff-line diff-neutral">· personal ~/.codex/config.toml untouched</div></div></details>
+      <section id="how-it-works" class="section shell">
+        <div class="section-intro"><p class="eyebrow">The useful part</p><h2>One clear loop from project context to project help.</h2><p>No fixed roster. No hidden setup. You see why each role appears and what will be written.</p></div>
+        <div class="step-rail" aria-label="Codesemble workflow"><span class="is-active">Audit</span><i aria-hidden="true"></i><span>Compile</span><i aria-hidden="true"></i><span>Review</span><i aria-hidden="true"></i><span>Apply</span></div>
+        <div class="steps-grid">
+          <article class="step-card"><span class="step-number">01</span><h3>Audit</h3><p>Read repository clues locally and pair them with the goal you state.</p><code>project + goal</code></article>
+          <article class="step-card"><span class="step-number">02</span><h3>Compile</h3><p>Turn the work into the smallest complete set of useful roles.</p><code>work → capabilities</code></article>
+          <article class="step-card"><span class="step-number">03</span><h3>Review</h3><p>Compare Focused, Recommended, and Extended options with evidence.</p><code>options → exact plan</code></article>
+          <article class="step-card"><span class="step-number">04</span><h3>Apply</h3><p>Approve the fresh plan, then verify or roll it back from the project.</p><code>human decision → files</code></article>
         </div>
       </section>
 
-      <section id="why-111" class="shell section-block primitive-section">
-        <div class="primitive-copy reveal"><p class="eyebrow">A common misconception</p><h2>111 is a library, not a roster.</h2><p>The catalog contains reusable capability primitives. Codesemble selects only roles justified by your project and goal; installed roles and active workers remain separate.</p><a class="text-link" href="https://github.com/VAMFI/codsemble/blob/main/docs/ROLE_CATALOG.md" target="_blank" rel="noopener noreferrer">Explore the primitive library <span aria-hidden="true">↗</span></a></div>
-        <div class="primitive-visual reveal reveal-delay" role="img" aria-label="A few selected roles emerge from a library of reusable primitives"><span class="primitive-count">111</span><span class="primitive-label">reusable<br />primitives</span><div class="selection-line"></div><div class="selected-role role-one">delivery</div><div class="selected-role role-two">security</div><div class="selected-role role-three">validator</div></div>
+      <section id="options" class="section section-muted">
+        <div class="shell">
+          <div class="section-intro"><p class="eyebrow">Illustrative example</p><h2>See the decision before you make it.</h2><p>Change the project clue or coverage level. The example is a model of the explanation Codesemble gives you—not a fixed promise.</p></div>
+          <div class="demo-grid">
+            <div class="signal-card">
+              <span class="card-label">Project clues</span><h3>Release a payment flow safely</h3><p id="signal-copy">An existing test boundary gives the compiler a concrete validation owner.</p>
+              <div class="signal-list" role="group" aria-label="Choose a project clue"><button type="button" class="signal is-active" aria-pressed="true" data-signal="tests">Test boundary</button><button type="button" class="signal" aria-pressed="false" data-signal="security">Security requirement</button><button type="button" class="signal" aria-pressed="false" data-signal="delivery">GitHub Actions</button></div>
+            </div>
+            <div class="coverage-card">
+              <div class="coverage-tabs" role="tablist" aria-label="Coverage options"><button role="tab" id="tab-recommended" aria-controls="panel-recommended" aria-selected="true" tabindex="0" data-coverage="recommended">Recommended</button><button role="tab" id="tab-focused" aria-controls="panel-focused" aria-selected="false" tabindex="-1" data-coverage="focused">Focused</button><button role="tab" id="tab-extended" aria-controls="panel-extended" aria-selected="false" tabindex="-1" data-coverage="extended">Extended</button></div>
+              <p class="demo-status" aria-live="polite">Recommended · required work plus independent verification</p>
+              <div id="panel-recommended" role="tabpanel" aria-labelledby="tab-recommended" data-coverage-panel="recommended"><ul class="role-list"><li><strong>Delivery specialist</strong><span>owns the release work</span></li><li><strong>Security specialist</strong><span>reviews the security boundary</span></li><li><strong>Test specialist</strong><span>checks the payment flow</span></li><li><strong>Independent validator</strong><span>verifies the high-risk path</span></li></ul></div>
+              <div id="panel-focused" role="tabpanel" aria-labelledby="tab-focused" data-coverage-panel="focused" hidden><ul class="role-list"><li><strong>Delivery specialist</strong><span>owns the release work</span></li><li><strong>Security specialist</strong><span>reviews the security boundary</span></li><li><strong>Test specialist</strong><span>checks the payment flow</span></li></ul></div>
+              <div id="panel-extended" role="tabpanel" aria-labelledby="tab-extended" data-coverage-panel="extended" hidden><ul class="role-list"><li><strong>Delivery specialist</strong><span>owns the release work</span></li><li><strong>Security specialist</strong><span>reviews the security boundary</span></li><li><strong>Test specialist</strong><span>checks the payment flow</span></li><li><strong>Independent validator</strong><span>verifies the high-risk path</span></li><li><strong>Docs specialist</strong><span>keeps the handoff clear</span></li></ul></div>
+              <p class="coverage-note">The catalog is a capability library. The project and goal decide the roles.</p>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section id="install" class="shell install-section section-block reveal">
-        <div class="install-card"><div><p class="eyebrow">Start with your repository</p><h2>Let the project tell you what team it needs.</h2><p>Install the plugin, open a fresh Codex session, and ask Codesemble to audit before you choose a team.</p></div><div class="command-box"><div class="command-head"><span>Install from the validated v0.2 candidate</span><button type="button" class="copy-button" data-copy-target="install-command">Copy</button></div><pre id="install-command"><code>codex plugin marketplace add VAMFI/codsemble --ref fc247152961c25e79b525a969806991f499a2bac
-codex plugin add codsemble@codsemble</code></pre><p class="copy-status" aria-live="polite"></p></div><div class="install-next"><span>Then ask:</span><code>$codsemble:initialize-team Audit this workspace and help me choose the smallest useful team.</code></div></div>
+      <section id="safety" class="section shell safety-grid">
+        <div class="section-intro"><p class="eyebrow">Control stays visible</p><h2>Your Codex session stays in charge.</h2><p>Generated specialists are available capabilities, not an always-running swarm. The primary thread delegates bounded work and owns the final result.</p><div class="control-list"><div><span>01</span><p><strong>Preview first.</strong> Audit and planning are read-only.</p></div><div><span>02</span><p><strong>Confirm exactly.</strong> Apply requires a fresh plan and human approval.</p></div><div><span>03</span><p><strong>Recover cleanly.</strong> Doctor and rollback preserve project-local control.</p></div></div><a class="text-link" href="https://github.com/VAMFI/codsemble/blob/main/docs/CONFIG_SAFETY.md" target="_blank" rel="noopener noreferrer">Read the safety boundary <span aria-hidden="true">↗</span></a></div>
+        <div class="output-card"><span class="card-label">Project-local output</span><h3>Useful files, visible before they land.</h3><ul class="file-list"><li><code>AGENTS.md</code><span>orchestration guidance</span></li><li><code>.codex/agents/&lt;role&gt;.toml</code><span>native specialists</span></li><li><code>.codex/config.toml</code><span>optional worker limit</span></li><li><code>.codex/codsemble/manifest.json</code><span>team ownership</span></li><li><code>.codex/codsemble/transactions/</code><span>rollback history</span></li></ul><details><summary>What does “preview” mean?</summary><p>The plan names roles, instructions, configuration, and every managed path. Apply rechecks the exact plan and refuses stale project state.</p></details></div>
       </section>
 
-      <section id="docs" class="shell section-block docs-section">
-        <div class="section-heading reveal"><p class="eyebrow">Go deeper when you are ready</p><h2>The short version lives here. The contracts live in the repo.</h2></div>
-        <div class="docs-grid reveal"><a href="https://github.com/VAMFI/codsemble/blob/main/docs/USAGE.md" target="_blank" rel="noopener noreferrer"><span>01</span><b>Get started</b><small>Install, initialize, update, diagnose, rollback</small><i aria-hidden="true">↗</i></a><a href="https://github.com/VAMFI/codsemble/blob/main/docs/PROJECT_CAPABILITY_COMPILER.md" target="_blank" rel="noopener noreferrer"><span>02</span><b>Understand generation</b><small>Compiler, work packages, and admission</small><i aria-hidden="true">↗</i></a><a href="https://github.com/VAMFI/codsemble/blob/main/docs/VOICE_APPROVAL.md" target="_blank" rel="noopener noreferrer"><span>03</span><b>Review safety</b><small>Exact approval, privacy, and threat model</small><i aria-hidden="true">↗</i></a><a href="https://github.com/VAMFI/codsemble/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener noreferrer"><span>04</span><b>See the evidence</b><small>What has actually been tested</small><i aria-hidden="true">↗</i></a></div>
+      <section id="install" class="section install-section">
+        <div class="shell install-card"><div><p class="eyebrow">Start with your project</p><h2>Install, restart Codex, and ask for the smallest useful team.</h2><p>Codesemble is project-local. It does not edit your personal Codex settings or publish anything for you.</p><ol class="install-steps"><li><b>Install</b><span>Add the plugin from Git.</span></li><li><b>Restart</b><span>Open a fresh Codex session.</span></li><li><b>Initialize</b><span>Run the audit in your workspace.</span></li></ol></div><div class="command-box"><div class="command-head"><span>Terminal</span><button class="copy-button" type="button" data-copy-target="install-command">Copy</button></div><pre><code id="install-command">codex plugin marketplace add VAMFI/codsemble --ref fc247152961c25e79b525a969806991f499a2bac<br />codex plugin add codsemble@codsemble</code></pre><p class="copy-status" aria-live="polite"></p><p class="command-next">Then ask: <code>$codsemble:initialize-team</code></p></div></div>
       </section>
+
+      <section id="docs" class="section shell docs-section"><div class="section-intro"><p class="eyebrow">Keep exploring</p><h2>Clear docs for the details.</h2></div><div class="docs-grid"><a href="https://github.com/VAMFI/codsemble/blob/main/docs/USAGE.md" target="_blank" rel="noopener noreferrer"><span>01</span><b>Usage</b><small>Install, initialize, update, diagnose, roll back.</small></a><a href="https://github.com/VAMFI/codsemble/blob/main/docs/PROJECT_CAPABILITY_COMPILER.md" target="_blank" rel="noopener noreferrer"><span>02</span><b>Compiler contract</b><small>Understand evidence, capabilities, and team options.</small></a><a href="https://github.com/VAMFI/codsemble/blob/main/docs/VOICE_APPROVAL.md" target="_blank" rel="noopener noreferrer"><span>03</span><b>Voice approval</b><small>Use a speakable exact challenge without weakening control.</small></a><a href="https://github.com/VAMFI/codsemble/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener noreferrer"><span>04</span><b>Validation</b><small>See what has actually been tested and where.</small></a></div><details class="faq"><summary>Why is there a 111-entry catalog?</summary><p>It is a library of reusable capability primitives, not a roster or team-size target. Codesemble dynamically selects only roles justified by the repository and goal.</p></details></section>
     </main>
-    <footer class="site-footer"><div class="shell footer-inner"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>Codesemble</span></a><p>Evidence in. Native team out.</p><div><a href="https://github.com/VAMFI/codsemble" target="_blank" rel="noopener noreferrer">GitHub</a><a href="https://github.com/VAMFI/codsemble/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache 2.0</a></div></div></footer>
+    <footer class="site-footer"><div class="shell footer-inner"><p><span class="brand-mark small" aria-hidden="true"><i></i><b></b><em></em></span> Codesemble · open-source, project-scoped team building for Codex.</p><div><a href="https://github.com/VAMFI/codsemble" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="#top">Back to top ↑</a></div></div></footer>
   </body>
 </html>

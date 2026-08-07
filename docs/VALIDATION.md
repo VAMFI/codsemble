@@ -26,7 +26,7 @@ downloaded by the project.
 The current local candidate passes:
 
 - strict TypeScript checking;
-- 140 automated tests across 20 files, including audit, capability compilation,
+- 141 automated tests across 20 files, including audit, capability compilation,
   representative fixtures, semantic golden/property behavior, generated-role
   admission, evidence freshness, voice confirmation, CLI integration, manifest
   shared strict lifecycle lineage, trusted-Git PATH refusal, no-clobber
@@ -89,22 +89,24 @@ filesystem simulation boundary, not native Codex discovery on Windows.
 
 ## Native Codex runtime
 
-`artifacts/runtime-evidence.json` records the v0.2 Project Capability Compiler
-run against the exact archived plugin in an isolated Codex home and disposable
-trusted project. It records:
+`artifacts/runtime-evidence.json` records the current privacy-hardening
+candidate's exact source and payload hashes, local validation, and native Codex
+runtime checks. The current record uses the active local Codex home and the
+tracked Portable Agent Memory project; it does not claim an isolated-home or
+disposable-project boundary. It records:
 
 - source commit, archive SHA-256, logical payload digest, Codex/Node versions,
   OS, architecture, and adapter;
-- plugin discovery and one non-catalog project-generated role;
-- preview no-write, exact confirmed apply, and fresh-session role discovery;
-- one attributable separable delegation plus primary-thread integration;
-- bounded capacity rejection without a retry storm and a trivial no-spawn turn;
-- meaningful update, no-op convergence, and reverse rollback preserving user bytes.
+- installed plugin discovery from the exact local candidate;
+- an exact-confirmed project-team update and doctor result;
+- fresh-session discovery and one typed bounded delegation;
+- a separate trivial no-spawn turn; and
+- the local source, archive, SBOM, checksum, and test boundary.
 
-The record excludes authentication material, absolute personal paths, raw
-sessions, and confirmation challenge words. The evidence-only commit that adds
-the record does not change the archived plugin payload; final-head CI remains a
-separate required check.
+The record excludes authentication material, raw sessions, and confirmation
+challenge words. It uses repository-relative project identifiers rather than
+personal paths. Exact-head public CI, isolated-home apply/rollback, and release
+publication remain separate required checks.
 
 ## Voice evidence
 

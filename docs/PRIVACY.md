@@ -24,7 +24,13 @@ plugin's boundary.
 
 The auditor excludes:
 
-- `.env` files and common credential, key, certificate, auth, and token paths;
+- `.env` files and common credential, key, certificate, auth, OAuth, API-key,
+  service-account, access-token, and refresh-token stores. Auth/token matching
+  is limited to boundary-delimited configuration/data filenames such as JSON,
+  YAML, TOML, plist, properties, and XML plus named CLI/cloud auth stores;
+  ordinary source and documentation such as `src/auth.ts` and `docs/AUTH.md`
+  remain eligible. Ambiguous config names such as `design-tokens.json` fail
+  closed and are excluded;
 - files ignored by the repository;
 - dependency caches, build output, generated artifacts, and large binaries;
 - symlinks and paths outside the selected workspace;

@@ -1,196 +1,88 @@
 {
-  "schemaVersion": 2,
-  "capturedAt": "2026-08-01T19:08:52Z",
+  "schemaVersion": 3,
+  "capturedAt": "2026-08-07T21:02:17Z",
   "source": {
-    "validatedCommit": "506d843a627c4fd225109eb6fd3fe082d1f2bd26",
-    "pluginArchiveSha256": "d93fd8a98237933dbac1a93dcca87ce3733cc7d2ffaadd682b1294656942097b",
-    "logicalPluginPayloadSha256": "95c65a6f991fc1300d6af0551bf1934d6a7beb153008220aa9cd5f7f69e3a005",
+    "validatedCommit": "0aa84be36209e454fadfb34b96c8c3d5b3a16caf",
+    "validatedCommitRelationship": "privacy-hardening code and generated plugin artifacts; evidence/documentation changes are a subsequent local commit",
+    "pluginArchiveSha256": "a3635eb7878a81169663e0dcf4d79e4a18a196e2e692e310ae82e3b2c8928d03",
+    "logicalPluginPayloadSha256": "042bf4e58914f46db6cb281157ce80848faed06692efcee595fdbebcc86b6836",
     "logicalPluginPayloadDigestAlgorithm": "sha256(path-nul-length-nul-content-nul)",
-    "pluginFileCount": 12
+    "pluginFileCount": 12,
+    "sbomSha256": "81807f0376ad3859d117f1f78dc22e9b7c879741d12adb8c4f04eed7f73c3222",
+    "checksumEntryCount": 127
   },
   "boundary": {
-    "codexVersion": "0.145.0",
-    "nodeVersion": "26.5.0",
-    "additionalValidationNodeVersion": "24.13.1",
-    "operatingSystem": "Darwin 25.5.0 arm64",
+    "codexVersion": "0.147.0-alpha.6.5",
+    "nodeVersion": "24.14.0",
+    "operatingSystem": "macOS 26.6.1 build 25G76 arm64",
     "pluginVersion": "0.2.0",
     "pluginId": "codsemble@codsemble",
     "marketplace": "codsemble",
-    "configAdapter": "agents-v1",
-    "isolatedCodexHome": true,
-    "disposableTrustedProject": true,
-    "globalCodexConfigurationChanged": false
+    "marketplaceSource": "local privacy-hardening worktree",
+    "configAdapter": null,
+    "isolatedCodexHome": false,
+    "disposableTrustedProject": false,
+    "project": "portable-agent-memory",
+    "globalCodexConfigurationChanged": false,
+    "networkRequiredForRuntimeChecks": false
   },
   "pluginDiscovery": {
-    "installedFromExactArchive": true,
     "installed": true,
     "enabled": true,
-    "freshSkillDiscovery": "pass",
-    "configLoad": "pass"
+    "installedFromExactLocalCandidate": true,
+    "freshSkillAndAgentConfigLoad": "pass"
   },
-  "previewOnlyPlan": {
-    "planId": "9e1ce741e87f831de31788b5",
-    "applyCapable": false,
-    "confirmationChallengeIssued": false,
-    "writesObserved": 0,
-    "result": "pass"
+  "confirmedTeamUpdate": {
+    "planId": "ce81caf1b50ff9e44f535a1f",
+    "transactionId": "d146674e-5122-4c71-8769-ee132174cf06",
+    "confirmationMethod": "exact plan confirmation identifier supplied by the user",
+    "configMode": "unchanged",
+    "configWriteApplied": false,
+    "installedRoleCount": 3,
+    "maxConcurrentWorkers": 2,
+    "doctorAfterApply": "pass with intentional no-project-config warning"
   },
-  "initialApply": {
-    "planId": "21e7c47ef95ff586ef8f4a40",
-    "confirmationId": "dd64148528bc94bd5784c376d98bde68",
-    "confirmationMethod": "exact six-word voice-friendly challenge",
-    "confirmationChallengeIncluded": false,
-    "transactionId": "b1984813-86eb-45d1-be19-e91c39b75ba1",
-    "configMode": "apply-project",
-    "projectCurrentSpawnedWorkerCeiling": null,
-    "requestedSpawnedWorkerCeiling": 2,
-    "configWriteApplied": true,
-    "installedRoleCount": 8,
-    "generatedRoleCount": 6,
-    "explicitRoleCount": 2,
-    "explicitRoles": [
-      {
-        "id": "runtime-master-orchestrator",
-        "model": "gpt-5.6-sol",
-        "reasoningEffort": "ultra"
-      },
-      {
-        "id": "runtime-daily-integrator",
-        "model": "gpt-5.6-luna",
-        "reasoningEffort": "max"
-      }
-    ],
-    "doctorAfterApply": "pass"
+  "freshTypedDelegation": {
+    "parentThreadId": "019fde08-1a4b-7760-ab6b-9e2eb8dced65",
+    "agentRole": "documentation_present_documentation_specialist_8076292f",
+    "forkTurns": "none",
+    "assignment": "read the bounded evaluation document and identify its title and generalization caveat",
+    "result": "pass",
+    "filesChanged": 0,
+    "networkUsed": false
   },
-  "nativeOrchestrationRun": {
-    "parentThreadId": "019fbe45-0f97-7202-83fa-1bebabe8687f",
-    "orchestrator": {
-      "threadId": "019fbe45-2fe0-7ed1-a00f-286f4dda290c",
-      "agentRole": "runtime-master-orchestrator",
-      "generatedDeveloperInstructionsObserved": true
-    },
-    "specialists": [
-      {
-        "threadId": "019fbe45-55c3-7543-a489-7a3efb0d0aba",
-        "agentRole": "javascript-implementation-specialist-2a9ed216",
-        "source": "generated",
-        "discoveredInFreshPostApplySession": true,
-        "assignment": "source inspection",
-        "result": "SOURCE-OK"
-      },
-      {
-        "threadId": "019fbe45-877a-7640-8582-5d8f56350cf7",
-        "agentRole": "tests-present-verification-specialist-c2eadc5d",
-        "source": "generated",
-        "discoveredInFreshPostApplySession": true,
-        "assignment": "focused test execution",
-        "result": "TEST-OK; one focused test passed"
-      }
-    ],
-    "rootIntegratedResult": "ROOT-OK ORCH-OK SOURCE-OK TEST-OK",
-    "rootRetainedFinalAuthority": true
+  "freshTrivialNoSpawn": {
+    "parentThreadId": "019fde08-75b4-78d1-b40b-c30438e480ce",
+    "assignment": "read the project version from pyproject.toml",
+    "result": "0.1.0",
+    "spawnedChildren": 0,
+    "filesChanged": 0,
+    "networkUsed": false
   },
-  "capacityRun": {
-    "parentThreadId": "019fbe46-5d6e-7441-92e7-c874ded6285d",
-    "configuredSpawnedWorkerCeiling": 2,
-    "successfulChildren": [
-      "019fbe46-6d06-71e3-a143-b14128627c71",
-      "019fbe46-7db9-7801-a93c-16d4b759f284"
-    ],
-    "thirdSpawn": "rejected: agent thread limit reached",
-    "unboundedRetryObserved": false,
-    "result": "CAPACITY-OK TWO-ACTIVE THIRD-REJECTED NO-RETRY"
-  },
-  "trivialRun": {
-    "parentThreadId": "019fbe47-0cc9-76e2-a2f7-b995b51bd528",
-    "result": "TRIVIAL-OK 4",
-    "spawnedChildren": 0
-  },
-  "meaningfulUpdate": {
-    "planId": "dd6f15213429d39c796cdb3a",
-    "transactionId": "f670f4af-4408-44ef-b4b9-ed7bf0c65b82",
-    "previousSpawnedWorkerCeiling": 2,
-    "requestedSpawnedWorkerCeiling": 3,
-    "configWriteApplied": true,
-    "doctorAfterApply": "pass"
-  },
-  "convergenceUpdate": {
-    "planId": "44a1438cb506b2d6dc9bbc30",
-    "transactionId": "739d998d-8ca7-4886-8179-0420beadd1ae",
-    "changedFiles": [
-      ".codex/codsemble/manifest.json"
-    ],
-    "doctorAfterApply": "pass"
-  },
-  "idempotentUpdate": {
-    "planId": "44a1438cb506b2d6dc9bbc30",
-    "stablePlanIdAcrossConvergence": true,
-    "verifiedManagedFiles": 11,
-    "allManagedActions": "verify",
-    "noChanges": true,
-    "transaction": null,
-    "reloadRequired": false,
-    "receiptCountBefore": 3,
-    "receiptCountAfter": 3,
-    "doctorAfterNoOp": "pass"
-  },
-  "rollback": {
-    "skillVersion": "0.2.0",
-    "previewedBeforeEachApply": true,
-    "forceUsed": false,
-    "transactionsRevertedInReverseOrder": [
-      "739d998d-8ca7-4886-8179-0420beadd1ae",
-      "f670f4af-4408-44ef-b4b9-ed7bf0c65b82",
-      "b1984813-86eb-45d1-be19-e91c39b75ba1"
-    ],
-    "doctorAfterIntermediateRollbacks": "pass",
-    "doctorAfterFinalRollback": "warn-as-uninitialized",
-    "generatedAgentFilesRemaining": 0,
-    "projectConfigPresent": false,
-    "manifestPresent": false,
-    "agentsInstructionsPresent": false,
-    "transactionReceiptCount": 3,
-    "rollbackMarkerCount": 3,
-    "transactionRecoveryHistoryRetained": true,
-    "trackedProjectDiffAfterRollback": "clean",
-    "onlyUntrackedPathAfterRollback": ".codex/ transaction recovery history",
-    "preservedInputSha256": {
-      "README.md": "b037d09a1b7002409f8bbffbaa863ee5d9d4a1c5cbca22eba4b454247806846a",
-      "package.json": "d994c9ac7dadcdc30a25d12de698fb39bd9e2673913aaa747c38c8ed2dc8febe",
-      "Dockerfile": "b849d6cf7136339d0ecfb75b553230c5cde5ac86390c5a56facd7674e0e4f932",
-      "src/service.js": "5258fdccf53070d8df1eda40b801edadd3a84df72ac715c6c3f3140cffdd90a6",
-      "test/service.test.js": "aa2bf92850954dcefaf398ba50a5cca14bfe418c690585ae797ed76f4043a6d1"
-    }
-  },
-  "validation": {
-    "tests": "140/140 pass on Node 26.5.0 and Node 24.13.1",
-    "build": "pass",
+  "localValidation": {
+    "tests": "141/141 pass across 20 files",
     "typecheck": "pass",
-    "catalogValidation": "pass",
-    "checksumEntries": 120,
-    "sbomComponents": 128,
-    "archiveDeterminism": "pass",
-    "publicCiAtValidatedCommit": {
-      "ubuntuNode22": "pass",
-      "ubuntuNode24": "pass",
-      "macosNode22": "pass",
-      "macosNode24": "pass",
-      "windowsNode22": "pass",
-      "windowsNode24": "pass",
-      "dependencyReview": "pass",
-      "codeql": "pass"
-    }
+    "build": "pass",
+    "catalogValidation": "pass; 111 compatibility primitives",
+    "repositoryValidation": "pass; 4 skills and 15 documents",
+    "officialPluginValidation": "pass",
+    "officialSkillValidation": "pass for all 4 plugin-owned skills",
+    "archiveDeterminism": "pass; 12 files",
+    "sbomDeterminism": "pass; CycloneDX 1.5 with 128 components",
+    "sourceChecksums": "pass; 127 entries",
+    "bundledCliSmoke": "pass",
+    "dependencyAudit": "pass; zero reported vulnerabilities"
   },
   "evidencePolicy": {
     "rawSessionFilesIncluded": false,
     "credentialsIncluded": false,
     "absolutePersonalPathsIncluded": false,
-    "confirmationChallengeWordsIncluded": false
+    "confirmationSecretIncluded": false
   },
-  "knownGaps": [
-    "The exact v0.2 runtime boundary was exercised on one Darwin arm64 host with Codex 0.145.0; cross-platform code validation is represented by public CI.",
-    "A physical Android microphone and speech-recognition loop was not exercised; voice approval was validated through the exact CLI challenge semantics.",
-    "The raw isolated session directory was intentionally excluded because it referenced local authentication state.",
-    "Repeated icon warnings came from the separately cached Teams plugin; Codesemble skill metadata does not declare those icons."
+  "pendingExternalOrSeparateBoundaries": [
+    "Public pull-request CI and CodeQL have not run at the final evidence/documentation commit.",
+    "An isolated Codex-home apply and reverse rollback were not repeated for this exact privacy-hardening payload.",
+    "Physical Android microphone and speech-recognition behavior remains untested.",
+    "Push, merge, tag, signed provenance, GitHub release, marketplace publication, and directory submission remain unperformed."
   ]
 }

@@ -103,6 +103,32 @@ describe("auditWorkspace", () => {
       '{"dependencies":{"vue":"latest"}}',
     );
     await writeFile(path.join(workspace, "private-key.pem"), "secret");
+    await mkdir(path.join(workspace, "config"), { recursive: true });
+    await mkdir(path.join(workspace, ".docker"), { recursive: true });
+    const sensitiveAuthAndTokenPaths = [
+      "auth.json",
+      "oauth.json",
+      "token.json",
+      "tokens.yaml",
+      "config/auth-store.json",
+      "config/access-token.json",
+      "config/refresh_token.json",
+      "config/api-key.json",
+      "config/service_account.json",
+      "config/OAuth2.TOML",
+      "config/token-cache.plist",
+      ".docker/config.json",
+      "config/serviceAccountKey.json",
+      "config/project-firebase-adminsdk-demo.json",
+    ];
+    await Promise.all(
+      sensitiveAuthAndTokenPaths.map((relativePath) =>
+        writeFile(
+          path.join(workspace, relativePath),
+          '{"dependencies":{"secret-detector-canary":"1.0.0"}}',
+        ),
+      ),
+    );
     await writeFile(path.join(workspace, "binary.ts"), Buffer.from([0, 1, 2]));
     await writeFile(path.join(workspace, "oversized.ts"), "x".repeat(9_000));
     await symlink(
@@ -118,6 +144,7 @@ describe("auditWorkspace", () => {
     expect(report.inspectedFiles).not.toEqual(
       expect.arrayContaining([
         ".env",
+        ...sensitiveAuthAndTokenPaths,
         "ignored.ts",
         "private-key.pem",
         "binary.ts",
@@ -131,9 +158,10 @@ describe("auditWorkspace", () => {
       generated: 1,
       ignored: 1,
       oversized: 1,
-      "secret-like": 2,
+      "secret-like": 16,
       symlink: 1,
     });
+    expect(JSON.stringify(report)).not.toContain("secret-detector-canary");
   });
 
   it("never resolves a repository-provided Git shim from PATH", async () => {
@@ -228,6 +256,90 @@ describe("auditWorkspace", () => {
     expect(report.inspectedFiles).not.toContain("ignored.ts");
     expect(report.skipped).toContainEqual({ reason: "untracked", count: 1 });
     expect(signalValues(report, "testing")).toContain("jest");
+  });
+
+  it("excludes tracked auth and token paths without matching unrelated names", async () => {
+    const workspace = await temporaryWorkspace();
+    await execFileAsync("git", ["init", "-q"], { cwd: workspace });
+    await mkdir(path.join(workspace, "config"), { recursive: true });
+    const sensitivePaths = [
+      "auth.json",
+      "oauth.json",
+      "token.json",
+      ".codex/auth.json",
+      ".docker/config.json",
+      "config/access-token.json",
+      "config/refresh_token.yaml",
+      "config/api-key.json",
+      "config/service_account.json",
+      "config/OAuth2.TOML",
+      "config/token-cache.plist",
+      "config/serviceAccountKey.json",
+      "config/project-firebase-adminsdk-demo.json",
+    ];
+    await mkdir(path.join(workspace, ".codex"), { recursive: true });
+    await mkdir(path.join(workspace, ".docker"), { recursive: true });
+    await Promise.all(
+      sensitivePaths.map((relativePath) =>
+        writeFile(
+          path.join(workspace, relativePath),
+          '{"dependencies":{"tracked-secret-canary":"1.0.0"}}',
+        ),
+      ),
+    );
+    await writeFile(path.join(workspace, "author.json"), '{"name":"author"}');
+    await writeFile(
+      path.join(workspace, "authorization.json"),
+      '{"name":"authorization"}',
+    );
+    await writeFile(
+      path.join(workspace, "tokenizer.json"),
+      '{"name":"tokenizer"}',
+    );
+    await mkdir(path.join(workspace, "src", "auth"), { recursive: true });
+    await mkdir(path.join(workspace, "docs"), { recursive: true });
+    await writeFile(path.join(workspace, "src", "auth", "index.ts"), "export {};\n");
+    await writeFile(path.join(workspace, "src", "token-utils.ts"), "export {};\n");
+    await writeFile(path.join(workspace, "docs", "AUTH.md"), "# Authentication\n");
+    await execFileAsync("git", ["add", "."], { cwd: workspace });
+    await execFileAsync(
+      "git",
+      [
+        "-c",
+        "user.name=Codesemble Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-qm",
+        "tracked privacy fixture",
+      ],
+      { cwd: workspace },
+    );
+
+    const report = await auditWorkspace(workspace);
+
+    expect(report.dirtyWorktree).toBe(false);
+    expect(report.inspectedFiles).toEqual(
+      expect.arrayContaining([
+        "author.json",
+        "authorization.json",
+        "tokenizer.json",
+        "src/auth/index.ts",
+        "src/token-utils.ts",
+        "docs/AUTH.md",
+      ]),
+    );
+    expect(report.inspectedFiles).not.toEqual(
+      expect.arrayContaining(sensitivePaths),
+    );
+    expect(report.inspectedFileDigests?.map(({ path: file }) => file)).not.toEqual(
+      expect.arrayContaining(sensitivePaths),
+    );
+    expect(report.skipped).toContainEqual({
+      reason: "secret-like",
+      count: sensitivePaths.length,
+    });
+    expect(JSON.stringify(report)).not.toContain("tracked-secret-canary");
   });
 
   it("excludes transaction history from Git candidates and dirtiness", async () => {

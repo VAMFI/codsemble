@@ -39,12 +39,14 @@ it does not replace Codex.
 ### 1. Install, then restart Codex
 
 ```bash
-codex plugin marketplace add VAMFI/codsemble --ref fc247152961c25e79b525a969806991f499a2bac
+codex plugin marketplace add VAMFI/codsemble --ref 0aa84be36209e454fadfb34b96c8c3d5b3a16caf
 codex plugin add codsemble@codsemble
 ```
 
 Open a fresh Codex session so its four Codesemble skills are discovered. The
-pinned commit is the merged, validated v0.2 candidate.
+pinned commit is the locally validated v0.2 privacy-hardening candidate. It is
+not merged, tagged, or released yet; use it only after that commit is available
+from the configured Git source.
 
 ### 2. Audit, choose, and approve
 
@@ -161,9 +163,10 @@ publish anything.
 
 ## Project status
 
-Codesemble v0.2.0 is merged and validated on `main`. It is installable from the
-pinned Git source above, but has not been tagged or released; v0.1.0 remains the
-latest release.
+The v0.2 code line is present on `main`, but the privacy-hardening candidate
+documented here is one local commit ahead of the recorded `origin/main`. It is
+validated locally and has not been pushed, merged, tagged, or released; v0.1.0
+remains the latest release.
 
 Validation claims remain tied to the exact tested payload and environment.
 [See the evidence →](docs/VALIDATION.md)

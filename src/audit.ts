@@ -784,7 +784,25 @@ function normalizeRelativePath(value: string): string | null {
 }
 
 function isSecretLike(relativePath: string): boolean {
-  const segments = relativePath.toLowerCase().split("/");
+  const normalized = relativePath.toLowerCase();
+  const knownAuthStores = [
+    ".docker/config.json",
+    ".config/gh/hosts.yml",
+    ".config/glab-cli/config.yml",
+    ".azure/accesstokens.json",
+  ];
+  if (
+    knownAuthStores.some(
+      (storePath) =>
+        normalized === storePath || normalized.endsWith(`/${storePath}`),
+    )
+  ) {
+    return true;
+  }
+  if (path.posix.basename(normalized) === "serviceaccountkey.json") {
+    return true;
+  }
+  const segments = normalized.split("/");
   return segments.some((segment) => {
     if (
       segment === ".env" ||
@@ -802,8 +820,14 @@ function isSecretLike(relativePath: string): boolean {
     ) {
       return true;
     }
+    const secretBearingConfig =
+      /\.(?:json|ya?ml|toml|plist|properties|xml)$/.test(segment);
     return (
       /(?:^|[._-])(secret|secrets|credential|credentials)(?:[._-]|$)/.test(segment) ||
+      (secretBearingConfig &&
+        (/(?:^|[._-])(?:auth|oauth2?|token|tokens)(?:[._-]|$)/.test(segment) ||
+          /(?:^|[._-])(?:api|access|refresh|identity|service)[._-](?:key|token|account)(?:[._-]|$)/.test(segment) ||
+          /(?:^|[._-])firebase[._-]adminsdk(?:[._-]|$)/.test(segment))) ||
       /\.(?:key|pem|p12|pfx|jks|keystore)$/.test(segment)
     );
   });

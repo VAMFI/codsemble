@@ -32,7 +32,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "ignore": "^7.0.5",
+    "ignore": "^7.0.8",
     "smol-toml": "^1.4.2",
     "zod": "^4.0.14"
   },

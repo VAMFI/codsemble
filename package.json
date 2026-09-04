@@ -34,7 +34,7 @@
   "dependencies": {
     "ignore": "^7.0.5",
     "smol-toml": "^1.4.2",
-    "zod": "^4.0.14"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
